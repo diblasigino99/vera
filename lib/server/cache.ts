@@ -160,7 +160,11 @@ export async function getConsensusById(searchId: string) {
 }
 
 export async function cacheConsensus(consensus: ConsensusResponse) {
-  const versionedConsensus = { ...consensus, cacheVersion: localCacheVersion };
+  const versionedConsensus = {
+    ...consensus,
+    cacheVersion: localCacheVersion,
+    sources: annotateSources(consensus)
+  };
 
   memorySearches.set(versionedConsensus.normalizedQuery, versionedConsensus);
 
@@ -171,6 +175,18 @@ export async function cacheConsensus(consensus: ConsensusResponse) {
   }
 
   await writeLocalCacheEntry(versionedConsensus);
+}
+
+function annotateSources(consensus: ConsensusResponse) {
+  return consensus.sources.map((source) => {
+    const supportingResult = consensus.results.find((result) => result.sources.some((resultSource) => resultSource.url === source.url));
+
+    return {
+      ...source,
+      supportingContender: supportingResult?.name,
+      relevanceScore: source.snippet && source.snippet.length >= 160 ? 1 : 0.6
+    };
+  });
 }
 
 async function getSupabaseCachedConsensus(query: string, normalizedQuery: string) {

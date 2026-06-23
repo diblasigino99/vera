@@ -14,12 +14,29 @@ export async function searchPublicWeb(query: string): Promise<VeraSource[]> {
     throw new Error("TAVILY_API_KEY is required to search real public sources.");
   }
 
+  const startedAt = Date.now();
   const variants = buildSearchVariants(query);
   const responses = await Promise.all(
     variants.map(async (variant) => searchVariant(variant, key))
   );
+  const rawSources = responses.flat();
+  const dedupedSources = dedupeSources(rawSources);
+  const filteredSources = filterSources(dedupedSources);
+  const balancedSources = reduceDuplicateDomains(filteredSources).slice(0, 32);
 
-  return dedupeSources(responses.flat()).slice(0, 45);
+  console.log("[vera:sources] source pipeline", {
+    query,
+    variants: variants.length,
+    tavilyResults: rawSources.length,
+    afterUrlDedupe: dedupedSources.length,
+    afterFiltering: filteredSources.length,
+    afterDomainBalancing: balancedSources.length,
+    openAIInput: balancedSources.length,
+    elapsedMs: Date.now() - startedAt,
+    domains: domainCounts(balancedSources)
+  });
+
+  return balancedSources;
 }
 
 async function searchVariant(queryVariant: string, key: string): Promise<VeraSource[]> {
@@ -35,7 +52,7 @@ async function searchVariant(queryVariant: string, key: string): Promise<VeraSou
       search_depth: "advanced",
       include_answer: false,
       include_raw_content: false,
-      max_results: 8
+      max_results: 10
     }),
     cache: "no-store"
   });
@@ -105,7 +122,7 @@ function buildSearchVariants(query: string) {
   return Array.from(variants)
     .map((variant) => variant.trim())
     .filter(Boolean)
-    .slice(0, 12);
+    .slice(0, 8);
 }
 
 function extractLocation(query: string) {
@@ -155,6 +172,50 @@ function dedupeSources(sources: VeraSource[]) {
   }
 
   return Array.from(byUrl.values());
+}
+
+function filterSources(sources: VeraSource[]) {
+  return sources.filter((source) => {
+    const snippet = source.snippet?.trim() ?? "";
+    const domain = source.domain.toLowerCase();
+    const title = source.title.toLowerCase();
+
+    if (!snippet || snippet.length < 80) {
+      return false;
+    }
+
+    if (domain.includes("pinterest") || domain.includes("facebook") || domain.includes("instagram") || domain.includes("tiktok")) {
+      return false;
+    }
+
+    if (title.includes("coupon") || title.includes("promo code") || title.includes("sale")) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function reduceDuplicateDomains(sources: VeraSource[]) {
+  const byDomain = new Map<string, VeraSource[]>();
+
+  sources.forEach((source) => {
+    const existing = byDomain.get(source.domain) ?? [];
+    existing.push(source);
+    byDomain.set(source.domain, existing);
+  });
+
+  const primaryPass = Array.from(byDomain.values()).flatMap((items) => items.slice(0, 2));
+  const overflow = Array.from(byDomain.values()).flatMap((items) => items.slice(2));
+
+  return [...primaryPass, ...overflow];
+}
+
+function domainCounts(sources: VeraSource[]) {
+  return sources.reduce<Record<string, number>>((counts, source) => {
+    counts[source.domain] = (counts[source.domain] ?? 0) + 1;
+    return counts;
+  }, {});
 }
 
 function canonicalizeUrl(url: string) {

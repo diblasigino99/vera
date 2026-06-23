@@ -23,6 +23,8 @@ const sourceTypes = [
   "other"
 ] as const;
 
+const openAIModel = "gpt-4.1-mini";
+
 const SignalSchema = z.object({
   intent: z.object({
     category: z.string(),
@@ -66,12 +68,12 @@ const classificationThresholds = {
   clearScore: 85,
   clearGapPoints: 20,
   clearWeightedGap: 8,
-  clearSourceCount: 8,
-  clearSourceDiversityScore: 4,
+  clearSourceCount: 5,
+  clearSourceDiversityScore: 3,
   strongScore: 75,
   strongGapPoints: 12,
   strongWeightedGap: 5,
-  strongSourceCount: 5,
+  strongSourceCount: 4,
   moderateScore: 60,
   moderateGapPoints: 8,
   moderateSourceCount: 3
@@ -123,6 +125,12 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
 
 async function extractSourceSignals(query: string, sources: VeraSource[], key: string) {
   const openai = new OpenAI({ apiKey: key });
+  const startedAt = Date.now();
+  console.log("[vera:openai] input prepared", {
+    query,
+    openAIInputSources: sources.length,
+    model: openAIModel
+  });
   const sourceText = sources
     .map((source, index) => {
       return [
@@ -138,7 +146,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     .join("\n\n");
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: openAIModel,
     temperature: 0,
     response_format: {
       type: "json_schema",
@@ -244,6 +252,14 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
   }
 
   const signals = normalizeSignals(parsed.data, sources);
+
+  console.log("[vera:openai] output received", {
+    query,
+    elapsedMs: Date.now() - startedAt,
+    sourceSignalsReturned: parsed.data.sourceSignals.length,
+    sourcesWithMentions: parsed.data.sourceSignals.filter((source) => source.mentions.length > 0).length,
+    normalizedSignals: signals.length
+  });
 
   return {
     rawOpenAIContent: content,
@@ -500,11 +516,14 @@ function buildConsensus(
   const normalizedQuery = normalizeQuery(query);
   const mode = structuredConsensus.consensusClassification;
   const contenders = structuredConsensus.contenders.slice(0, 5);
+  const createdAt = new Date().toISOString();
 
   return {
     id,
     query,
     normalizedQuery,
+    generated_at: createdAt,
+    model: openAIModel,
     mode,
     headline: consensusHeadline(mode, contenders, intent),
     explanation: consensusExplanation(mode, contenders, intent),
@@ -512,7 +531,7 @@ function buildConsensus(
     results: contenders.map((contender, index) => buildResult(contender, structuredConsensus, sources, index)),
     sources,
     structuredConsensus,
-    createdAt: new Date().toISOString(),
+    createdAt,
     cached: false
   };
 }
@@ -547,10 +566,14 @@ function buildResult(
 }
 
 function notEnoughData(query: string, sources: VeraSource[], explanation: string): ConsensusResponse {
+  const createdAt = new Date().toISOString();
+
   return {
     id: crypto.randomUUID(),
     query,
     normalizedQuery: normalizeQuery(query),
+    generated_at: createdAt,
+    model: openAIModel,
     mode: "no_reliable_consensus",
     headline: "No reliable consensus.",
     explanation,
@@ -562,7 +585,7 @@ function notEnoughData(query: string, sources: VeraSource[], explanation: string
     },
     results: [],
     sources,
-    createdAt: new Date().toISOString(),
+    createdAt,
     cached: false
   };
 }
@@ -594,8 +617,8 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
   }
 
   if (!second) {
-    return top.sourceCount >= classificationThresholds.singleContenderModerateSourceCount &&
-      top.positiveMentionCount >= classificationThresholds.singleContenderModeratePositiveMentions
+    return top.sourceCount >= classificationThresholds.moderateSourceCount &&
+      top.positiveMentionCount >= classificationThresholds.minimumTotalPositiveMentions
       ? "moderate_consensus"
       : "no_reliable_consensus";
   }

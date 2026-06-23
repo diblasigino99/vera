@@ -13,6 +13,8 @@ export type VeraSource = {
   snippet?: string;
   queryVariant?: string;
   canonicalUrl?: string;
+  supportingContender?: string;
+  relevanceScore?: number;
 };
 
 export type VeraSourceType =
@@ -121,6 +123,8 @@ export type ConsensusResponse = {
   query: string;
   normalizedQuery: string;
   cacheVersion?: number;
+  generated_at?: string;
+  model?: string;
   mode: ConsensusMode;
   headline: string;
   explanation: string;

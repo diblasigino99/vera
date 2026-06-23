@@ -14,7 +14,11 @@ export function slugify(input: string) {
 }
 
 export function normalizeQuery(query: string) {
-  return query.trim().toLowerCase().replace(/\s+/g, " ");
+  return query
+    .trim()
+    .toLowerCase()
+    .replace(/[?!.,;:]+$/g, "")
+    .replace(/\s+/g, " ");
 }
 
 export function domainFromUrl(url: string) {
