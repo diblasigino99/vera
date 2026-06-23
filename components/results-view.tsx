@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { BadgeCheck, Bookmark, CheckCircle2, Split, TriangleAlert } from "lucide-react";
@@ -14,6 +14,16 @@ type ResultsViewProps = {
   query: string;
   initialResult: ConsensusResponse | null;
   showThinking?: boolean;
+};
+
+type SavedState = {
+  savedSearch: boolean;
+  savedResults: Record<string, boolean>;
+};
+
+const emptySavedState: SavedState = {
+  savedSearch: false,
+  savedResults: {}
 };
 
 const modeCopy = {
@@ -49,6 +59,8 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
   const [requestLoading, setRequestLoading] = useState(Boolean(query && !initialResult));
   const [minimumThinking, setMinimumThinking] = useState(Boolean(query && showThinking));
   const [error, setError] = useState<string | null>(null);
+  const [savedState, setSavedState] = useState<SavedState>(emptySavedState);
+  const fetchedQueryRef = useRef<string | null>(initialResult?.query ?? null);
 
   useEffect(() => {
     if (initialResult?.query === query) {
@@ -91,8 +103,15 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
     if (initialResult?.query === query) {
       setResult(initialResult);
       setRequestLoading(false);
+      fetchedQueryRef.current = query;
       return;
     }
+
+    if (fetchedQueryRef.current === query) {
+      return;
+    }
+
+    fetchedQueryRef.current = query;
 
     const controller = new AbortController();
     setRequestLoading(true);
@@ -121,6 +140,7 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
       })
       .catch((reason: Error) => {
         if (reason.name !== "AbortError") {
+          fetchedQueryRef.current = null;
           setError(reason.message);
         }
       })
@@ -128,6 +148,24 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
 
     return () => controller.abort();
   }, [initialResult, query]);
+
+  useEffect(() => {
+    if (!result) {
+      setSavedState(emptySavedState);
+      return;
+    }
+
+    const resultIds = result.results.map((item) => item.id);
+
+    if (!resultIds.length) {
+      setSavedState(emptySavedState);
+      return;
+    }
+
+    loadSavedStateBatch(result.id, resultIds)
+      .then(setSavedState)
+      .catch(() => setSavedState(emptySavedState));
+  }, [result]);
 
   const mode = result ? modeCopy[result.mode] : null;
   const ModeIcon = mode?.icon;
@@ -188,7 +226,7 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
           {result.headline}
         </h1>
         <p className="mt-5 max-w-3xl text-lg leading-8 text-graphite">{result.explanation}</p>
-        <SaveSearchButton searchId={result.id} />
+        <SaveSearchButton initialSaved={savedState.savedSearch} searchId={result.id} />
       </div>
 
       <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-[0_12px_44px_rgba(0,0,0,0.035)] sm:p-7">
@@ -219,7 +257,13 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
           {winner ? (
             <div>
               <p className="mb-3 text-sm font-medium uppercase tracking-[0.16em] text-muted">Consensus Winner</p>
-              <ResultCard consensus={result} item={winner} searchId={result.id} featured />
+              <ResultCard
+                consensus={result}
+                initialSaved={Boolean(savedState.savedResults[winner.id])}
+                item={winner}
+                searchId={result.id}
+                featured
+              />
             </div>
           ) : null}
 
@@ -230,7 +274,13 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
               </p>
               <div className="grid gap-6">
                 {alternatives.map((item) => (
-                  <ResultCard consensus={result} item={item} searchId={result.id} key={item.id} />
+                  <ResultCard
+                    consensus={result}
+                    initialSaved={Boolean(savedState.savedResults[item.id])}
+                    item={item}
+                    searchId={result.id}
+                    key={item.id}
+                  />
                 ))}
               </div>
             </div>
@@ -247,16 +297,22 @@ function resultStorageKey(searchId: string) {
 
 function ResultCard({
   consensus,
+  initialSaved = false,
   item,
   searchId,
   featured = false
 }: {
   consensus: ConsensusResponse;
+  initialSaved?: boolean;
   item: ConsensusResponse["results"][number];
   searchId: string;
   featured?: boolean;
 }) {
   const resultHref = `/result/${buildResultSlug(item.name, searchId, item.id)}` as Route;
+
+  useEffect(() => {
+    console.log("RESULT_CARD_RENDER_NO_FETCH", { searchId, resultId: item.id });
+  }, [item.id, searchId]);
 
   return (
     <article
@@ -306,7 +362,7 @@ function ResultCard({
         >
           Learn Why
         </Link>
-        <SaveResultButton resultId={item.id} searchId={searchId} />
+        <SaveResultButton initialSaved={initialSaved} resultId={item.id} searchId={searchId} />
       </div>
     </article>
   );
@@ -318,18 +374,12 @@ function storeResult(result: ConsensusResponse) {
 
 type SaveStatus = "idle" | "saving" | "saved" | "failed";
 
-function SaveSearchButton({ searchId }: { searchId: string }) {
-  const [status, setStatus] = useState<SaveStatus>("idle");
+function SaveSearchButton({ initialSaved = false, searchId }: { initialSaved?: boolean; searchId: string }) {
+  const [status, setStatus] = useState<SaveStatus>(initialSaved ? "saved" : "idle");
 
   useEffect(() => {
-    loadSavedState(searchId)
-      .then((state) => {
-        if (state.savedSearch) {
-          setStatus("saved");
-        }
-      })
-      .catch(() => undefined);
-  }, [searchId]);
+    setStatus(initialSaved ? "saved" : "idle");
+  }, [initialSaved, searchId]);
 
   return (
     <button
@@ -344,18 +394,20 @@ function SaveSearchButton({ searchId }: { searchId: string }) {
   );
 }
 
-function SaveResultButton({ searchId, resultId }: { searchId: string; resultId: string }) {
-  const [status, setStatus] = useState<SaveStatus>("idle");
+function SaveResultButton({
+  initialSaved = false,
+  searchId,
+  resultId
+}: {
+  initialSaved?: boolean;
+  searchId: string;
+  resultId: string;
+}) {
+  const [status, setStatus] = useState<SaveStatus>(initialSaved ? "saved" : "idle");
 
   useEffect(() => {
-    loadSavedState(searchId, resultId)
-      .then((state) => {
-        if (state.savedResult) {
-          setStatus("saved");
-        }
-      })
-      .catch(() => undefined);
-  }, [searchId, resultId]);
+    setStatus(initialSaved ? "saved" : "idle");
+  }, [initialSaved, searchId, resultId]);
 
   return (
     <button
@@ -377,13 +429,11 @@ function statusLabel(status: SaveStatus, idleLabel: string) {
   return idleLabel;
 }
 
-async function loadSavedState(searchId: string, resultId?: string) {
+async function loadSavedStateBatch(searchId: string, resultIds: string[]) {
   const actorId = getAnonymousId();
   const params = new URLSearchParams({ actorId, searchId });
 
-  if (resultId) {
-    params.set("resultId", resultId);
-  }
+  params.set("resultIds", resultIds.join(","));
 
   const response = await fetch(`/api/save?${params.toString()}`);
 
@@ -391,7 +441,7 @@ async function loadSavedState(searchId: string, resultId?: string) {
     throw new Error("Could not load save state.");
   }
 
-  return response.json() as Promise<{ savedSearch: boolean; savedResult: boolean }>;
+  return response.json() as Promise<SavedState>;
 }
 
 async function saveResult(searchId: string, resultId: string, setStatus: (status: SaveStatus) => void) {

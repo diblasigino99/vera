@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSavedState, saveResult, saveSearch } from "@/lib/server/cache";
+import { getSavedState, getSavedStateBatch, saveResult, saveSearch } from "@/lib/server/cache";
 
 const SaveBody = z.object({
   kind: z.enum(["search", "result"]),
@@ -39,17 +39,34 @@ export async function GET(request: Request) {
   const actorId = params.get("actorId");
   const searchId = params.get("searchId");
   const resultId = params.get("resultId") ?? undefined;
+  const resultIds = params.get("resultIds") ?? undefined;
 
   const parsed = z
     .object({
       actorId: z.string().uuid(),
       searchId: z.string().min(1),
-      resultId: z.string().optional()
+      resultId: z.string().optional(),
+      resultIds: z.string().optional()
     })
-    .safeParse({ actorId, searchId, resultId });
+    .safeParse({ actorId, searchId, resultId, resultIds });
 
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid save status request." }, { status: 400 });
+  }
+
+  if (parsed.data.resultIds) {
+    const ids = parsed.data.resultIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    console.log("SAVE_STATUS_BATCH_FETCH", {
+      searchId: parsed.data.searchId,
+      resultCount: ids.length
+    });
+
+    const state = await getSavedStateBatch(parsed.data.actorId, parsed.data.searchId, ids);
+    return NextResponse.json(state);
   }
 
   const state = await getSavedState(parsed.data.actorId, parsed.data.searchId, parsed.data.resultId);

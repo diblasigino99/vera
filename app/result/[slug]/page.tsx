@@ -29,6 +29,11 @@ export default async function ResultPage({ params }: ResultPageProps) {
     notFound();
   }
 
+  console.log("LEARN_WHY_READ_ONLY_FETCH", {
+    searchId: parsed.searchId,
+    resultId: parsed.resultId
+  });
+
   const consensus = await getConsensusById(parsed.searchId);
   const result = consensus?.results.find((item) => item.id === parsed.resultId);
 

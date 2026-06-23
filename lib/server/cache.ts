@@ -378,6 +378,48 @@ export async function getSavedState(actorId: string, searchId: string, resultId?
   };
 }
 
+export async function getSavedStateBatch(actorId: string, searchId: string, resultIds: string[]) {
+  const uniqueResultIds = Array.from(new Set(resultIds.filter(Boolean)));
+  const supabase = getSupabaseAdmin();
+
+  if (supabase) {
+    const [savedSearch, savedResults] = await Promise.all([
+      supabase
+        .from("saved_searches")
+        .select("id")
+        .eq("profile_id", actorId)
+        .eq("search_id", searchId)
+        .maybeSingle(),
+      uniqueResultIds.length
+        ? supabase
+            .from("saved_results")
+            .select("result_id")
+            .eq("profile_id", actorId)
+            .eq("search_id", searchId)
+            .in("result_id", uniqueResultIds)
+        : Promise.resolve({ data: [] })
+    ]);
+
+    const savedResultIds = new Set((savedResults.data ?? []).map((row) => row.result_id));
+
+    return {
+      savedSearch: Boolean(savedSearch.data),
+      savedResults: Object.fromEntries(uniqueResultIds.map((resultId) => [resultId, savedResultIds.has(resultId)]))
+    };
+  }
+
+  const localSaves = await readLocalSaves();
+  const actor = localSaves[actorId];
+  const savedResultIds = new Set(
+    actor?.saved_results.filter((item) => item.searchId === searchId).map((item) => item.resultId) ?? []
+  );
+
+  return {
+    savedSearch: Boolean(actor?.saved_searches.includes(searchId)),
+    savedResults: Object.fromEntries(uniqueResultIds.map((resultId) => [resultId, savedResultIds.has(resultId)]))
+  };
+}
+
 async function readLocalCache(): Promise<LocalCacheFile> {
   if (!canUseLocalJsonFallback) {
     return {};

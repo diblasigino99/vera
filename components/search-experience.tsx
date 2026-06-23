@@ -27,7 +27,7 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
       return;
     }
 
-    console.log("search submitted", { query: nextQuery });
+    console.log("SEARCH_SUBMIT_ONCE", { query: nextQuery, source: "search-experience" });
     setIsSubmittingSearch(true);
     console.log("thinking state visible", { query: nextQuery });
 
