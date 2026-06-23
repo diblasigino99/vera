@@ -91,6 +91,8 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
       runtime: config.runtime,
       searchCacheUrl: config.searchCacheUrl
     });
+    console.log("RAW_SUPABASE_URL", config.rawSupabaseUrl);
+    console.log("FINAL_SUPABASE_URL", config.finalSupabaseUrl);
   }
 
   const local = memorySearches.get(normalizedQuery);
@@ -223,6 +225,8 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
     runtime: config.runtime,
     searchCacheUrl: config.searchCacheUrl
   });
+  console.log("RAW_SUPABASE_URL", config.rawSupabaseUrl);
+  console.log("FINAL_SUPABASE_URL", config.finalSupabaseUrl);
 
   let lookup;
 
