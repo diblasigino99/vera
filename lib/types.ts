@@ -120,6 +120,7 @@ export type ConsensusResponse = {
   id: string;
   query: string;
   normalizedQuery: string;
+  cacheVersion?: number;
   mode: ConsensusMode;
   headline: string;
   explanation: string;

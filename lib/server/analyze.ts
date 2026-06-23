@@ -53,6 +53,30 @@ const SignalSchema = z.object({
 
 type SignalPayload = z.infer<typeof SignalSchema>;
 
+const classificationThresholds = {
+  minimumSourceCount: 3,
+  minimumTotalPositiveMentions: 3,
+  minimumPositiveSourceCount: 3,
+  minimumTopPositiveMentions: 3,
+  minimumTopSourceCount: 3,
+  singleContenderModerateSourceCount: 5,
+  singleContenderModeratePositiveMentions: 5,
+  splitGapPoints: 8,
+  splitWeightedGap: 3,
+  clearScore: 85,
+  clearGapPoints: 20,
+  clearWeightedGap: 8,
+  clearSourceCount: 8,
+  clearSourceDiversityScore: 4,
+  strongScore: 75,
+  strongGapPoints: 12,
+  strongWeightedGap: 5,
+  strongSourceCount: 5,
+  moderateScore: 60,
+  moderateGapPoints: 8,
+  moderateSourceCount: 3
+} as const;
+
 export async function analyzeConsensus(query: string, sources: VeraSource[]): Promise<ConsensusResponse> {
   const debug = await analyzeConsensusWithDebug(query, sources);
   return debug.consensus;
@@ -188,6 +212,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
           "Extract evidence signals only; do not rank, score, summarize, or decide a winner.",
           "Use only the provided source snippets and titles.",
           "Every mention must belong to one named contender. Do not combine contenders.",
+          "Do not use generic categories, product types, or technologies as contender names when a specific named product, place, service, or option is present.",
           "sentiment must be positive, neutral, or negative.",
           "mentionStrength must be weak for passing mentions, moderate for clear recommendations, and strong for explicit best/top/ideal recommendations.",
           "positiveMention and negativeMention must be short source-grounded phrases, or null if not present.",
@@ -264,7 +289,25 @@ function normalizeSignals(payload: SignalPayload, sources: VeraSource[]): Source
       }));
   });
 
-  return dedupeSignals(rawSignals);
+  const dedupedSignals = dedupeSignals(rawSignals);
+
+  console.log("[vera:consensus] source signal extraction", {
+    sourceCount: sources.length,
+    rawSignalCount: rawSignals.length,
+    dedupedSignalCount: dedupedSignals.length,
+    removedBySourceContenderDedupe: rawSignals.length - dedupedSignals.length,
+    positiveRawSignals: rawSignals.filter((signal) => signal.sentiment === "positive").length,
+    positiveDedupedSignals: dedupedSignals.filter((signal) => signal.sentiment === "positive").length,
+    sourceTypeBreakdown: sourceTypes.reduce(
+      (breakdown, type) => ({
+        ...breakdown,
+        [type]: dedupedSignals.filter((signal) => signal.sourceType === type).length
+      }),
+      {} as Record<VeraSourceType, number>
+    )
+  });
+
+  return dedupedSignals;
 }
 
 function dedupeSignals(signals: SourceSignal[]) {
@@ -318,6 +361,7 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[]): Struc
   const themeCounts = aggregateThemeCounts(signals);
   const sourceBreakdown = aggregateSourceBreakdown(sources, signals);
   const consensusClassification = classifyFromMetrics(contenders, sources.length);
+  logConsensusDiagnostics(contenders, sources.length, consensusClassification);
   const winner = consensusClassification === "no_reliable_consensus" ? undefined : contenders[0]?.name;
   const mentionCounts = Object.fromEntries(
     contenders.map((contender) => [
@@ -524,19 +568,36 @@ function notEnoughData(query: string, sources: VeraSource[], explanation: string
 }
 
 function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number): ConsensusMode {
-  if (sourceCount < 3 || contenders.length === 0) {
+  if (sourceCount < classificationThresholds.minimumSourceCount || contenders.length === 0) {
+    return "no_reliable_consensus";
+  }
+
+  const totalPositiveMentions = contenders.reduce((total, contender) => total + contender.positiveMentionCount, 0);
+  const positiveSourceCount = new Set(contenders.flatMap((contender) => (contender.positiveMentionCount > 0 ? contender.sourceUrls : []))).size;
+
+  if (
+    totalPositiveMentions < classificationThresholds.minimumTotalPositiveMentions ||
+    positiveSourceCount < classificationThresholds.minimumPositiveSourceCount
+  ) {
     return "no_reliable_consensus";
   }
 
   const top = contenders[0];
   const second = contenders[1];
 
-  if (!top || top.positiveMentionCount < 3 || top.sourceCount < 3) {
+  if (!top) {
     return "no_reliable_consensus";
   }
 
+  if (top.positiveMentionCount < classificationThresholds.minimumTopPositiveMentions || top.sourceCount < classificationThresholds.minimumTopSourceCount) {
+    return "split_consensus";
+  }
+
   if (!second) {
-    return top.sourceCount >= 5 && top.positiveMentionCount >= 5 ? "moderate_consensus" : "no_reliable_consensus";
+    return top.sourceCount >= classificationThresholds.singleContenderModerateSourceCount &&
+      top.positiveMentionCount >= classificationThresholds.singleContenderModeratePositiveMentions
+      ? "moderate_consensus"
+      : "no_reliable_consensus";
   }
 
   const topScore = consensusScore(top);
@@ -544,23 +605,143 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
   const gap = topScore - secondScore;
   const weightedGap = top.netWeightedScore - second.netWeightedScore;
 
-  if (gap < 8 || weightedGap < 3) {
+  if (gap < classificationThresholds.splitGapPoints || weightedGap < classificationThresholds.splitWeightedGap) {
     return "split_consensus";
   }
 
-  if (topScore >= 85 && gap >= 20 && weightedGap >= 8 && top.sourceCount >= 8 && top.sourceDiversityScore >= 4) {
+  if (
+    topScore >= classificationThresholds.clearScore &&
+    gap >= classificationThresholds.clearGapPoints &&
+    weightedGap >= classificationThresholds.clearWeightedGap &&
+    top.sourceCount >= classificationThresholds.clearSourceCount &&
+    top.sourceDiversityScore >= classificationThresholds.clearSourceDiversityScore
+  ) {
     return "clear_consensus";
   }
 
-  if (topScore >= 75 && gap >= 12 && weightedGap >= 5 && top.sourceCount >= 5) {
+  if (
+    topScore >= classificationThresholds.strongScore &&
+    gap >= classificationThresholds.strongGapPoints &&
+    weightedGap >= classificationThresholds.strongWeightedGap &&
+    top.sourceCount >= classificationThresholds.strongSourceCount
+  ) {
     return "strong_consensus";
   }
 
-  if (topScore >= 60 && gap >= 8 && top.sourceCount >= 3) {
+  if (
+    topScore >= classificationThresholds.moderateScore &&
+    gap >= classificationThresholds.moderateGapPoints &&
+    top.sourceCount >= classificationThresholds.moderateSourceCount
+  ) {
     return "moderate_consensus";
   }
 
   return "split_consensus";
+}
+
+function logConsensusDiagnostics(contenders: ContenderMetrics[], sourceCount: number, classification: ConsensusMode) {
+  const top = contenders[0];
+  const second = contenders[1];
+  const totalPositiveMentions = contenders.reduce((total, contender) => total + contender.positiveMentionCount, 0);
+  const positiveSourceCount = new Set(contenders.flatMap((contender) => (contender.positiveMentionCount > 0 ? contender.sourceUrls : []))).size;
+  const topScore = top ? consensusScore(top) : 0;
+  const secondScore = second ? consensusScore(second) : 0;
+  const gap = top && second ? topScore - secondScore : null;
+  const weightedGap = top && second ? round1(top.netWeightedScore - second.netWeightedScore) : null;
+
+  console.log("[vera:consensus] thresholds", classificationThresholds);
+  console.log(
+    "[vera:consensus] top contender scores",
+    contenders.slice(0, 5).map((contender, index) => ({
+      rank: index + 1,
+      name: contender.name,
+      consensusScore: consensusScore(contender),
+      mentionCount: contender.mentionCount,
+      positiveMentionCount: contender.positiveMentionCount,
+      negativeMentionCount: contender.negativeMentionCount,
+      sourceCount: contender.sourceCount,
+      sourceDiversityScore: contender.sourceDiversityScore,
+      sourceQualityScore: contender.sourceQualityScore,
+      strongMentionCount: contender.strongMentionCount,
+      editorialSupportCount: contender.editorialSupportCount,
+      communitySupportCount: contender.communitySupportCount,
+      weightedPositiveScore: contender.weightedPositiveScore,
+      weightedNegativeScore: contender.weightedNegativeScore,
+      netWeightedScore: contender.netWeightedScore,
+      sourceTypes: contender.sourceTypes
+    }))
+  );
+  console.log("[vera:consensus] contender qualification failures", contenders.slice(0, 5).map(contenderQualificationDiagnostics));
+  console.log("[vera:consensus] classification decision path", {
+    sourceCount,
+    contenderCount: contenders.length,
+    totalPositiveMentions,
+    positiveSourceCount,
+    top: top?.name,
+    second: second?.name,
+    topScore,
+    secondScore,
+    gap,
+    weightedGap,
+    earlyNoReliableBecauseSourceCount: sourceCount < classificationThresholds.minimumSourceCount,
+    earlyNoReliableBecauseNoContenders: contenders.length === 0,
+    earlyNoReliableBecauseTotalPositiveMentions: totalPositiveMentions < classificationThresholds.minimumTotalPositiveMentions,
+    earlyNoReliableBecausePositiveSourceCount: positiveSourceCount < classificationThresholds.minimumPositiveSourceCount,
+    splitBecauseTopPositiveMentionsTooThin: Boolean(top && top.positiveMentionCount < classificationThresholds.minimumTopPositiveMentions),
+    splitBecauseTopSourceCountTooThin: Boolean(top && top.sourceCount < classificationThresholds.minimumTopSourceCount),
+    splitBecauseCloseScoreGap: gap !== null ? gap < classificationThresholds.splitGapPoints : false,
+    splitBecauseCloseWeightedGap: weightedGap !== null ? weightedGap < classificationThresholds.splitWeightedGap : false,
+    qualifiesClear: Boolean(
+      top &&
+        gap !== null &&
+        weightedGap !== null &&
+        topScore >= classificationThresholds.clearScore &&
+        gap >= classificationThresholds.clearGapPoints &&
+        weightedGap >= classificationThresholds.clearWeightedGap &&
+        top.sourceCount >= classificationThresholds.clearSourceCount &&
+        top.sourceDiversityScore >= classificationThresholds.clearSourceDiversityScore
+    ),
+    qualifiesStrong: Boolean(
+      top &&
+        gap !== null &&
+        weightedGap !== null &&
+        topScore >= classificationThresholds.strongScore &&
+        gap >= classificationThresholds.strongGapPoints &&
+        weightedGap >= classificationThresholds.strongWeightedGap &&
+        top.sourceCount >= classificationThresholds.strongSourceCount
+    ),
+    qualifiesModerate: Boolean(
+      top &&
+        gap !== null &&
+        topScore >= classificationThresholds.moderateScore &&
+        gap >= classificationThresholds.moderateGapPoints &&
+        top.sourceCount >= classificationThresholds.moderateSourceCount
+    ),
+    finalClassification: classification
+  });
+}
+
+function contenderQualificationDiagnostics(contender: ContenderMetrics) {
+  const score = consensusScore(contender);
+
+  return {
+    name: contender.name,
+    consensusScore: score,
+    failsMinimumTopPositiveMentions: contender.positiveMentionCount < classificationThresholds.minimumTopPositiveMentions,
+    failsMinimumTopSourceCount: contender.sourceCount < classificationThresholds.minimumTopSourceCount,
+    failsClearScore: score < classificationThresholds.clearScore,
+    failsClearGap: "depends_on_gap",
+    failsClearWeightedGap: "depends_on_weighted_gap",
+    failsClearSourceCount: contender.sourceCount < classificationThresholds.clearSourceCount,
+    failsClearSourceDiversity: contender.sourceDiversityScore < classificationThresholds.clearSourceDiversityScore,
+    failsStrongScore: score < classificationThresholds.strongScore,
+    failsStrongGap: "depends_on_gap",
+    failsStrongWeightedGap: "depends_on_weighted_gap",
+    failsStrongSourceCount: contender.sourceCount < classificationThresholds.strongSourceCount,
+    failsModerateScore: score < classificationThresholds.moderateScore,
+    failsModerateGap: "depends_on_gap",
+    failsModerateSourceCount: contender.sourceCount < classificationThresholds.moderateSourceCount
+  };
 }
 
 function consensusScore(contender: ContenderMetrics) {

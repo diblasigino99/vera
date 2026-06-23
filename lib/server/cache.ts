@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
-const localCacheVersion = 5;
+const localCacheVersion = 6;
 const canUseLocalJsonFallback = !process.env.VERCEL && process.env.NODE_ENV !== "production";
 
 type LocalCacheEntry = {
@@ -67,7 +67,20 @@ export async function getCachedConsensus(query: string) {
     return null;
   }
 
-  return { ...(data.result as ConsensusResponse), cached: true };
+  const result = data.result as ConsensusResponse;
+
+  if (result.cacheVersion !== localCacheVersion) {
+    console.log("[vera:cache] Ignoring stale Supabase cache entry", {
+      query,
+      normalizedQuery,
+      cachedVersion: result.cacheVersion ?? "missing",
+      expectedVersion: localCacheVersion,
+      cachedMode: result.mode
+    });
+    return null;
+  }
+
+  return { ...result, cached: true };
 }
 
 export async function getConsensusById(searchId: string) {
@@ -104,8 +117,10 @@ export async function getConsensusById(searchId: string) {
 }
 
 export async function cacheConsensus(consensus: ConsensusResponse) {
-  memorySearches.set(consensus.normalizedQuery, consensus);
-  await writeLocalCacheEntry(consensus);
+  const versionedConsensus = { ...consensus, cacheVersion: localCacheVersion };
+
+  memorySearches.set(versionedConsensus.normalizedQuery, versionedConsensus);
+  await writeLocalCacheEntry(versionedConsensus);
 
   const supabase = getSupabaseAdmin();
   if (!supabase) {
@@ -117,7 +132,7 @@ export async function cacheConsensus(consensus: ConsensusResponse) {
       id: consensus.id,
       query: consensus.query,
       normalized_query: consensus.normalizedQuery,
-      result: consensus,
+      result: versionedConsensus,
       created_at: consensus.createdAt,
       updated_at: new Date().toISOString()
     },
