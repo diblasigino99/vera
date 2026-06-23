@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent, useRef, useState, useTransition } from "react";
+import { FormEvent, MouseEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -10,14 +10,38 @@ type SearchExperienceProps = {
   initialQuery?: string;
   compact?: boolean;
   autoFocus?: boolean;
+  rotatingPlaceholders?: string[];
 };
 
-export function SearchExperience({ initialQuery = "", compact = false, autoFocus = false }: SearchExperienceProps) {
+export function SearchExperience({ initialQuery = "", compact = false, autoFocus = false, rotatingPlaceholders = [] }: SearchExperienceProps) {
   const [query, setQuery] = useState(initialQuery);
+  const [isFocused, setIsFocused] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isSubmittingSearch, setIsSubmittingSearch] = useState(false);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const canRotatePlaceholder = rotatingPlaceholders.length > 0 && !compact;
+  const activePlaceholder = useMemo(() => {
+    if (!canRotatePlaceholder) {
+      return "What are you trying to decide?";
+    }
+
+    return rotatingPlaceholders[placeholderIndex % rotatingPlaceholders.length];
+  }, [canRotatePlaceholder, placeholderIndex, rotatingPlaceholders]);
+  const showVisualPlaceholder = canRotatePlaceholder && !query.trim() && !isFocused;
+
+  useEffect(() => {
+    if (!canRotatePlaceholder || isFocused || query.trim()) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setPlaceholderIndex((index) => (index + 1) % rotatingPlaceholders.length);
+    }, 3600);
+
+    return () => window.clearInterval(timer);
+  }, [canRotatePlaceholder, isFocused, query, rotatingPlaceholders.length]);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,7 +75,7 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
       <form
         onSubmit={onSubmit}
         className={cn(
-          "search-glow mx-auto flex w-full items-center gap-3 border border-[#E3E3E7] bg-white transition duration-300 focus-within:border-[#D7DCE4]",
+          "search-glow mx-auto flex w-full items-center gap-3 border border-[#E3E3E7] bg-white transition duration-300 hover:-translate-y-px hover:border-[#D8DAE0] hover:shadow-[0_14px_34px_rgba(0,0,0,0.055)] focus-within:border-[#D7DCE4]",
           compact
             ? "max-w-[57.6rem] rounded-[1.8rem] px-5 py-3.5 shadow-[0_16px_48px_rgba(0,0,0,0.052)]"
             : "max-w-[36.5rem] rounded-[1.5rem] px-4 py-3 shadow-none"
@@ -71,17 +95,29 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
         >
           <Search className={cn(compact ? "h-[1.1rem] w-[1.1rem]" : "h-[1.05rem] w-[1.05rem]")} strokeWidth={1.7} />
         </button>
-        <input
-          ref={inputRef}
-          autoFocus={autoFocus}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="What are you trying to decide?"
-          className={cn(
-            "ml-1 w-full bg-transparent font-normal leading-none tracking-[0.005em] text-[#111111] outline-none transition duration-300 placeholder:font-normal placeholder:text-[#9A9AA0] placeholder:transition-colors focus:placeholder:text-[#C2C2C7]",
-            compact ? "h-8 text-xl" : "h-7 text-base"
-          )}
-        />
+        <div className="relative ml-1 min-w-0 flex-1">
+          {showVisualPlaceholder ? (
+            <span
+              className="pointer-events-none absolute inset-y-0 left-0 flex items-center truncate text-base font-normal tracking-[0.005em] text-[#9A9AA0] transition-opacity duration-500"
+              key={activePlaceholder}
+            >
+              <span className="animate-placeholder-fade truncate">{activePlaceholder}</span>
+            </span>
+          ) : null}
+          <input
+            ref={inputRef}
+            autoFocus={autoFocus}
+            value={query}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={showVisualPlaceholder ? "" : activePlaceholder}
+            className={cn(
+              "w-full bg-transparent font-normal leading-none tracking-[0.005em] text-[#111111] outline-none transition duration-300 placeholder:font-normal placeholder:text-[#9A9AA0] placeholder:transition-colors focus:placeholder:text-[#C2C2C7]",
+              compact ? "h-8 text-xl" : "h-7 text-base"
+            )}
+          />
+        </div>
       </form>
       {isSubmittingSearch ? <VeraThinking className="mt-5" /> : null}
     </div>

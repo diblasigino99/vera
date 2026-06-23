@@ -158,6 +158,22 @@ input {
   }
 }
 
+.animate-placeholder-fade {
+  animation: placeholder-fade 520ms ease both;
+}
+
+@keyframes placeholder-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .vera-orb {
   position: relative;
   display: grid;
