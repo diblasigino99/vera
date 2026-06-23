@@ -198,6 +198,14 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
     return result ? buildSourceMixLine(result) : "";
   }, [result]);
 
+  const howVeraDecided = useMemo(() => {
+    return result ? buildDecisionBullets(result) : [];
+  }, [result]);
+
+  const evidenceSummary = useMemo(() => {
+    return result ? buildEvidenceSummary(result) : null;
+  }, [result]);
+
   if (!query) {
     return null;
   }
@@ -243,6 +251,7 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
             <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Agreement Level</p>
             <p className="mt-2 text-3xl font-semibold tracking-normal text-ink">{mode.label}</p>
             <p className="mt-3 max-w-2xl leading-7 text-graphite">{mode.description}</p>
+            <p className="mt-3 text-sm leading-6 text-muted">Built from public discussions, reviews, and expert sources.</p>
             {rankingExplanation ? (
               <div className="mt-5 max-w-2xl border-t border-line pt-4">
                 <p className="text-sm font-medium text-ink">Why this ranking?</p>
@@ -250,9 +259,27 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
                 {sourceMixLine ? <p className="mt-2 text-sm leading-6 text-muted">{sourceMixLine}</p> : null}
               </div>
             ) : null}
+            {howVeraDecided.length ? (
+              <div className="mt-5 max-w-2xl border-t border-line pt-4">
+                <p className="text-sm font-medium text-ink">How Vera Decided</p>
+                <ul className="mt-3 grid gap-2 text-sm leading-6 text-graphite">
+                  {howVeraDecided.map((item) => (
+                    <li className="flex gap-2" key={item}>
+                      <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#C8CBD2]" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
           {winner?.consensusPercentage ? (
-            <div className="w-fit shrink-0 rounded-2xl border border-[#E1E3E8] bg-[#FAFAFB] px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+            <div
+              className={cn(
+                "w-fit shrink-0 rounded-2xl border border-[#E1E3E8] bg-[#FAFAFB] px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]",
+                result.mode === "split_consensus" ? "opacity-75" : ""
+              )}
+            >
               <div className="text-4xl font-semibold tracking-normal text-ink">{winner.consensusPercentage}%</div>
               <div className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">Consensus Strength</div>
             </div>
@@ -269,6 +296,14 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
         </div>
       ) : (
         <div className="mt-10 grid gap-8">
+          {evidenceSummary ? (
+            <div className="rounded-2xl border border-line bg-white p-6 shadow-[0_12px_44px_rgba(0,0,0,0.025)]">
+              <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Evidence Summary</p>
+              <p className="mt-3 leading-7 text-graphite">{evidenceSummary.primary}</p>
+              {evidenceSummary.secondary ? <p className="mt-2 text-sm leading-6 text-muted">{evidenceSummary.secondary}</p> : null}
+            </div>
+          ) : null}
+
           {winner ? (
             <div>
               <p className="mb-3 text-sm font-medium uppercase tracking-[0.16em] text-muted">Consensus Winner</p>
@@ -341,6 +376,53 @@ function buildRankingExplanation(result: ConsensusResponse) {
   return `Vera found ${mentions} across ${sources}${support ? `, with support from ${support}` : ""}.`;
 }
 
+function buildDecisionBullets(result: ConsensusResponse) {
+  const sourceCount = result.sources.length;
+  const support = sourceSupportLabel(result, sourceTypesFromResult(result));
+  const analyzed = sourceCount ? `Vera analyzed ${pluralize(sourceCount, "source")}.` : "Vera reviewed the available source set.";
+
+  if (result.mode === "clear_consensus" || result.mode === "strong_consensus") {
+    return [
+      analyzed,
+      support ? `Support appeared across ${support}.` : "Support appeared across multiple source types.",
+      "One contender consistently received more support than alternatives."
+    ];
+  }
+
+  if (result.mode === "moderate_consensus") {
+    return [
+      "Multiple contenders received support.",
+      "One option led the discussion but did not dominate.",
+      "Consensus exists, but competing alternatives remain."
+    ];
+  }
+
+  if (result.mode === "split_consensus") {
+    return [
+      analyzed,
+      "Several contenders received similar levels of support.",
+      "No single option received substantially more support than the others."
+    ];
+  }
+
+  return [
+    "Vera found insufficient reliable agreement.",
+    "Evidence was limited or conflicting.",
+    "A winner could not be determined confidently."
+  ];
+}
+
+function buildEvidenceSummary(result: ConsensusResponse) {
+  const signalCount = result.structuredConsensus?.signals.length ?? result.results.reduce((total, item) => total + (item.metrics?.mentionCount ?? 0), 0);
+  const support = sourceSupportLabel(result, sourceTypesFromResult(result));
+  const primary = `Vera analyzed ${pluralize(result.sources.length, "source")} and found ${pluralize(signalCount, "recommendation signal")}.`;
+
+  return {
+    primary,
+    secondary: support ? `Sources included ${support}.` : ""
+  };
+}
+
 function buildSourceMixLine(result: ConsensusResponse) {
   const sourceTypes = sourceTypesFromResult(result);
   const support = sourceSupportLabel(result, sourceTypes);
@@ -348,16 +430,16 @@ function buildSourceMixLine(result: ConsensusResponse) {
   return support ? `Sources include ${support}.` : "";
 }
 
-function buildResultTrustMetrics(item: ConsensusResponse["results"][number]) {
+function buildResultTrustMetricItems(item: ConsensusResponse["results"][number]) {
   const metrics = item.metrics;
 
   if (!metrics) {
-    return "";
+    return [];
   }
 
   const parts = [
     pluralize(metrics.positiveMentionCount, "positive mention"),
-    pluralize(metrics.sourceCount, "source"),
+    pluralize(metrics.sourceCount, "supporting source"),
     pluralize(metrics.sourceTypes.length, "source type")
   ];
 
@@ -373,7 +455,27 @@ function buildResultTrustMetrics(item: ConsensusResponse["results"][number]) {
     parts.push(`${pluralize(metrics.negativeMentionCount, "concern")} found`);
   }
 
-  return parts.join(" · ");
+  return parts;
+}
+
+function supportStrengthLabel(consensus: ConsensusResponse, item: ConsensusResponse["results"][number]) {
+  if (consensus.mode === "split_consensus") {
+    const topScore = consensus.results[0]?.consensusPercentage ?? 0;
+    const score = item.consensusPercentage ?? 0;
+    const gap = topScore - score;
+
+    if (gap < 8) {
+      return "Very Close Support";
+    }
+
+    return score >= 75 ? "Strong Support" : "Moderate Support";
+  }
+
+  if ((item.consensusPercentage ?? 0) >= 75) {
+    return "Strong Support";
+  }
+
+  return "Moderate Support";
 }
 
 function sourceTypesFromResult(result: ConsensusResponse) {
@@ -452,7 +554,8 @@ function ResultCard({
   featured?: boolean;
 }) {
   const resultHref = `/result/${buildResultSlug(item.name, searchId, item.id)}` as Route;
-  const trustMetrics = buildResultTrustMetrics(item);
+  const trustMetrics = buildResultTrustMetricItems(item);
+  const supportLabel = supportStrengthLabel(consensus, item);
 
   useEffect(() => {
     console.log("RESULT_CARD_RENDER_NO_FETCH", { searchId, resultId: item.id });
@@ -478,14 +581,28 @@ function ResultCard({
           <p className="mt-5 max-w-2xl text-lg leading-8 text-graphite">{item.summary}</p>
         </div>
         {item.consensusPercentage ? (
-          <div className="w-fit shrink-0 rounded-2xl border border-[#E1E3E8] bg-[#FAFAFB] px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+          <div
+            className={cn(
+              "w-fit shrink-0 rounded-2xl border border-[#E1E3E8] bg-[#FAFAFB] px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]",
+              consensus.mode === "split_consensus" ? "opacity-75" : ""
+            )}
+          >
             <div className="text-3xl font-semibold tracking-normal text-ink">{item.consensusPercentage}%</div>
-            <div className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">Consensus Strength</div>
+            <div className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">{supportLabel}</div>
           </div>
         ) : null}
       </div>
 
-      {trustMetrics ? <p className="mt-5 text-sm leading-6 text-muted">{trustMetrics}</p> : null}
+      {trustMetrics.length ? (
+        <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm leading-6 text-muted">
+          {trustMetrics.map((metric) => (
+            <span className="inline-flex items-center gap-1.5" key={metric}>
+              <span className="text-[#7A7D85]">✓</span>
+              {metric}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       <div className="mt-8">
         <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Why people recommend it</p>

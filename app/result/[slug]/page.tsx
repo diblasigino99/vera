@@ -51,6 +51,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
   const communities = Array.from(new Set(discussionSources.map((source) => source.domain))).slice(0, 4);
   const sourceTypes = sourceDiversity(sourceSet);
   const patternSummaries = buildPatternSummaries(result, sourceSet);
+  const evidenceSummaryItems = buildEvidenceSummaryItems(result, sourceSet, sourceTypes);
 
   return (
     <main className="min-h-screen bg-white px-5 py-8 text-ink">
@@ -94,6 +95,20 @@ export default async function ResultPage({ params }: ResultPageProps) {
             {buildConsensusStory(consensus, result, contenders, sourceTypes)}
           </p>
         </section>
+
+        {evidenceSummaryItems.length ? (
+          <section className="mt-7 max-w-4xl rounded-3xl border border-line bg-white p-5 shadow-[0_18px_60px_rgba(0,0,0,0.025)] sm:p-6">
+            <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Evidence Summary</p>
+            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm leading-6 text-graphite">
+              {evidenceSummaryItems.map((item) => (
+                <span className="inline-flex items-center gap-1.5" key={item}>
+                  <span className="text-[#7A7D85]">✓</span>
+                  {item}
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <ConsensusOverview
           consensus={consensus}
@@ -270,6 +285,32 @@ function EvidencePoint({ pattern }: { pattern: PatternSummary }) {
       ) : null}
     </div>
   );
+}
+
+function buildEvidenceSummaryItems(result: ConsensusResult, sources: VeraSource[], sourceTypes: string[]) {
+  const metrics = result.metrics;
+  const items = [
+    `Supported by ${pluralize(sources.length, "source")}`,
+    `Appeared across ${pluralize(sourceTypes.length, "source category")}`
+  ];
+
+  if (metrics) {
+    items.push(`Mentioned positively ${pluralize(metrics.positiveMentionCount, "time")}`);
+
+    if (metrics.communitySupportCount > 0 && metrics.editorialSupportCount > 0) {
+      items.push("Community and editorial support detected");
+    } else if (metrics.communitySupportCount > 0) {
+      items.push("Community support detected");
+    } else if (metrics.editorialSupportCount > 0) {
+      items.push("Editorial support detected");
+    }
+  }
+
+  return items;
+}
+
+function pluralize(count: number, label: string) {
+  return `${count} ${label}${count === 1 ? "" : "s"}`;
 }
 
 function SourceGroup({ title, sources }: { title: string; sources: VeraSource[] }) {
