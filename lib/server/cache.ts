@@ -8,6 +8,7 @@ const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
 const localCacheVersion = 5;
+const canUseLocalJsonFallback = !process.env.VERCEL && process.env.NODE_ENV !== "production";
 
 type LocalCacheEntry = {
   original_query: string;
@@ -32,6 +33,8 @@ type LocalSavesFile = Record<
     updated_at: string;
   }
 >;
+
+const memorySaves = new Map<string, LocalSavesFile[string]>();
 
 export async function getCachedConsensus(query: string) {
   const normalizedQuery = normalizeQuery(query);
@@ -162,6 +165,10 @@ export async function getSavedState(actorId: string, searchId: string, resultId?
 }
 
 async function readLocalCache(): Promise<LocalCacheFile> {
+  if (!canUseLocalJsonFallback) {
+    return {};
+  }
+
   try {
     return JSON.parse(await readFile(localCachePath, "utf8")) as LocalCacheFile;
   } catch {
@@ -170,6 +177,10 @@ async function readLocalCache(): Promise<LocalCacheFile> {
 }
 
 async function writeLocalCacheEntry(consensus: ConsensusResponse) {
+  if (!canUseLocalJsonFallback) {
+    return;
+  }
+
   const cache = await readLocalCache();
   const existing = cache[consensus.normalizedQuery];
   const now = new Date().toISOString();
@@ -189,6 +200,10 @@ async function writeLocalCacheEntry(consensus: ConsensusResponse) {
 }
 
 async function readLocalSaves(): Promise<LocalSavesFile> {
+  if (!canUseLocalJsonFallback) {
+    return Object.fromEntries(memorySaves);
+  }
+
   try {
     return JSON.parse(await readFile(localSavesPath, "utf8")) as LocalSavesFile;
   } catch {
@@ -197,6 +212,14 @@ async function readLocalSaves(): Promise<LocalSavesFile> {
 }
 
 async function writeLocalSaves(saves: LocalSavesFile) {
+  if (!canUseLocalJsonFallback) {
+    memorySaves.clear();
+    Object.entries(saves).forEach(([actorId, actorSaves]) => {
+      memorySaves.set(actorId, actorSaves);
+    });
+    return;
+  }
+
   await mkdir(dirname(localSavesPath), { recursive: true });
   await writeFile(localSavesPath, JSON.stringify(saves, null, 2));
 }
@@ -344,8 +367,10 @@ export async function getProfileSnapshot(actorId?: string): Promise<ProfileSnaps
   }
 
   const localCache = await readLocalCache();
-  const allSearches = Object.values(localCache)
-    .map((entry) => entry.result);
+  const allSearches = uniqueSearches([
+    ...memorySearches.values(),
+    ...Object.values(localCache).map((entry) => entry.result)
+  ]);
   const localSaves = await readLocalSaves();
   const actor = localSaves[actorId];
 
@@ -416,4 +441,14 @@ function toProfileSearch(search: ConsensusResponse) {
     headline: search.headline,
     createdAt: search.createdAt
   };
+}
+
+function uniqueSearches(searches: ConsensusResponse[]) {
+  const byId = new Map<string, ConsensusResponse>();
+
+  searches.forEach((search) => {
+    byId.set(search.id, search);
+  });
+
+  return Array.from(byId.values());
 }
