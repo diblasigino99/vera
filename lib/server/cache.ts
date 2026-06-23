@@ -1,5 +1,5 @@
 import type { ConsensusResponse, ProfileSnapshot } from "@/lib/types";
-import { normalizeQuery } from "@/lib/utils";
+import { canonicalizeQuery, normalizeQuery } from "@/lib/utils";
 import { getSupabaseAdmin, getSupabaseConfigSnapshot } from "@/lib/server/supabase";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -14,6 +14,7 @@ const canUseLocalJsonFallback = !process.env.VERCEL && process.env.NODE_ENV !== 
 type LocalCacheEntry = {
   original_query: string;
   normalized_query: string;
+  canonical_query?: string;
   result: ConsensusResponse;
   sources_used: ConsensusResponse["sources"];
   created_at: string;
@@ -28,6 +29,7 @@ type SupabaseSearchCacheRow = {
   original_query?: string | null;
   query?: string | null;
   normalized_query?: string | null;
+  canonical_query?: string | null;
   result_json?: ConsensusResponse | null;
   result?: ConsensusResponse | null;
   sources_json?: ConsensusResponse["sources"] | null;
@@ -55,21 +57,28 @@ export function getCacheVersion() {
 
 export async function getCachedConsensus(query: string, callCounts?: ExternalCallCounts) {
   const normalizedQuery = normalizeQuery(query);
+  const canonicalQuery = canonicalizeQuery(query);
   const supabase = getSupabaseAdmin();
+  console.log("ORIGINAL_QUERY", query);
+  console.log("NORMALIZED_QUERY", normalizedQuery);
+  console.log("CANONICAL_QUERY", canonicalQuery);
 
   if (supabase) {
     console.log("[vera:cache] cache lookup started", {
       normalizedQuery,
+      canonicalQuery,
       cacheVersion: localCacheVersion,
       store: "supabase"
     });
 
-    const supabaseHit = await getSupabaseCachedConsensus(normalizedQuery, callCounts);
+    const supabaseHit = await getSupabaseCachedConsensus(canonicalQuery, normalizedQuery, callCounts);
 
     if (supabaseHit) {
       memorySearches.set(normalizedQuery, supabaseHit);
+      memorySearches.set(canonicalQuery, supabaseHit);
       console.log("[vera:cache] cache hit", {
         normalizedQuery,
+        canonicalQuery,
         cacheVersion: localCacheVersion,
         store: "supabase",
         searchId: supabaseHit.id
@@ -79,6 +88,7 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
 
     console.log("[vera:cache] cache miss", {
       normalizedQuery,
+      canonicalQuery,
       cacheVersion: localCacheVersion,
       store: "supabase"
     });
@@ -95,11 +105,13 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
     console.log("FINAL_SUPABASE_URL", config.finalSupabaseUrl);
   }
 
-  const local = memorySearches.get(normalizedQuery);
+  const local = memorySearches.get(canonicalQuery) ?? memorySearches.get(normalizedQuery);
 
   if (local) {
+    console.log("CACHE_HIT_TYPE", memorySearches.has(canonicalQuery) ? "canonical" : "normalized");
     console.log("[vera:cache] cache hit", {
       normalizedQuery,
+      canonicalQuery,
       cacheVersion: localCacheVersion,
       store: "memory",
       searchId: local.id
@@ -108,12 +120,15 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
   }
 
   const localFileCache = await readLocalCache();
-  const localFileHit = localFileCache[normalizedQuery];
+  const localFileHit = localFileCache[canonicalQuery] ?? localFileCache[normalizedQuery];
 
   if (localFileHit?.result && localFileHit.cache_version === localCacheVersion) {
     memorySearches.set(normalizedQuery, localFileHit.result);
+    memorySearches.set(canonicalQuery, localFileHit.result);
+    console.log("CACHE_HIT_TYPE", localFileCache[canonicalQuery] ? "canonical" : "normalized");
     console.log("[vera:cache] cache hit", {
       normalizedQuery,
+      canonicalQuery,
       cacheVersion: localCacheVersion,
       store: "local-json",
       searchId: localFileHit.result.id
@@ -123,9 +138,11 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
 
   console.log("[vera:cache] cache miss", {
     normalizedQuery,
+    canonicalQuery,
     cacheVersion: localCacheVersion,
     store: supabase ? "memory/local-json-after-supabase" : "memory/local-json"
   });
+  console.log("CACHE_HIT_TYPE", "miss");
   return null;
 }
 
@@ -178,11 +195,13 @@ export async function getConsensusById(searchId: string) {
 export async function cacheConsensus(consensus: ConsensusResponse, callCounts?: ExternalCallCounts) {
   const versionedConsensus = {
     ...consensus,
+    canonicalQuery: consensus.canonicalQuery ?? canonicalizeQuery(consensus.query),
     cacheVersion: localCacheVersion,
     sources: annotateSources(consensus)
   };
 
   memorySearches.set(versionedConsensus.normalizedQuery, versionedConsensus);
+  memorySearches.set(versionedConsensus.canonicalQuery, versionedConsensus);
 
   const supabase = getSupabaseAdmin();
   if (supabase) {
@@ -205,7 +224,7 @@ function annotateSources(consensus: ConsensusResponse) {
   });
 }
 
-async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: ExternalCallCounts) {
+async function getSupabaseCachedConsensus(canonicalQuery: string, normalizedQuery: string, callCounts?: ExternalCallCounts) {
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
@@ -233,10 +252,10 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
   try {
     lookup = await supabase
       .from("search_cache")
-      .select("id, original_query, normalized_query, result_json, sources_json, cache_version, updated_at")
-      .eq("normalized_query", normalizedQuery)
+      .select("id, original_query, normalized_query, canonical_query, result_json, sources_json, cache_version, updated_at")
+      .or(`canonical_query.eq.${escapePostgrestValue(canonicalQuery)},normalized_query.eq.${escapePostgrestValue(normalizedQuery)}`)
       .eq("cache_version", localCacheVersion)
-      .limit(1);
+      .limit(2);
   } catch (error) {
     console.log("CACHE_LOOKUP_EXCEPTION", {
       name: error instanceof Error ? error.name : typeof error,
@@ -258,7 +277,10 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
   const { data, error } = lookup;
 
   const rows = (data ?? []) as SupabaseSearchCacheRow[];
-  const row = rows[0] ?? null;
+  const row =
+    rows.find((candidate) => candidate.canonical_query === canonicalQuery) ??
+    rows.find((candidate) => candidate.normalized_query === normalizedQuery) ??
+    null;
 
   if (!error) {
     const hit = consensusFromSupabaseRow(row);
@@ -266,12 +288,14 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
     console.log("CACHE_LOOKUP_RESULT", {
       hit: Boolean(hit),
       rowId: row?.id ?? null,
+      hitType: hit ? (row?.canonical_query === canonicalQuery ? "canonical" : "normalized") : "miss",
       errorCode: null,
       errorMessage: null,
       durationMs: Date.now() - lookupStartedAt
     });
 
     if (hit) {
+      console.log("CACHE_HIT_TYPE", row?.canonical_query === canonicalQuery ? "canonical" : "normalized");
       return hit;
     }
 
@@ -282,6 +306,7 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
     console.log("CACHE_LOOKUP_RESULT", {
       hit: false,
       rowId: null,
+      hitType: "miss",
       errorCode: error.code,
       errorMessage: error.message,
       durationMs: Date.now() - lookupStartedAt
@@ -299,6 +324,7 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
   console.log("CACHE_LOOKUP_RESULT", {
     hit: false,
     rowId: null,
+    hitType: "miss",
     errorCode: error.code ?? null,
     errorMessage: error.message,
     errorDetails: error.details ?? null,
@@ -321,6 +347,7 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
     query: consensus.query,
     original_query: consensus.query,
     normalized_query: consensus.normalizedQuery,
+    canonical_query: consensus.canonicalQuery ?? canonicalizeQuery(consensus.query),
     result: consensus,
     result_json: consensus,
     sources_json: consensus.sources,
@@ -384,9 +411,14 @@ function consensusFromSupabaseRow(row?: SupabaseSearchCacheRow | null): Consensu
 
   return {
     ...result,
+    canonicalQuery: row.canonical_query ?? result.canonicalQuery,
     cacheVersion: row.cache_version ?? result.cacheVersion,
     sources: row.sources_json ?? result.sources
   } satisfies ConsensusResponse;
+}
+
+function escapePostgrestValue(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/\./g, "\\.");
 }
 
 export async function getSavedState(actorId: string, searchId: string, resultId?: string) {
@@ -486,18 +518,22 @@ async function writeLocalCacheEntry(consensus: ConsensusResponse) {
   }
 
   const cache = await readLocalCache();
-  const existing = cache[consensus.normalizedQuery];
+  const canonicalQuery = consensus.canonicalQuery ?? canonicalizeQuery(consensus.query);
+  const existing = cache[canonicalQuery] ?? cache[consensus.normalizedQuery];
   const now = new Date().toISOString();
 
-  cache[consensus.normalizedQuery] = {
+  const entry = {
     original_query: consensus.query,
     normalized_query: consensus.normalizedQuery,
+    canonical_query: canonicalQuery,
     result: consensus,
     sources_used: consensus.sources,
     created_at: existing?.created_at ?? consensus.createdAt,
     updated_at: now,
     cache_version: localCacheVersion
   };
+  cache[canonicalQuery] = entry;
+  cache[consensus.normalizedQuery] = entry;
 
   await mkdir(dirname(localCachePath), { recursive: true });
   await writeFile(localCachePath, JSON.stringify(cache, null, 2));

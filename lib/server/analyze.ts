@@ -11,7 +11,7 @@ import type {
   VeraSource,
   VeraSourceType
 } from "@/lib/types";
-import { normalizeQuery, slugify } from "@/lib/utils";
+import { canonicalizeQuery, normalizeQuery, slugify } from "@/lib/utils";
 
 const sourceTypes = [
   "reddit",
@@ -678,6 +678,7 @@ function buildConsensus(
     id,
     query,
     normalizedQuery,
+    canonicalQuery: canonicalizeQuery(query),
     generated_at: createdAt,
     model: openAIModel,
     mode,
@@ -728,6 +729,7 @@ function notEnoughData(query: string, sources: VeraSource[], explanation: string
     id: crypto.randomUUID(),
     query,
     normalizedQuery: normalizeQuery(query),
+    canonicalQuery: canonicalizeQuery(query),
     generated_at: createdAt,
     model: openAIModel,
     mode: "no_reliable_consensus",

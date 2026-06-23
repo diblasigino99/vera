@@ -5,6 +5,7 @@ create table if not exists public.search_cache (
   query text,
   original_query text,
   normalized_query text not null unique,
+  canonical_query text,
   result jsonb,
   result_json jsonb,
   sources_json jsonb,
@@ -14,6 +15,7 @@ create table if not exists public.search_cache (
 );
 
 alter table public.search_cache add column if not exists original_query text;
+alter table public.search_cache add column if not exists canonical_query text;
 alter table public.search_cache add column if not exists result_json jsonb;
 alter table public.search_cache add column if not exists sources_json jsonb;
 alter table public.search_cache add column if not exists cache_version integer;
@@ -23,6 +25,7 @@ alter table public.search_cache alter column result drop not null;
 update public.search_cache
 set
   original_query = coalesce(original_query, query),
+  canonical_query = coalesce(canonical_query, normalized_query),
   result_json = coalesce(result_json, result),
   sources_json = coalesce(sources_json, result -> 'sources'),
   cache_version = coalesce(cache_version, (result ->> 'cacheVersion')::integer)
@@ -57,6 +60,9 @@ create unique index if not exists saved_searches_profile_search_idx
 
 create unique index if not exists saved_results_profile_search_result_idx
   on public.saved_results(profile_id, search_id, result_id);
+
+create index if not exists search_cache_canonical_query_idx
+  on public.search_cache(canonical_query, cache_version);
 
 alter table public.search_cache enable row level security;
 alter table public.profiles enable row level security;

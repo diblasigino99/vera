@@ -5,7 +5,7 @@ import { cacheConsensus, getCachedConsensus, getCacheVersion } from "@/lib/serve
 import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { searchPublicWeb } from "@/lib/server/search";
-import { normalizeQuery } from "@/lib/utils";
+import { canonicalizeQuery, normalizeQuery } from "@/lib/utils";
 import type { ConsensusResponse } from "@/lib/types";
 
 const SearchBody = z.object({
@@ -24,9 +24,14 @@ export async function POST(request: Request) {
   }
 
   const normalizedQuery = normalizeQuery(body.data.query);
+  const canonicalQuery = canonicalizeQuery(body.data.query);
+  console.log("ORIGINAL_QUERY", body.data.query);
+  console.log("NORMALIZED_QUERY", normalizedQuery);
+  console.log("CANONICAL_QUERY", canonicalQuery);
   console.log("API_SEARCH_STARTED", {
     originalQuery: body.data.query,
     normalizedQuery,
+    canonicalQuery,
     cacheVersion: getCacheVersion(),
     timestamp: new Date().toISOString()
   });
@@ -176,6 +181,7 @@ function buildCacheTestResult(originalQuery: string, normalizedQuery: string): C
     id: "11111111-1111-4111-8111-111111111111",
     query: originalQuery,
     normalizedQuery,
+    canonicalQuery: canonicalizeQuery(originalQuery),
     cacheVersion: getCacheVersion(),
     generated_at: createdAt,
     model: "cache-test",

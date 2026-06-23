@@ -140,6 +140,7 @@ export type ConsensusResponse = {
   id: string;
   query: string;
   normalizedQuery: string;
+  canonicalQuery?: string;
   cacheVersion?: number;
   generated_at?: string;
   model?: string;
