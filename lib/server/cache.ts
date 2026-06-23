@@ -49,6 +49,10 @@ type LocalSavesFile = Record<
 
 const memorySaves = new Map<string, LocalSavesFile[string]>();
 
+export function getCacheVersion() {
+  return localCacheVersion;
+}
+
 export async function getCachedConsensus(query: string, callCounts?: ExternalCallCounts) {
   const normalizedQuery = normalizeQuery(query);
   const supabase = getSupabaseAdmin();
@@ -60,7 +64,15 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
       store: "supabase"
     });
 
+    const lookupStartedAt = Date.now();
     const supabaseHit = await getSupabaseCachedConsensus(normalizedQuery, callCounts);
+
+    console.log("CACHE_LOOKUP_RESULT", {
+      hit: Boolean(supabaseHit),
+      rowId: supabaseHit?.id ?? null,
+      error: null,
+      durationMs: Date.now() - lookupStartedAt
+    });
 
     if (supabaseHit) {
       memorySearches.set(normalizedQuery, supabaseHit);
@@ -201,6 +213,7 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
     callCounts.supabaseReads += 1;
   }
 
+  const lookupStartedAt = Date.now();
   const { data, error } = await supabase
     .from("search_cache")
     .select("id, original_query, normalized_query, result_json, sources_json, cache_version, updated_at")
@@ -225,7 +238,14 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
     error: error.message
   });
 
-  return null;
+  console.log("CACHE_LOOKUP_RESULT", {
+    hit: false,
+    rowId: null,
+    error: error.message,
+    durationMs: Date.now() - lookupStartedAt
+  });
+
+  throw new Error(`Supabase cache lookup failed: ${error.message}`);
 }
 
 async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?: ExternalCallCounts) {
@@ -252,11 +272,18 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
     callCounts.supabaseWrites += 1;
   }
 
+  const writeStartedAt = Date.now();
   const { error } = await supabase.from("search_cache").upsert(payload, {
     onConflict: "normalized_query"
   });
 
   if (!error) {
+    console.log("CACHE_WRITE_RESULT", {
+      success: true,
+      rowId: consensus.id,
+      error: null,
+      durationMs: Date.now() - writeStartedAt
+    });
     console.log("[vera:cache] cache write success", {
       normalizedQuery: consensus.normalizedQuery,
       cacheVersion: localCacheVersion,
@@ -272,6 +299,15 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
     store: "supabase",
     error: error.message
   });
+
+  console.log("CACHE_WRITE_RESULT", {
+    success: false,
+    rowId: consensus.id,
+    error: error.message,
+    durationMs: Date.now() - writeStartedAt
+  });
+
+  throw new Error(`Supabase cache write failed: ${error.message}`);
 }
 
 function consensusFromSupabaseRow(row?: SupabaseSearchCacheRow | null): ConsensusResponse | null {
