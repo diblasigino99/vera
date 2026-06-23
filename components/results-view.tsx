@@ -190,6 +190,14 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
     return parts.join(" · ");
   }, [result]);
 
+  const rankingExplanation = useMemo(() => {
+    return result ? buildRankingExplanation(result) : "";
+  }, [result]);
+
+  const sourceMixLine = useMemo(() => {
+    return result ? buildSourceMixLine(result) : "";
+  }, [result]);
+
   if (!query) {
     return null;
   }
@@ -235,11 +243,18 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
             <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Agreement Level</p>
             <p className="mt-2 text-3xl font-semibold tracking-normal text-ink">{mode.label}</p>
             <p className="mt-3 max-w-2xl leading-7 text-graphite">{mode.description}</p>
+            {rankingExplanation ? (
+              <div className="mt-5 max-w-2xl border-t border-line pt-4">
+                <p className="text-sm font-medium text-ink">Why this ranking?</p>
+                <p className="mt-2 leading-7 text-graphite">{rankingExplanation}</p>
+                {sourceMixLine ? <p className="mt-2 text-sm leading-6 text-muted">{sourceMixLine}</p> : null}
+              </div>
+            ) : null}
           </div>
           {winner?.consensusPercentage ? (
             <div className="w-fit shrink-0 rounded-2xl border border-[#E1E3E8] bg-[#FAFAFB] px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
               <div className="text-4xl font-semibold tracking-normal text-ink">{winner.consensusPercentage}%</div>
-              <div className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">Consensus</div>
+              <div className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">Consensus Strength</div>
             </div>
           ) : null}
         </div>
@@ -295,6 +310,134 @@ function resultStorageKey(searchId: string) {
   return `vera_result_${searchId}`;
 }
 
+function buildRankingExplanation(result: ConsensusResponse) {
+  if (result.mode === "no_reliable_consensus") {
+    return "Vera did not find enough reliable source agreement to name a winner.";
+  }
+
+  const [top, second] = result.results;
+
+  if (result.mode === "split_consensus" && top && second) {
+    const topScore = scoreLabel(top);
+    const secondScore = scoreLabel(second);
+
+    if (topScore && secondScore) {
+      return `Top contenders are close: ${top.name} ${topScore}, ${second.name} ${secondScore}. The internet appears divided.`;
+    }
+
+    return "Top contenders are close. The internet appears divided.";
+  }
+
+  const metrics = top?.metrics;
+
+  if (!metrics) {
+    return "Vera ranked these results by recurring recommendations, source support, and visible disagreement.";
+  }
+
+  const support = sourceSupportLabel(result, metrics.sourceTypes);
+  const mentions = pluralize(metrics.positiveMentionCount, "positive mention");
+  const sources = pluralize(metrics.sourceCount, "source");
+
+  return `Vera found ${mentions} across ${sources}${support ? `, with support from ${support}` : ""}.`;
+}
+
+function buildSourceMixLine(result: ConsensusResponse) {
+  const sourceTypes = sourceTypesFromResult(result);
+  const support = sourceSupportLabel(result, sourceTypes);
+
+  return support ? `Sources include ${support}.` : "";
+}
+
+function buildResultTrustMetrics(item: ConsensusResponse["results"][number]) {
+  const metrics = item.metrics;
+
+  if (!metrics) {
+    return "";
+  }
+
+  const parts = [
+    pluralize(metrics.positiveMentionCount, "positive mention"),
+    pluralize(metrics.sourceCount, "source"),
+    pluralize(metrics.sourceTypes.length, "source type")
+  ];
+
+  if (metrics.editorialSupportCount > 0) {
+    parts.push(pluralize(metrics.editorialSupportCount, "editorial signal"));
+  }
+
+  if (metrics.communitySupportCount > 0) {
+    parts.push(pluralize(metrics.communitySupportCount, "community signal"));
+  }
+
+  if (metrics.negativeMentionCount > 0) {
+    parts.push(`${pluralize(metrics.negativeMentionCount, "concern")} found`);
+  }
+
+  return parts.join(" · ");
+}
+
+function sourceTypesFromResult(result: ConsensusResponse) {
+  const breakdown = result.structuredConsensus?.sourceBreakdown;
+
+  if (breakdown) {
+    return Object.entries(breakdown)
+      .filter(([, count]) => count > 0)
+      .map(([type]) => type);
+  }
+
+  return Array.from(new Set(result.results.flatMap((item) => item.metrics?.sourceTypes ?? [])));
+}
+
+function sourceSupportLabel(result: ConsensusResponse, sourceTypes: string[]) {
+  const labels = new Set<string>();
+  const hasCommunity =
+    sourceTypes.includes("reddit") ||
+    sourceTypes.includes("forum") ||
+    result.sources.some((source) => /reddit|forum|quora|ycombinator|hacker news/i.test(`${source.domain} ${source.title}`));
+
+  if (hasCommunity) {
+    labels.add("community discussions");
+  }
+
+  if (sourceTypes.includes("editorial") || sourceTypes.includes("local_guide") || sourceTypes.includes("professional_review")) {
+    labels.add("editorial guides");
+  }
+
+  if (sourceTypes.includes("review_site")) {
+    labels.add("review sites");
+  }
+
+  if (sourceTypes.includes("official")) {
+    labels.add("official sources");
+  }
+
+  if (!labels.size && sourceTypes.length) {
+    labels.add("multiple source types");
+  }
+
+  return naturalList(Array.from(labels));
+}
+
+function scoreLabel(item: ConsensusResponse["results"][number]) {
+  return item.consensusPercentage ? `${item.consensusPercentage}%` : "";
+}
+
+function pluralize(count: number, label: string) {
+  return `${count} ${label}${count === 1 ? "" : "s"}`;
+}
+
+function naturalList(items: string[]) {
+  if (items.length <= 1) {
+    return items[0] ?? "";
+  }
+
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
 function ResultCard({
   consensus,
   initialSaved = false,
@@ -309,6 +452,7 @@ function ResultCard({
   featured?: boolean;
 }) {
   const resultHref = `/result/${buildResultSlug(item.name, searchId, item.id)}` as Route;
+  const trustMetrics = buildResultTrustMetrics(item);
 
   useEffect(() => {
     console.log("RESULT_CARD_RENDER_NO_FETCH", { searchId, resultId: item.id });
@@ -336,10 +480,12 @@ function ResultCard({
         {item.consensusPercentage ? (
           <div className="w-fit shrink-0 rounded-2xl border border-[#E1E3E8] bg-[#FAFAFB] px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
             <div className="text-3xl font-semibold tracking-normal text-ink">{item.consensusPercentage}%</div>
-            <div className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">Consensus</div>
+            <div className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">Consensus Strength</div>
           </div>
         ) : null}
       </div>
+
+      {trustMetrics ? <p className="mt-5 text-sm leading-6 text-muted">{trustMetrics}</p> : null}
 
       <div className="mt-8">
         <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Why people recommend it</p>
