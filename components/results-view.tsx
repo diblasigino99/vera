@@ -219,7 +219,7 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
           {winner ? (
             <div>
               <p className="mb-3 text-sm font-medium uppercase tracking-[0.16em] text-muted">Consensus Winner</p>
-              <ResultCard item={winner} searchId={result.id} featured />
+              <ResultCard consensus={result} item={winner} searchId={result.id} featured />
             </div>
           ) : null}
 
@@ -230,7 +230,7 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
               </p>
               <div className="grid gap-6">
                 {alternatives.map((item) => (
-                  <ResultCard item={item} searchId={result.id} key={item.id} />
+                  <ResultCard consensus={result} item={item} searchId={result.id} key={item.id} />
                 ))}
               </div>
             </div>
@@ -246,14 +246,18 @@ function resultStorageKey(searchId: string) {
 }
 
 function ResultCard({
+  consensus,
   item,
   searchId,
   featured = false
 }: {
+  consensus: ConsensusResponse;
   item: ConsensusResponse["results"][number];
   searchId: string;
   featured?: boolean;
 }) {
+  const resultHref = `/result/${buildResultSlug(item.name, searchId, item.id)}` as Route;
+
   return (
     <article
       className={cn(
@@ -294,7 +298,10 @@ function ResultCard({
 
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
-          href={`/result/${buildResultSlug(item.name, searchId, item.id)}` as Route}
+          href={resultHref}
+          onClick={() => storeResult(consensus)}
+          onMouseDown={() => storeResult(consensus)}
+          onTouchStart={() => storeResult(consensus)}
           className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white transition hover:bg-graphite"
         >
           Learn Why
@@ -303,6 +310,10 @@ function ResultCard({
       </div>
     </article>
   );
+}
+
+function storeResult(result: ConsensusResponse) {
+  window.localStorage.setItem(resultStorageKey(result.id), JSON.stringify(result));
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "failed";

@@ -188,7 +188,13 @@ async function getSupabaseCachedConsensus(query: string, normalizedQuery: string
     .maybeSingle();
 
   if (!error) {
-    return consensusFromSupabaseRow(data as SupabaseSearchCacheRow | null);
+    const hit = consensusFromSupabaseRow(data as SupabaseSearchCacheRow | null);
+
+    if (hit) {
+      return hit;
+    }
+
+    return getSupabaseLegacyCachedConsensus(query, normalizedQuery);
   }
 
   console.log("[vera:cache] cache lookup failed", {
@@ -197,6 +203,16 @@ async function getSupabaseCachedConsensus(query: string, normalizedQuery: string
     store: "supabase",
     error: error.message
   });
+
+  return getSupabaseLegacyCachedConsensus(query, normalizedQuery);
+}
+
+async function getSupabaseLegacyCachedConsensus(query: string, normalizedQuery: string) {
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase) {
+    return null;
+  }
 
   const legacy = await supabase.from("search_cache").select("result").eq("normalized_query", normalizedQuery).maybeSingle();
 

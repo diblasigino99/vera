@@ -1,5 +1,4 @@
 import { SearchExperience } from "@/components/search-experience";
-import Link from "next/link";
 
 const examples = [
   "Best first date restaurant in Williamsburg",
@@ -22,13 +21,13 @@ export default function Home() {
         </div>
         <div className="mt-10 grid max-w-2xl gap-3 text-sm text-muted sm:text-[15px]">
           {examples.map((example) => (
-            <Link
+            <a
               href={`/search?q=${encodeURIComponent(example)}&thinking=1`}
               key={example}
               className="transition hover:text-ink"
             >
               {example}
-            </Link>
+            </a>
           ))}
         </div>
       </section>
