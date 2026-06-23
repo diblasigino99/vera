@@ -64,15 +64,7 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
       store: "supabase"
     });
 
-    const lookupStartedAt = Date.now();
     const supabaseHit = await getSupabaseCachedConsensus(normalizedQuery, callCounts);
-
-    console.log("CACHE_LOOKUP_RESULT", {
-      hit: Boolean(supabaseHit),
-      rowId: supabaseHit?.id ?? null,
-      error: null,
-      durationMs: Date.now() - lookupStartedAt
-    });
 
     if (supabaseHit) {
       memorySearches.set(normalizedQuery, supabaseHit);
@@ -219,10 +211,21 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
     .select("id, original_query, normalized_query, result_json, sources_json, cache_version, updated_at")
     .eq("normalized_query", normalizedQuery)
     .eq("cache_version", localCacheVersion)
-    .maybeSingle();
+    .limit(1);
+
+  const rows = (data ?? []) as SupabaseSearchCacheRow[];
+  const row = rows[0] ?? null;
 
   if (!error) {
-    const hit = consensusFromSupabaseRow(data as SupabaseSearchCacheRow | null);
+    const hit = consensusFromSupabaseRow(row);
+
+    console.log("CACHE_LOOKUP_RESULT", {
+      hit: Boolean(hit),
+      rowId: row?.id ?? null,
+      errorCode: null,
+      errorMessage: null,
+      durationMs: Date.now() - lookupStartedAt
+    });
 
     if (hit) {
       return hit;
@@ -231,17 +234,31 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
     return null;
   }
 
+  if (error.code === "PGRST116") {
+    console.log("CACHE_LOOKUP_RESULT", {
+      hit: false,
+      rowId: null,
+      errorCode: error.code,
+      errorMessage: error.message,
+      durationMs: Date.now() - lookupStartedAt
+    });
+    return null;
+  }
+
   console.log("[vera:cache] cache lookup failed", {
     normalizedQuery,
     cacheVersion: localCacheVersion,
     store: "supabase",
-    error: error.message
+    error
   });
 
   console.log("CACHE_LOOKUP_RESULT", {
     hit: false,
     rowId: null,
-    error: error.message,
+    errorCode: error.code ?? null,
+    errorMessage: error.message,
+    errorDetails: error.details ?? null,
+    errorHint: error.hint ?? null,
     durationMs: Date.now() - lookupStartedAt
   });
 
