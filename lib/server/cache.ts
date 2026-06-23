@@ -1,6 +1,6 @@
 import type { ConsensusResponse, ProfileSnapshot } from "@/lib/types";
 import { normalizeQuery } from "@/lib/utils";
-import { getSupabaseAdmin } from "@/lib/server/supabase";
+import { getSupabaseAdmin, getSupabaseConfigSnapshot } from "@/lib/server/supabase";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
@@ -81,6 +81,15 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
       normalizedQuery,
       cacheVersion: localCacheVersion,
       store: "supabase"
+    });
+  } else {
+    const config = getSupabaseConfigSnapshot();
+    console.log("SUPABASE_CONFIG", {
+      hasUrl: config.hasUrl,
+      hasAnonKey: config.hasAnonKey,
+      hasServiceRole: config.hasServiceRole,
+      runtime: config.runtime,
+      searchCacheUrl: config.searchCacheUrl
     });
   }
 
@@ -206,12 +215,43 @@ async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: 
   }
 
   const lookupStartedAt = Date.now();
-  const { data, error } = await supabase
-    .from("search_cache")
-    .select("id, original_query, normalized_query, result_json, sources_json, cache_version, updated_at")
-    .eq("normalized_query", normalizedQuery)
-    .eq("cache_version", localCacheVersion)
-    .limit(1);
+  const config = getSupabaseConfigSnapshot();
+  console.log("SUPABASE_CONFIG", {
+    hasUrl: config.hasUrl,
+    hasAnonKey: config.hasAnonKey,
+    hasServiceRole: config.hasServiceRole,
+    runtime: config.runtime,
+    searchCacheUrl: config.searchCacheUrl
+  });
+
+  let lookup;
+
+  try {
+    lookup = await supabase
+      .from("search_cache")
+      .select("id, original_query, normalized_query, result_json, sources_json, cache_version, updated_at")
+      .eq("normalized_query", normalizedQuery)
+      .eq("cache_version", localCacheVersion)
+      .limit(1);
+  } catch (error) {
+    console.log("CACHE_LOOKUP_EXCEPTION", {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : null
+    });
+
+    console.log("CACHE_LOOKUP_RESULT", {
+      hit: false,
+      rowId: null,
+      errorCode: error instanceof Error ? error.name : null,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      durationMs: Date.now() - lookupStartedAt
+    });
+
+    throw error;
+  }
+
+  const { data, error } = lookup;
 
   const rows = (data ?? []) as SupabaseSearchCacheRow[];
   const row = rows[0] ?? null;

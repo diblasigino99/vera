@@ -12,6 +12,8 @@ const SearchBody = z.object({
   query: z.string().trim().min(3).max(240)
 });
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   const requestStartedAt = Date.now();
   const externalCallCounts = createExternalCallCounts();
