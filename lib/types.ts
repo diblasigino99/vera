@@ -1,0 +1,144 @@
+export type IntentProfile = {
+  category: string;
+  location?: string;
+  constraints: string[];
+  optimizeFor: string[];
+  avoid: string[];
+};
+
+export type VeraSource = {
+  title: string;
+  url: string;
+  domain: string;
+  snippet?: string;
+  queryVariant?: string;
+  canonicalUrl?: string;
+};
+
+export type VeraSourceType =
+  | "reddit"
+  | "forum"
+  | "review_site"
+  | "editorial"
+  | "local_guide"
+  | "professional_review"
+  | "official"
+  | "other";
+
+export type SourceSignal = {
+  sourceUrl: string;
+  sourceTitle: string;
+  domain: string;
+  sourceType: VeraSourceType;
+  sourceWeight: number;
+  sourceQuality: "low" | "medium" | "high";
+  sourceQualityWeight: number;
+  queryVariant?: string;
+  contenderName: string;
+  sentiment: "positive" | "neutral" | "negative";
+  mentionStrength: "weak" | "moderate" | "strong";
+  positiveMention?: string;
+  negativeMention?: string;
+  extractedReason: string;
+  themes: string[];
+};
+
+export type ThemeMetric = {
+  theme: string;
+  frequencyCount: number;
+  sourceCount: number;
+  sourceUrls: string[];
+};
+
+export type ContenderMetrics = {
+  name: string;
+  mentionCount: number;
+  positiveMentionCount: number;
+  negativeMentionCount: number;
+  sourceCount: number;
+  sourceDiversityScore: number;
+  sourceQualityScore: number;
+  strongMentionCount: number;
+  editorialSupportCount: number;
+  communitySupportCount: number;
+  weightedPositiveScore: number;
+  weightedNegativeScore: number;
+  netWeightedScore: number;
+  sourceTypes: VeraSourceType[];
+  themeCounts: ThemeMetric[];
+  sourceUrls: string[];
+};
+
+export type StructuredConsensus = {
+  winner?: string;
+  contenders: ContenderMetrics[];
+  mentionCounts: Record<
+    string,
+    {
+      mentionCount: number;
+      positiveMentionCount: number;
+      negativeMentionCount: number;
+      sourceCount: number;
+      sourceDiversityScore: number;
+      sourceQualityScore: number;
+      strongMentionCount: number;
+      editorialSupportCount: number;
+      communitySupportCount: number;
+      weightedPositiveScore: number;
+      weightedNegativeScore: number;
+      netWeightedScore: number;
+    }
+  >;
+  themeCounts: Record<string, ThemeMetric>;
+  sourceBreakdown: Record<VeraSourceType, number>;
+  confidenceReasoning: string;
+  consensusClassification: ConsensusMode;
+  signals: SourceSignal[];
+};
+
+export type ConsensusResult = {
+  id: string;
+  rank: number;
+  name: string;
+  consensusPercentage?: number;
+  summary: string;
+  reasons: string[];
+  downsides: string[];
+  evidence: string[];
+  sources: VeraSource[];
+  metrics?: ContenderMetrics;
+};
+
+export type ConsensusMode =
+  | "clear_consensus"
+  | "strong_consensus"
+  | "moderate_consensus"
+  | "split_consensus"
+  | "no_reliable_consensus";
+
+export type ConsensusResponse = {
+  id: string;
+  query: string;
+  normalizedQuery: string;
+  mode: ConsensusMode;
+  headline: string;
+  explanation: string;
+  intent: IntentProfile;
+  results: ConsensusResult[];
+  sources: VeraSource[];
+  structuredConsensus?: StructuredConsensus;
+  createdAt: string;
+  cached: boolean;
+};
+
+export type ProfileSnapshot = {
+  recentSearches: Array<Pick<ConsensusResponse, "id" | "query" | "headline" | "createdAt">>;
+  savedSearches: Array<Pick<ConsensusResponse, "id" | "query" | "headline" | "createdAt">>;
+  savedResults: Array<{
+    searchId: string;
+    resultId: string;
+    name: string;
+    query: string;
+    summary: string;
+  }>;
+};
