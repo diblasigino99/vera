@@ -81,6 +81,7 @@ export function ProfileView() {
               <Link
                 className="block rounded-lg border border-line p-4 transition hover:bg-mist"
                 href={`/result/${buildResultSlug(result.name, result.searchId, result.resultId)}` as Route}
+                prefetch={false}
                 key={`${result.searchId}-${result.resultId}`}
               >
                 <p className="font-medium text-ink">{result.name}</p>

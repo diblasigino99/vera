@@ -355,6 +355,7 @@ function ResultCard({
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
           href={resultHref}
+          prefetch={false}
           onClick={() => storeResult(consensus)}
           onMouseDown={() => storeResult(consensus)}
           onTouchStart={() => storeResult(consensus)}
