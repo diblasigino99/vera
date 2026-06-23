@@ -1,5 +1,6 @@
 import type { VeraSource } from "@/lib/types";
-import { domainFromUrl, normalizeQuery } from "@/lib/utils";
+import { domainFromUrl } from "@/lib/utils";
+import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 
 type TavilyResult = {
   title?: string;
@@ -7,7 +8,9 @@ type TavilyResult = {
   content?: string;
 };
 
-export async function searchPublicWeb(query: string): Promise<VeraSource[]> {
+const maxTavilyCallsPerRequest = 2;
+
+export async function searchPublicWeb(query: string, callCounts?: ExternalCallCounts): Promise<VeraSource[]> {
   const key = process.env.TAVILY_API_KEY;
 
   if (!key) {
@@ -16,9 +19,32 @@ export async function searchPublicWeb(query: string): Promise<VeraSource[]> {
 
   const startedAt = Date.now();
   const variants = buildSearchVariants(query);
-  const responses = await Promise.all(
-    variants.map(async (variant) => searchVariant(variant, key))
-  );
+  const guardedVariants = variants.slice(0, maxTavilyCallsPerRequest);
+
+  if (variants.length > maxTavilyCallsPerRequest) {
+    console.warn("[vera:sources] Tavily variant cap applied", {
+      query,
+      requestedVariants: variants.length,
+      usedVariants: guardedVariants.length
+    });
+  }
+
+  const responses = [];
+
+  for (const variant of guardedVariants) {
+    if (callCounts && callCounts.tavilyCalls >= maxTavilyCallsPerRequest) {
+      console.warn("[vera:sources] Tavily hard guard skipped extra search", {
+        query,
+        variant,
+        tavilyCalls: callCounts.tavilyCalls,
+        maxTavilyCallsPerRequest
+      });
+      continue;
+    }
+
+    responses.push(await searchVariant(variant, key, callCounts));
+  }
+
   const rawSources = responses.flat();
   const dedupedSources = dedupeSources(rawSources);
   const filteredSources = filterSources(dedupedSources);
@@ -39,7 +65,11 @@ export async function searchPublicWeb(query: string): Promise<VeraSource[]> {
   return balancedSources;
 }
 
-async function searchVariant(queryVariant: string, key: string): Promise<VeraSource[]> {
+async function searchVariant(queryVariant: string, key: string, callCounts?: ExternalCallCounts): Promise<VeraSource[]> {
+  if (callCounts) {
+    callCounts.tavilyCalls += 1;
+  }
+
   const response = await fetch("https://api.tavily.com/search", {
     method: "POST",
     headers: {
@@ -48,11 +78,11 @@ async function searchVariant(queryVariant: string, key: string): Promise<VeraSou
       "X-API-Key": key
     },
     body: JSON.stringify({
-      query: `${queryVariant} recommendations reviews reddit forum best`,
+      query: queryVariant,
       search_depth: "advanced",
       include_answer: false,
       include_raw_content: false,
-      max_results: 10
+      max_results: 24
     }),
     cache: "no-store"
   });
@@ -77,79 +107,14 @@ async function searchVariant(queryVariant: string, key: string): Promise<VeraSou
 }
 
 function buildSearchVariants(query: string) {
-  const normalized = normalizeQuery(query);
-  const variants = new Set<string>([
-    query,
-    `${query} reddit`,
-    `${query} reviews`,
-    `${query} recommendations`,
-    `${query} forum`
-  ]);
-  const location = extractLocation(query);
-  const firstDate = normalized.includes("first date") || normalized.includes("date night");
-  const restaurant = normalized.includes("restaurant") || normalized.includes("bar") || firstDate;
-
-  if (location && firstDate && restaurant) {
-    [
-      `best date spots ${location}`,
-      `romantic restaurants ${location}`,
-      `${location} date night restaurants`,
-      `best first date bar ${location}`,
-      `where should I take a first date ${location}`,
-      `${location} restaurant recommendations`,
-      `${location} restaurants reddit`,
-      `romantic dinner ${location}`,
-      `best places for a date ${location}`,
-      `${location} date ideas restaurant`
-    ].forEach((variant) => variants.add(variant));
-  } else if (location && restaurant) {
-    [
-      `best restaurants ${location}`,
-      `${location} restaurant recommendations`,
-      `${location} restaurants reddit`,
-      `${location} best places to eat`,
-      `${location} local food guide`
-    ].forEach((variant) => variants.add(variant));
-  } else if (location) {
-    [
-      `${query} reddit`,
-      `${query} forum`,
-      `${query} reviews`,
-      `best ${normalized.replace(location.toLowerCase(), "").trim()} ${location}`
-    ].forEach((variant) => variants.add(variant));
-  }
-
-  return Array.from(variants)
+  return [buildPrimarySearchQuery(query)]
     .map((variant) => variant.trim())
     .filter(Boolean)
-    .slice(0, 8);
+    .slice(0, maxTavilyCallsPerRequest);
 }
 
-function extractLocation(query: string) {
-  const match = query.match(/\b(?:in|near|around)\s+([a-zA-Z][a-zA-Z\s'-]{2,})$/i);
-
-  if (match?.[1]) {
-    return match[1].trim();
-  }
-
-  const words = query.trim().split(/\s+/);
-  const capitalizedTail: string[] = [];
-
-  for (let index = words.length - 1; index >= 0; index -= 1) {
-    const word = words[index];
-
-    if (!/^[A-Z][a-zA-Z'-]*$/.test(word)) {
-      break;
-    }
-
-    capitalizedTail.unshift(word);
-  }
-
-  if (capitalizedTail.length) {
-    return capitalizedTail.join(" ");
-  }
-
-  return "";
+function buildPrimarySearchQuery(query: string) {
+  return `${query} recommendations reviews reddit forum best comparison consensus`;
 }
 
 function dedupeSources(sources: VeraSource[]) {

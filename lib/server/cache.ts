@@ -3,6 +3,7 @@ import { normalizeQuery } from "@/lib/utils";
 import { getSupabaseAdmin } from "@/lib/server/supabase";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 
 const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
@@ -48,7 +49,7 @@ type LocalSavesFile = Record<
 
 const memorySaves = new Map<string, LocalSavesFile[string]>();
 
-export async function getCachedConsensus(query: string) {
+export async function getCachedConsensus(query: string, callCounts?: ExternalCallCounts) {
   const normalizedQuery = normalizeQuery(query);
   const supabase = getSupabaseAdmin();
 
@@ -59,7 +60,7 @@ export async function getCachedConsensus(query: string) {
       store: "supabase"
     });
 
-    const supabaseHit = await getSupabaseCachedConsensus(query, normalizedQuery);
+    const supabaseHit = await getSupabaseCachedConsensus(normalizedQuery, callCounts);
 
     if (supabaseHit) {
       memorySearches.set(normalizedQuery, supabaseHit);
@@ -159,7 +160,7 @@ export async function getConsensusById(searchId: string) {
   return result;
 }
 
-export async function cacheConsensus(consensus: ConsensusResponse) {
+export async function cacheConsensus(consensus: ConsensusResponse, callCounts?: ExternalCallCounts) {
   const versionedConsensus = {
     ...consensus,
     cacheVersion: localCacheVersion,
@@ -170,7 +171,7 @@ export async function cacheConsensus(consensus: ConsensusResponse) {
 
   const supabase = getSupabaseAdmin();
   if (supabase) {
-    await writeSupabaseCacheEntry(versionedConsensus);
+    await writeSupabaseCacheEntry(versionedConsensus, callCounts);
     return;
   }
 
@@ -189,11 +190,15 @@ function annotateSources(consensus: ConsensusResponse) {
   });
 }
 
-async function getSupabaseCachedConsensus(query: string, normalizedQuery: string) {
+async function getSupabaseCachedConsensus(normalizedQuery: string, callCounts?: ExternalCallCounts) {
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
     return null;
+  }
+
+  if (callCounts) {
+    callCounts.supabaseReads += 1;
   }
 
   const { data, error } = await supabase
@@ -210,7 +215,7 @@ async function getSupabaseCachedConsensus(query: string, normalizedQuery: string
       return hit;
     }
 
-    return getSupabaseLegacyCachedConsensus(query, normalizedQuery);
+    return null;
   }
 
   console.log("[vera:cache] cache lookup failed", {
@@ -220,39 +225,10 @@ async function getSupabaseCachedConsensus(query: string, normalizedQuery: string
     error: error.message
   });
 
-  return getSupabaseLegacyCachedConsensus(query, normalizedQuery);
+  return null;
 }
 
-async function getSupabaseLegacyCachedConsensus(query: string, normalizedQuery: string) {
-  const supabase = getSupabaseAdmin();
-
-  if (!supabase) {
-    return null;
-  }
-
-  const legacy = await supabase.from("search_cache").select("result").eq("normalized_query", normalizedQuery).maybeSingle();
-
-  if (legacy.error || !legacy.data?.result) {
-    return null;
-  }
-
-  const legacyResult = legacy.data.result as ConsensusResponse;
-
-  if (legacyResult.cacheVersion !== localCacheVersion) {
-    console.log("[vera:cache] Ignoring stale Supabase cache entry", {
-      query,
-      normalizedQuery,
-      cachedVersion: legacyResult.cacheVersion ?? "missing",
-      expectedVersion: localCacheVersion,
-      cachedMode: legacyResult.mode
-    });
-    return null;
-  }
-
-  return legacyResult;
-}
-
-async function writeSupabaseCacheEntry(consensus: ConsensusResponse) {
+async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?: ExternalCallCounts) {
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
@@ -271,6 +247,10 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse) {
     created_at: consensus.createdAt,
     updated_at: new Date().toISOString()
   };
+
+  if (callCounts) {
+    callCounts.supabaseWrites += 1;
+  }
 
   const { error } = await supabase.from("search_cache").upsert(payload, {
     onConflict: "normalized_query"
@@ -291,35 +271,6 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse) {
     cacheVersion: localCacheVersion,
     store: "supabase",
     error: error.message
-  });
-
-  const legacyPayload = {
-    id: consensus.id,
-    query: consensus.query,
-    normalized_query: consensus.normalizedQuery,
-    result: consensus,
-    created_at: consensus.createdAt,
-    updated_at: new Date().toISOString()
-  };
-  const legacyWrite = await supabase.from("search_cache").upsert(legacyPayload, {
-    onConflict: "normalized_query"
-  });
-
-  if (legacyWrite.error) {
-    console.log("[vera:cache] cache write failed", {
-      normalizedQuery: consensus.normalizedQuery,
-      cacheVersion: localCacheVersion,
-      store: "supabase-legacy",
-      error: legacyWrite.error.message
-    });
-    return;
-  }
-
-  console.log("[vera:cache] cache write success", {
-    normalizedQuery: consensus.normalizedQuery,
-    cacheVersion: localCacheVersion,
-    store: "supabase-legacy",
-    searchId: consensus.id
   });
 }
 

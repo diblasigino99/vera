@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { analyzeConsensus } from "@/lib/server/analyze";
 import { cacheConsensus, getCachedConsensus } from "@/lib/server/cache";
+import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { searchPublicWeb } from "@/lib/server/search";
 import { normalizeQuery } from "@/lib/utils";
@@ -12,6 +13,7 @@ const SearchBody = z.object({
 
 export async function POST(request: Request) {
   const requestStartedAt = Date.now();
+  const externalCallCounts = createExternalCallCounts();
   const body = SearchBody.safeParse(await request.json());
 
   if (!body.success) {
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
   });
 
   const cacheStartedAt = Date.now();
-  const cached = await getCachedConsensus(body.data.query);
+  const cached = await getCachedConsensus(body.data.query, externalCallCounts);
   const cacheElapsedMs = Date.now() - cacheStartedAt;
   console.log("[vera:search] cache lookup completed", {
     normalizedQuery,
@@ -56,12 +58,13 @@ export async function POST(request: Request) {
       cached: true,
       totalElapsedMs: Date.now() - requestStartedAt
     });
+    console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     return NextResponse.json(cached);
   }
 
   try {
     const tavilyStartedAt = Date.now();
-    const sources = await searchPublicWeb(body.data.query);
+    const sources = await searchPublicWeb(body.data.query, externalCallCounts);
     const tavilyElapsedMs = Date.now() - tavilyStartedAt;
     console.log("[vera:search] Tavily results returned", {
       query: body.data.query,
@@ -70,6 +73,7 @@ export async function POST(request: Request) {
       urls: sources.map((source) => source.url)
     });
     const openAIStartedAt = Date.now();
+    externalCallCounts.openAiCalls += 1;
     const consensus = await analyzeConsensus(body.data.query, sources);
     const openAIElapsedMs = Date.now() - openAIStartedAt;
     console.log("[vera:search] OpenAI analysis returned", {
@@ -80,7 +84,7 @@ export async function POST(request: Request) {
       results: consensus.results.map((result) => result.name)
     });
     const cacheWriteStartedAt = Date.now();
-    await cacheConsensus(consensus);
+    await cacheConsensus(consensus, externalCallCounts);
     const cacheWriteElapsedMs = Date.now() - cacheWriteStartedAt;
     console.log("[vera:search] cache write completed", {
       normalizedQuery,
@@ -103,8 +107,10 @@ export async function POST(request: Request) {
       storedSources: consensus.sources.length,
       totalElapsedMs: Date.now() - requestStartedAt
     });
+    console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     return NextResponse.json(consensus);
   } catch (error) {
+    console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     const message = error instanceof Error ? error.message : "Vera could not complete this search.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
