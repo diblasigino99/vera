@@ -4,6 +4,7 @@ import type {
   ConsensusMode,
   ConsensusResponse,
   ContenderMetrics,
+  VeraEntityCategory,
   SourceSignal,
   StructuredConsensus,
   ThemeMetric,
@@ -79,6 +80,8 @@ const classificationThresholds = {
   moderateSourceCount: 3
 } as const;
 
+const categoryMismatchPenalty = 12;
+
 export async function analyzeConsensus(query: string, sources: VeraSource[]): Promise<ConsensusResponse> {
   const debug = await analyzeConsensusWithDebug(query, sources);
   return debug.consensus;
@@ -101,7 +104,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   }
 
   const sourceSignals = await extractSourceSignals(query, sources, key);
-  const structuredConsensus = aggregateSignals(sourceSignals.signals, sources);
+  const structuredConsensus = aggregateSignals(sourceSignals.signals, sources, query);
 
   if (structuredConsensus.contenders.length === 0) {
     const consensus = notEnoughData(query, sources, "Not enough reliable data to form a consensus.");
@@ -361,7 +364,8 @@ function signalPower(signal: SourceSignal) {
   return sentimentWeight(signal.sentiment) + mentionStrengthWeight(signal.mentionStrength) + signal.sourceQualityWeight + signal.sourceWeight;
 }
 
-function aggregateSignals(signals: SourceSignal[], sources: VeraSource[]): StructuredConsensus {
+function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query: string): StructuredConsensus {
+  const intendedCategory = inferIntendedCategory(query);
   const byName = new Map<string, SourceSignal[]>();
 
   for (const signal of signals) {
@@ -370,12 +374,34 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[]): Struc
     byName.set(signal.contenderName, existing);
   }
 
-  const contenders = Array.from(byName.entries())
-    .map(([name, contenderSignals]) => buildContenderMetrics(name, contenderSignals))
+  const contendersBeforeFiltering = Array.from(byName.entries())
+    .map(([name, contenderSignals]) => applyCategoryRelevance(buildContenderMetrics(name, contenderSignals), intendedCategory, contenderSignals))
     .sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount);
 
-  const themeCounts = aggregateThemeCounts(signals);
-  const sourceBreakdown = aggregateSourceBreakdown(sources, signals);
+  const { contenders, removed } = filterContendersByCategory(contendersBeforeFiltering, intendedCategory);
+  const contenderNames = new Set(contenders.map((contender) => contender.name));
+  const filteredSignals = signals.filter((signal) => contenderNames.has(signal.contenderName));
+  console.log("INTENDED_CATEGORY", intendedCategory);
+  console.log(
+    "CONTENDER_CATEGORY",
+    contendersBeforeFiltering.map((contender) => ({
+      name: contender.name,
+      contenderCategory: contender.contenderCategory,
+      categoryConfidence: contender.categoryConfidence,
+      netWeightedScore: contender.netWeightedScore
+    }))
+  );
+  console.log(
+    "CATEGORY_CONFIDENCE",
+    contendersBeforeFiltering.map((contender) => ({
+      name: contender.name,
+      confidence: contender.categoryConfidence
+    }))
+  );
+  console.log("FILTERED_CONTENDERS", removed);
+
+  const themeCounts = aggregateThemeCounts(filteredSignals);
+  const sourceBreakdown = aggregateSourceBreakdown(sources, filteredSignals);
   const consensusClassification = classifyFromMetrics(contenders, sources.length);
   logConsensusDiagnostics(contenders, sources.length, consensusClassification);
   const winner = consensusClassification === "no_reliable_consensus" ? undefined : contenders[0]?.name;
@@ -401,13 +427,14 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[]): Struc
 
   return {
     winner,
+    intendedCategory,
     contenders,
     mentionCounts,
     themeCounts,
     sourceBreakdown,
     confidenceReasoning: confidenceReasoning(contenders, consensusClassification, sources.length),
     consensusClassification,
-    signals
+    signals: filteredSignals
   };
 }
 
@@ -451,6 +478,8 @@ function buildContenderMetrics(name: string, signals: SourceSignal[]): Contender
 
   return {
     name,
+    contenderCategory: "other",
+    categoryConfidence: "low",
     mentionCount: signals.length,
     positiveMentionCount,
     negativeMentionCount,
@@ -467,6 +496,133 @@ function buildContenderMetrics(name: string, signals: SourceSignal[]): Contender
     themeCounts: Object.values(aggregateThemeCounts(signals)).sort((a, b) => b.frequencyCount - a.frequencyCount || b.sourceCount - a.sourceCount),
     sourceUrls
   };
+}
+
+function applyCategoryRelevance(metrics: ContenderMetrics, intendedCategory: VeraEntityCategory, signals: SourceSignal[]): ContenderMetrics {
+  const detected = inferContenderCategory(metrics.name, signals);
+  const shouldPenalty = intendedCategory !== "other" && detected.categoryConfidence !== "high" && !isAllowedCategory(intendedCategory, detected.contenderCategory, signals);
+
+  return {
+    ...metrics,
+    contenderCategory: detected.contenderCategory,
+    categoryConfidence: detected.categoryConfidence,
+    netWeightedScore: shouldPenalty ? round1(metrics.netWeightedScore - categoryMismatchPenalty) : metrics.netWeightedScore
+  };
+}
+
+function filterContendersByCategory(contenders: ContenderMetrics[], intendedCategory: VeraEntityCategory) {
+  const removed: Array<{
+    name: string;
+    contenderCategory: VeraEntityCategory;
+    categoryConfidence: ContenderMetrics["categoryConfidence"];
+    reason: string;
+  }> = [];
+  const kept = contenders.filter((contender) => {
+    if (intendedCategory === "other" || isAllowedCategory(intendedCategory, contender.contenderCategory)) {
+      return true;
+    }
+
+    if (contender.categoryConfidence !== "high") {
+      return true;
+    }
+
+    removed.push({
+      name: contender.name,
+      contenderCategory: contender.contenderCategory,
+      categoryConfidence: contender.categoryConfidence,
+      reason: `Removed because ${contender.contenderCategory} does not match requested ${intendedCategory}.`
+    });
+    return false;
+  });
+
+  return {
+    contenders: kept.sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount),
+    removed
+  };
+}
+
+function inferIntendedCategory(query: string): VeraEntityCategory {
+  const normalized = normalizeQuery(query);
+
+  if (/\b(coffee shop|cafe|café|espresso)\b/.test(normalized)) return "cafe";
+  if (/\b(bar|pub|cocktail|brewery|taproom|speakeasy)\b/.test(normalized)) return "bar";
+  if (/\b(restaurant|pizza|pizzeria|sushi|steakhouse|diner|brunch|lunch|dinner|place to eat|food)\b/.test(normalized)) return "restaurant";
+  if (/\b(hotel|motel|inn|resort|lodging|place to stay)\b/.test(normalized)) return "hotel";
+  if (/\b(golf course|golf club|country club|links)\b/.test(normalized)) return "golf_course";
+  if (/\b(crm|software|app|platform|tool|ai coding assistant|coding assistant)\b/.test(normalized)) return "software";
+  if (/\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress|product)\b/.test(normalized)) return "product";
+  if (/\b(service|contractor|agency|consultant)\b/.test(normalized)) return "service";
+
+  return "other";
+}
+
+function inferContenderCategory(name: string, signals: SourceSignal[]): {
+  contenderCategory: VeraEntityCategory;
+  categoryConfidence: ContenderMetrics["categoryConfidence"];
+} {
+  const nameText = normalizeQuery(name);
+  const signalText = normalizeQuery(
+    signals
+      .map((signal) => [signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention, signal.negativeMention, signal.themes.join(" ")].filter(Boolean).join(" "))
+      .join(" ")
+  );
+  const combined = `${nameText} ${signalText}`;
+
+  const named = categoryFromText(nameText);
+  if (named) {
+    return { contenderCategory: named, categoryConfidence: "high" };
+  }
+
+  const contextual = categoryFromText(combined);
+  if (contextual) {
+    return { contenderCategory: contextual, categoryConfidence: "medium" };
+  }
+
+  return { contenderCategory: "other", categoryConfidence: "low" };
+}
+
+function categoryFromText(text: string): VeraEntityCategory | null {
+  if (/\b(liquor|liquors|wine|wines|spirits|package store|bottle shop)\b/.test(text)) return "liquor_store";
+  if (/\b(grocery|supermarket|market|food market|whole foods|trader joe)\b/.test(text)) return "grocery_store";
+  if (/\b(hotel|motel|inn|resort|lodge|lodging)\b/.test(text)) return "hotel";
+  if (/\b(golf course|golf club|country club|links|fairway|tee time)\b/.test(text)) return "golf_course";
+  if (/\b(coffee shop|cafe|café|espresso|roaster|roastery)\b/.test(text)) return "cafe";
+  if (/\b(bar|pub|tavern|cocktail|brewery|taproom|speakeasy)\b/.test(text)) return "bar";
+  if (/\b(restaurant|pizzeria|pizza|trattoria|bistro|diner|grill|taqueria|sushi|steakhouse|brasserie|osteria|ramen|noodle|kitchen|eatery|cuisine)\b/.test(text)) {
+    return "restaurant";
+  }
+  if (/\b(crm|software|saas|platform|app|ai coding assistant|coding assistant)\b/.test(text)) return "software";
+  if (/\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress)\b/.test(text)) return "product";
+  if (/\b(shop|store|retail|boutique|mall|pharmacy|hardware)\b/.test(text)) return "retail";
+  if (/\b(museum|park|beach|theater|theatre|attraction|landmark)\b/.test(text)) return "attraction";
+  if (/\b(service|agency|consultant|contractor)\b/.test(text)) return "service";
+
+  return null;
+}
+
+function isAllowedCategory(intendedCategory: VeraEntityCategory, contenderCategory: VeraEntityCategory, signals: SourceSignal[] = []) {
+  if (intendedCategory === "other") return true;
+  if (intendedCategory === contenderCategory) return true;
+
+  const signalText = normalizeQuery(signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.themes.join(" ")}`).join(" "));
+
+  if (intendedCategory === "restaurant") {
+    return contenderCategory === "bar" && /\b(food|menu|dining|restaurant|kitchen|grill|pizza|dinner|brunch)\b/.test(signalText);
+  }
+
+  if (intendedCategory === "bar") {
+    return contenderCategory === "restaurant" && /\b(bar|cocktail|drinks|pub|brewery|wine bar)\b/.test(signalText);
+  }
+
+  if (intendedCategory === "software") {
+    return contenderCategory === "product" || contenderCategory === "service";
+  }
+
+  if (intendedCategory === "product") {
+    return contenderCategory === "software" || contenderCategory === "service" || contenderCategory === "other";
+  }
+
+  return false;
 }
 
 function aggregateThemeCounts(signals: SourceSignal[]) {

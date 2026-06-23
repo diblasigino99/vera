@@ -27,6 +27,21 @@ export type VeraSourceType =
   | "official"
   | "other";
 
+export type VeraEntityCategory =
+  | "restaurant"
+  | "bar"
+  | "cafe"
+  | "hotel"
+  | "liquor_store"
+  | "grocery_store"
+  | "retail"
+  | "attraction"
+  | "golf_course"
+  | "software"
+  | "product"
+  | "service"
+  | "other";
+
 export type SourceSignal = {
   sourceUrl: string;
   sourceTitle: string;
@@ -54,6 +69,8 @@ export type ThemeMetric = {
 
 export type ContenderMetrics = {
   name: string;
+  contenderCategory: VeraEntityCategory;
+  categoryConfidence: "low" | "medium" | "high";
   mentionCount: number;
   positiveMentionCount: number;
   negativeMentionCount: number;
@@ -73,6 +90,7 @@ export type ContenderMetrics = {
 
 export type StructuredConsensus = {
   winner?: string;
+  intendedCategory: VeraEntityCategory;
   contenders: ContenderMetrics[];
   mentionCounts: Record<
     string,
