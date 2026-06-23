@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { getConsensusById } from "@/lib/server/cache";
 import { parseResultSlug } from "@/lib/result-slug";
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
+import { ResultClientFallback } from "./result-client-fallback";
 
 type ResultPageProps = {
   params: Promise<{
@@ -32,7 +33,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
   const result = consensus?.results.find((item) => item.id === parsed.resultId);
 
   if (!consensus || !result) {
-    notFound();
+    return <ResultClientFallback resultId={parsed.resultId} searchId={parsed.searchId} />;
   }
 
   const contenders = consensus.results.filter((item) => item.id !== result.id);

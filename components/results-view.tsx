@@ -61,6 +61,12 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
   }, [initialResult, query]);
 
   useEffect(() => {
+    if (result && result.results.length) {
+      window.localStorage.setItem(resultStorageKey(result.id), JSON.stringify(result));
+    }
+  }, [result]);
+
+  useEffect(() => {
     if (!query) {
       return;
     }
@@ -201,7 +207,7 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
         </div>
       </div>
 
-      {result.mode === "no_reliable_consensus" ? (
+      {result.mode === "no_reliable_consensus" && result.results.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-line bg-white p-8 shadow-[0_20px_70px_rgba(0,0,0,0.045)]">
           <p className="text-2xl font-semibold tracking-normal text-ink">No reliable consensus.</p>
           <p className="mt-4 max-w-2xl leading-7 text-muted">
@@ -233,6 +239,10 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
       )}
     </section>
   );
+}
+
+function resultStorageKey(searchId: string) {
+  return `vera_result_${searchId}`;
 }
 
 function ResultCard({
