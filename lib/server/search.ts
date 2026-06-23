@@ -9,8 +9,14 @@ type TavilyResult = {
 };
 
 const maxTavilyCallsPerRequest = 2;
+const tavilyTimeoutMs = 6000;
 
-export async function searchPublicWeb(query: string, callCounts?: ExternalCallCounts): Promise<VeraSource[]> {
+export type SearchPublicWebTimings = {
+  tavilyMs: number;
+  filteringMs: number;
+};
+
+export async function searchPublicWeb(query: string, callCounts?: ExternalCallCounts, timings?: SearchPublicWebTimings): Promise<VeraSource[]> {
   const key = process.env.TAVILY_API_KEY;
 
   if (!key) {
@@ -18,6 +24,7 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
   }
 
   const startedAt = Date.now();
+  let tavilyMs = 0;
   const variants = buildSearchVariants(query);
   const guardedVariants = variants.slice(0, maxTavilyCallsPerRequest);
 
@@ -45,10 +52,18 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
     responses.push(await searchVariant(variant, key, callCounts));
   }
 
+  tavilyMs = Date.now() - startedAt;
+  const filteringStartedAt = Date.now();
   const rawSources = responses.flat();
   const dedupedSources = dedupeSources(rawSources);
   const filteredSources = filterSources(dedupedSources);
-  const balancedSources = reduceDuplicateDomains(filteredSources).slice(0, 32);
+  const balancedSources = reduceDuplicateDomains(filteredSources).slice(0, 18);
+  const filteringMs = Date.now() - filteringStartedAt;
+
+  if (timings) {
+    timings.tavilyMs = tavilyMs;
+    timings.filteringMs = filteringMs;
+  }
 
   console.log("[vera:sources] source pipeline", {
     query,
@@ -58,6 +73,8 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
     afterFiltering: filteredSources.length,
     afterDomainBalancing: balancedSources.length,
     openAIInput: balancedSources.length,
+    tavilyMs,
+    filteringMs,
     elapsedMs: Date.now() - startedAt,
     domains: domainCounts(balancedSources)
   });
@@ -84,7 +101,8 @@ async function searchVariant(queryVariant: string, key: string, callCounts?: Ext
       include_raw_content: false,
       max_results: 24
     }),
-    cache: "no-store"
+    cache: "no-store",
+    signal: AbortSignal.timeout(tavilyTimeoutMs)
   });
 
   if (!response.ok) {

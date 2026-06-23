@@ -7,6 +7,7 @@ import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { searchPublicWeb } from "@/lib/server/search";
 import { canonicalizeQuery, normalizeQuery } from "@/lib/utils";
 import type { ConsensusResponse } from "@/lib/types";
+import type { SearchPublicWebTimings } from "@/lib/server/search";
 
 const SearchBody = z.object({
   query: z.string().trim().min(3).max(240)
@@ -114,12 +115,17 @@ export async function POST(request: Request) {
 
   try {
     const tavilyStartedAt = Date.now();
-    const sources = await searchPublicWeb(body.data.query, externalCallCounts);
-    const tavilyElapsedMs = Date.now() - tavilyStartedAt;
+    const sourceTimings: SearchPublicWebTimings = { tavilyMs: 0, filteringMs: 0 };
+    const sources = await searchPublicWeb(body.data.query, externalCallCounts, sourceTimings);
+    const searchElapsedMs = Date.now() - tavilyStartedAt;
+    const tavilyElapsedMs = sourceTimings.tavilyMs || searchElapsedMs;
+    const filteringElapsedMs = sourceTimings.filteringMs;
     console.log("[vera:search] Tavily results returned", {
       query: body.data.query,
       count: sources.length,
-      elapsedMs: tavilyElapsedMs,
+      elapsedMs: searchElapsedMs,
+      tavilyMs: tavilyElapsedMs,
+      filteringMs: filteringElapsedMs,
       urls: sources.map((source) => source.url)
     });
     const openAIStartedAt = Date.now();
@@ -145,6 +151,7 @@ export async function POST(request: Request) {
       cached: false,
       cacheElapsedMs,
       tavilyElapsedMs,
+      filteringElapsedMs,
       openAIElapsedMs,
       cacheWriteElapsedMs,
       totalElapsedMs: Date.now() - requestStartedAt
@@ -230,6 +237,7 @@ function logSearchTimingSummary({
   cached,
   cacheElapsedMs,
   tavilyElapsedMs = 0,
+  filteringElapsedMs = 0,
   openAIElapsedMs = 0,
   cacheWriteElapsedMs = 0,
   totalElapsedMs
@@ -238,6 +246,7 @@ function logSearchTimingSummary({
   cached: boolean;
   cacheElapsedMs: number;
   tavilyElapsedMs?: number;
+  filteringElapsedMs?: number;
   openAIElapsedMs?: number;
   cacheWriteElapsedMs?: number;
   totalElapsedMs: number;
@@ -245,10 +254,22 @@ function logSearchTimingSummary({
   const stages = [
     { stage: "cache_lookup", elapsedMs: cacheElapsedMs },
     { stage: "tavily", elapsedMs: tavilyElapsedMs },
+    { stage: "source_filtering", elapsedMs: filteringElapsedMs },
     { stage: "openai", elapsedMs: openAIElapsedMs },
     { stage: "cache_write", elapsedMs: cacheWriteElapsedMs }
   ];
   const slowest = stages.reduce((current, next) => (next.elapsedMs > current.elapsedMs ? next : current), stages[0]);
+
+  if (!cached) {
+    console.log("COLD_SEARCH_TIMING", {
+      tavilyMs: tavilyElapsedMs,
+      filteringMs: filteringElapsedMs,
+      openAiMs: openAIElapsedMs,
+      cacheWriteMs: cacheWriteElapsedMs,
+      totalMs: totalElapsedMs,
+      slowestStage: slowest.stage
+    });
+  }
 
   console.log("[vera:search] stage timing summary", {
     normalizedQuery,

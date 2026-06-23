@@ -25,6 +25,9 @@ const sourceTypes = [
 ] as const;
 
 const openAIModel = "gpt-4.1-mini";
+const openAITimeoutMs = 8000;
+const maxOpenAISources = 10;
+const maxOpenAISnippetChars = 320;
 
 const SignalSchema = z.object({
   intent: z.object({
@@ -94,7 +97,9 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     throw new Error("OPENAI_API_KEY is required to extract consensus from real sources.");
   }
 
-  if (sources.length < 3) {
+  const modelSources = prepareSourcesForOpenAI(sources);
+
+  if (modelSources.length < 3) {
     const consensus = notEnoughData(query, sources, "Not enough reliable data to form a consensus.");
     return {
       rawOpenAIContent: null,
@@ -103,8 +108,8 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     };
   }
 
-  const sourceSignals = await extractSourceSignals(query, sources, key);
-  const structuredConsensus = aggregateSignals(sourceSignals.signals, sources, query);
+  const sourceSignals = await extractSourceSignals(query, modelSources, key);
+  const structuredConsensus = aggregateSignals(sourceSignals.signals, modelSources, query);
 
   if (structuredConsensus.contenders.length === 0) {
     const consensus = notEnoughData(query, sources, "Not enough reliable data to form a consensus.");
@@ -117,7 +122,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     };
   }
 
-  const consensus = buildConsensus(query, sources, sourceSignals.intent, structuredConsensus);
+  const consensus = buildConsensus(query, modelSources, sourceSignals.intent, structuredConsensus);
 
   return {
     rawOpenAIContent: sourceSignals.rawOpenAIContent,
@@ -127,12 +132,14 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
 }
 
 async function extractSourceSignals(query: string, sources: VeraSource[], key: string) {
-  const openai = new OpenAI({ apiKey: key });
+  const openai = new OpenAI({ apiKey: key, timeout: openAITimeoutMs });
   const startedAt = Date.now();
   console.log("[vera:openai] input prepared", {
     query,
     openAIInputSources: sources.length,
-    model: openAIModel
+    model: openAIModel,
+    timeoutMs: openAITimeoutMs,
+    maxSnippetChars: maxOpenAISnippetChars
   });
   const sourceText = sources
     .map((source, index) => {
@@ -143,7 +150,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
         `Domain: ${source.domain}`,
         `Query variant: ${source.queryVariant ?? query}`,
         `Inferred source type: ${inferSourceType(source)}`,
-        `Snippet: ${source.snippet ?? ""}`
+        `Snippet: ${trimForOpenAI(source.snippet ?? "", maxOpenAISnippetChars)}`
       ].join("\n");
     })
     .join("\n\n");
@@ -151,6 +158,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
   const completion = await openai.chat.completions.create({
     model: openAIModel,
     temperature: 0,
+    max_completion_tokens: 4200,
     response_format: {
       type: "json_schema",
       json_schema: {
@@ -223,6 +231,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
           "Extract evidence signals only; do not rank, score, summarize, or decide a winner.",
           "Use only the provided source snippets and titles.",
           "Every mention must belong to one named contender. Do not combine contenders.",
+          "Return at most 3 mentions per source. Prefer the strongest source-grounded recommendations and concerns.",
           "Do not use generic categories, product types, or technologies as contender names when a specific named product, place, service, or option is present.",
           "sentiment must be positive, neutral, or negative.",
           "mentionStrength must be weak for passing mentions, moderate for clear recommendations, and strong for explicit best/top/ideal recommendations.",
@@ -270,6 +279,18 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     intent: parsed.data.intent,
     signals
   };
+}
+
+function prepareSourcesForOpenAI(sources: VeraSource[]) {
+  return sources.slice(0, maxOpenAISources).map((source) => ({
+    ...source,
+    snippet: trimForOpenAI(source.snippet ?? "", maxOpenAISnippetChars)
+  }));
+}
+
+function trimForOpenAI(text: string, maxChars: number) {
+  const compact = text.replace(/\s+/g, " ").trim();
+  return compact.length > maxChars ? `${compact.slice(0, maxChars).trim()}...` : compact;
 }
 
 function normalizeSignals(payload: SignalPayload, sources: VeraSource[]): SourceSignal[] {
