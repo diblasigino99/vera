@@ -1,5 +1,5 @@
 import type { VeraSource } from "@/lib/types";
-import { domainFromUrl } from "@/lib/utils";
+import { domainFromUrl, evidenceStrategyFor, inferQueryEvidenceType, isSpecializedDominantPlatformQuery } from "@/lib/utils";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 
 type TavilyResult = {
@@ -132,6 +132,21 @@ function buildSearchVariants(query: string) {
 }
 
 function buildPrimarySearchQuery(query: string) {
+  const evidenceType = inferQueryEvidenceType(query);
+
+  if (evidenceType === "dominant_platform") {
+    const specialized = isSpecializedDominantPlatformQuery(query);
+    const strategyTerms = specialized
+      ? "privacy alternatives independent secure expert comparison reviews recommendations"
+      : "market share default usage most used dominant expert comparison alternatives reviews";
+
+    console.log("QUERY_EVIDENCE_TYPE", evidenceType);
+    console.log("EVIDENCE_STRATEGY", evidenceStrategyFor(evidenceType));
+    return `${query} ${strategyTerms}`;
+  }
+
+  console.log("QUERY_EVIDENCE_TYPE", evidenceType);
+  console.log("EVIDENCE_STRATEGY", evidenceStrategyFor(evidenceType));
   return `${query} recommendations reviews reddit forum best comparison consensus`;
 }
 

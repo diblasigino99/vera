@@ -36,6 +36,50 @@ export function canonicalizeQuery(query: string) {
   return singularized.join(" ").replace(/\s+/g, " ").trim();
 }
 
+export type QueryEvidenceType = "local_recommendation" | "product_recommendation" | "software_tool" | "dominant_platform";
+
+export function inferQueryEvidenceType(query: string): QueryEvidenceType {
+  const normalized = normalizeQuery(query);
+
+  if (/\b(search engine|browser|email provider|email service|mail provider|maps app|map app|navigation app|video platform|video site)\b/.test(normalized)) {
+    return "dominant_platform";
+  }
+
+  if (/\b(restaurant|pizza|pizzeria|bar|pub|cocktail|hotel|motel|inn|resort|coffee shop|cafe|café|golf course|place to eat|place to stay)\b/.test(normalized)) {
+    return "local_recommendation";
+  }
+
+  if (/\b(crm|project management|software|saas|app|platform|tool|ai coding assistant|coding assistant)\b/.test(normalized)) {
+    return "software_tool";
+  }
+
+  if (/\b(router|shoe|shoes|suitcase|headphones|laptop|phone|mattress|carry-on|carry on)\b/.test(normalized)) {
+    return "product_recommendation";
+  }
+
+  return "product_recommendation";
+}
+
+export function evidenceStrategyFor(type: QueryEvidenceType) {
+  if (type === "dominant_platform") {
+    return "market dominance, default usage, broad recognition, expert comparisons, major alternatives, and privacy/specialized alternatives";
+  }
+
+  if (type === "software_tool") {
+    return "expert reviews, comparison sites, user reviews, Reddit/forums, and repeated recommendations";
+  }
+
+  if (type === "product_recommendation") {
+    return "expert reviews, comparison sites, user reviews, Reddit/forums, and repeated recommendations";
+  }
+
+  return "reviews, local guides, Reddit/community discussions, and editorial lists";
+}
+
+export function isSpecializedDominantPlatformQuery(query: string) {
+  return /\b(private|privacy|independent|open source|open-source|secure|encrypted|anonymous|no tracking|without tracking|ad free|ad-free)\b/.test(normalizeQuery(query));
+}
+
 function singularizeCanonicalToken(token: string) {
   const map: Record<string, string> = {
     restaurants: "restaurant",

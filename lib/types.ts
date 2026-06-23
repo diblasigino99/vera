@@ -1,3 +1,5 @@
+import type { QueryEvidenceType } from "@/lib/utils";
+
 export type IntentProfile = {
   category: string;
   location?: string;
@@ -91,6 +93,8 @@ export type ContenderMetrics = {
 export type StructuredConsensus = {
   winner?: string;
   intendedCategory: VeraEntityCategory;
+  queryEvidenceType?: QueryEvidenceType;
+  evidenceStrategy?: string;
   contenders: ContenderMetrics[];
   mentionCounts: Record<
     string,

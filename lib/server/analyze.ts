@@ -11,7 +11,15 @@ import type {
   VeraSource,
   VeraSourceType
 } from "@/lib/types";
-import { canonicalizeQuery, normalizeQuery, slugify } from "@/lib/utils";
+import {
+  canonicalizeQuery,
+  evidenceStrategyFor,
+  inferQueryEvidenceType,
+  isSpecializedDominantPlatformQuery,
+  normalizeQuery,
+  slugify
+} from "@/lib/utils";
+import type { QueryEvidenceType } from "@/lib/utils";
 
 const sourceTypes = [
   "reddit",
@@ -108,7 +116,8 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     };
   }
 
-  const sourceSignals = await extractSourceSignals(query, modelSources, key);
+  const evidenceType = inferQueryEvidenceType(query);
+  const sourceSignals = await extractSourceSignals(query, modelSources, key, evidenceType);
   const structuredConsensus = aggregateSignals(sourceSignals.signals, modelSources, query);
 
   if (structuredConsensus.contenders.length === 0) {
@@ -131,13 +140,15 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   };
 }
 
-async function extractSourceSignals(query: string, sources: VeraSource[], key: string) {
+async function extractSourceSignals(query: string, sources: VeraSource[], key: string, evidenceType: QueryEvidenceType) {
   const openai = new OpenAI({ apiKey: key, timeout: openAITimeoutMs });
   const startedAt = Date.now();
   console.log("[vera:openai] input prepared", {
     query,
     openAIInputSources: sources.length,
     model: openAIModel,
+    evidenceType,
+    evidenceStrategy: evidenceStrategyFor(evidenceType),
     timeoutMs: openAITimeoutMs,
     maxSnippetChars: maxOpenAISnippetChars
   });
@@ -263,7 +274,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     throw new Error("OpenAI returned invalid source signal JSON.");
   }
 
-  const signals = normalizeSignals(parsed.data, sources);
+  const signals = normalizeSignals(parsed.data, sources, evidenceType);
 
   console.log("[vera:openai] output received", {
     query,
@@ -293,7 +304,7 @@ function trimForOpenAI(text: string, maxChars: number) {
   return compact.length > maxChars ? `${compact.slice(0, maxChars).trim()}...` : compact;
 }
 
-function normalizeSignals(payload: SignalPayload, sources: VeraSource[]): SourceSignal[] {
+function normalizeSignals(payload: SignalPayload, sources: VeraSource[], evidenceType: QueryEvidenceType): SourceSignal[] {
   const sourceByUrl = new Map(sources.map((source) => [source.url, source]));
 
   const rawSignals = payload.sourceSignals.flatMap((sourceSignal) => {
@@ -304,7 +315,7 @@ function normalizeSignals(payload: SignalPayload, sources: VeraSource[]): Source
     }
 
     const sourceType = sourceSignal.sourceType || inferSourceType(source);
-    const sourceWeight = sourceTypeWeight(sourceType);
+    const sourceWeight = sourceTypeWeight(sourceType, evidenceType);
     const sourceQuality = sourceSignal.sourceQuality || inferSourceQuality(source, sourceType);
     const sourceQualityWeight = sourceQualityWeightFor(sourceQuality);
 
@@ -387,6 +398,9 @@ function signalPower(signal: SourceSignal) {
 
 function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query: string): StructuredConsensus {
   const intendedCategory = inferIntendedCategory(query);
+  const queryEvidenceType = inferQueryEvidenceType(query);
+  const evidenceStrategy = evidenceStrategyFor(queryEvidenceType);
+  const specializedDominantPlatformQuery = queryEvidenceType === "dominant_platform" && isSpecializedDominantPlatformQuery(query);
   const byName = new Map<string, SourceSignal[]>();
 
   for (const signal of signals) {
@@ -396,7 +410,15 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
   }
 
   const contendersBeforeFiltering = Array.from(byName.entries())
-    .map(([name, contenderSignals]) => applyCategoryRelevance(buildContenderMetrics(name, contenderSignals), intendedCategory, contenderSignals))
+    .map(([name, contenderSignals]) =>
+      applyEvidenceStrategy(
+        applyCategoryRelevance(buildContenderMetrics(name, contenderSignals, queryEvidenceType), intendedCategory, contenderSignals),
+        query,
+        queryEvidenceType,
+        specializedDominantPlatformQuery,
+        contenderSignals
+      )
+    )
     .sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount);
 
   const { contenders, removed } = filterContendersByCategory(contendersBeforeFiltering, intendedCategory);
@@ -420,11 +442,26 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
     }))
   );
   console.log("FILTERED_CONTENDERS", removed);
+  console.log("QUERY_EVIDENCE_TYPE", queryEvidenceType);
+  console.log("EVIDENCE_STRATEGY", evidenceStrategy);
+  console.log("WEIGHTED_SOURCE_TYPES", weightedSourceTypes(queryEvidenceType));
 
   const themeCounts = aggregateThemeCounts(filteredSignals);
   const sourceBreakdown = aggregateSourceBreakdown(sources, filteredSignals);
-  const consensusClassification = classifyFromMetrics(contenders, sources.length);
+  const consensusClassification = classifyFromMetrics(contenders, sources.length, queryEvidenceType);
   logConsensusDiagnostics(contenders, sources.length, consensusClassification);
+  console.log(
+    "FINAL_CONTENDERS",
+    contenders.slice(0, 5).map((contender, index) => ({
+      rank: index + 1,
+      name: contender.name,
+      consensusScore: consensusScore(contender),
+      netWeightedScore: contender.netWeightedScore,
+      positiveMentionCount: contender.positiveMentionCount,
+      sourceCount: contender.sourceCount,
+      sourceTypes: contender.sourceTypes
+    }))
+  );
   const winner = consensusClassification === "no_reliable_consensus" ? undefined : contenders[0]?.name;
   const mentionCounts = Object.fromEntries(
     contenders.map((contender) => [
@@ -449,6 +486,8 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
   return {
     winner,
     intendedCategory,
+    queryEvidenceType,
+    evidenceStrategy,
     contenders,
     mentionCounts,
     themeCounts,
@@ -459,7 +498,7 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
   };
 }
 
-function buildContenderMetrics(name: string, signals: SourceSignal[]): ContenderMetrics {
+function buildContenderMetrics(name: string, signals: SourceSignal[], evidenceType: QueryEvidenceType): ContenderMetrics {
   const sourceUrls = Array.from(new Set(signals.map((signal) => signal.sourceUrl)));
   const sourceTypes = Array.from(new Set(signals.map((signal) => signal.sourceType)));
   const positiveMentionCount = signals.filter((signal) => signal.sentiment === "positive").length;
@@ -486,7 +525,7 @@ function buildContenderMetrics(name: string, signals: SourceSignal[]): Contender
       return total + signal.sourceWeight * signal.sourceQualityWeight * mentionStrengthWeight(signal.mentionStrength);
     }, 0)
   );
-  const sourceDiversityScore = round1(sourceTypes.reduce((total, type) => total + sourceTypeWeight(type), 0));
+  const sourceDiversityScore = round1(sourceTypes.reduce((total, type) => total + sourceTypeWeight(type, evidenceType), 0));
   const netWeightedScore = round1(
     weightedPositiveScore -
       weightedNegativeScore * 0.8 +
@@ -529,6 +568,73 @@ function applyCategoryRelevance(metrics: ContenderMetrics, intendedCategory: Ver
     categoryConfidence: detected.categoryConfidence,
     netWeightedScore: shouldPenalty ? round1(metrics.netWeightedScore - categoryMismatchPenalty) : metrics.netWeightedScore
   };
+}
+
+function applyEvidenceStrategy(
+  metrics: ContenderMetrics,
+  query: string,
+  evidenceType: QueryEvidenceType,
+  specializedDominantPlatformQuery: boolean,
+  signals: SourceSignal[]
+): ContenderMetrics {
+  if (evidenceType !== "dominant_platform") {
+    return metrics;
+  }
+
+  const defaultPlatform = dominantPlatformForQuery(query);
+  const isDefaultPlatform = defaultPlatform ? contenderMatchesPlatform(metrics.name, defaultPlatform.aliases) : false;
+  const broadEvidenceSignals = signals.filter((signal) => {
+    const text = normalizeQuery(`${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""} ${signal.themes.join(" ")}`);
+    return /\b(market share|dominant|default|most used|widely used|usage|leader|standard|popular|mainstream)\b/.test(text);
+  }).length;
+  const expertSignals = signals.filter((signal) => isEditorialLike(signal.sourceType)).length;
+  const privacySignals = signals.filter((signal) => {
+    const text = normalizeQuery(`${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""} ${signal.themes.join(" ")}`);
+    return /\b(private|privacy|independent|secure|anonymous|tracking|no tracking)\b/.test(text);
+  }).length;
+  const defaultBoost = !specializedDominantPlatformQuery && isDefaultPlatform ? 18 : 0;
+  const broadEvidenceBoost = Math.min(broadEvidenceSignals, 4) * 2.2;
+  const expertEvidenceBoost = Math.min(expertSignals, 4) * 1.4;
+  const nichePenalty = !specializedDominantPlatformQuery && !isDefaultPlatform && privacySignals >= 2 ? 5 : 0;
+  const privacyBoost = specializedDominantPlatformQuery && privacySignals > 0 ? Math.min(privacySignals, 4) * 2.5 : 0;
+  const netWeightedScore = round1(metrics.netWeightedScore + defaultBoost + broadEvidenceBoost + expertEvidenceBoost + privacyBoost - nichePenalty);
+
+  return {
+    ...metrics,
+    weightedPositiveScore: round1(metrics.weightedPositiveScore + defaultBoost / 4 + broadEvidenceBoost / 3 + expertEvidenceBoost / 4 + privacyBoost / 3),
+    netWeightedScore
+  };
+}
+
+function dominantPlatformForQuery(query: string) {
+  const normalized = normalizeQuery(query);
+
+  if (/\bsearch engine\b/.test(normalized)) {
+    return { label: "Google", aliases: ["google", "google search"] };
+  }
+
+  if (/\bbrowser\b/.test(normalized)) {
+    return { label: "Google Chrome", aliases: ["chrome", "google chrome"] };
+  }
+
+  if (/\b(email provider|email service|mail provider)\b/.test(normalized)) {
+    return { label: "Gmail", aliases: ["gmail", "google mail"] };
+  }
+
+  if (/\b(maps app|map app|navigation app)\b/.test(normalized)) {
+    return { label: "Google Maps", aliases: ["google maps"] };
+  }
+
+  if (/\b(video platform|video site)\b/.test(normalized)) {
+    return { label: "YouTube", aliases: ["youtube"] };
+  }
+
+  return null;
+}
+
+function contenderMatchesPlatform(name: string, aliases: string[]) {
+  const normalized = normalizeQuery(name);
+  return aliases.some((alias) => normalized === alias || normalized.includes(alias));
 }
 
 function filterContendersByCategory(contenders: ContenderMetrics[], intendedCategory: VeraEntityCategory) {
@@ -769,22 +875,28 @@ function notEnoughData(query: string, sources: VeraSource[], explanation: string
   };
 }
 
-function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number): ConsensusMode {
+function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number, evidenceType: QueryEvidenceType): ConsensusMode {
   if (sourceCount < classificationThresholds.minimumSourceCount || contenders.length === 0) {
     return "no_reliable_consensus";
   }
 
   const totalPositiveMentions = contenders.reduce((total, contender) => total + contender.positiveMentionCount, 0);
   const positiveSourceCount = new Set(contenders.flatMap((contender) => (contender.positiveMentionCount > 0 ? contender.sourceUrls : []))).size;
+  const top = contenders[0];
+  const hasDominantPlatformEvidence =
+    evidenceType === "dominant_platform" &&
+    Boolean(top) &&
+    top.sourceCount >= classificationThresholds.minimumTopSourceCount &&
+    top.netWeightedScore >= 12;
 
   if (
-    totalPositiveMentions < classificationThresholds.minimumTotalPositiveMentions ||
-    positiveSourceCount < classificationThresholds.minimumPositiveSourceCount
+    !hasDominantPlatformEvidence &&
+    (totalPositiveMentions < classificationThresholds.minimumTotalPositiveMentions ||
+      positiveSourceCount < classificationThresholds.minimumPositiveSourceCount)
   ) {
     return "no_reliable_consensus";
   }
 
-  const top = contenders[0];
   const second = contenders[1];
 
   if (!top) {
@@ -1093,7 +1205,31 @@ function inferSourceType(source: VeraSource): VeraSourceType {
   return "other";
 }
 
-function sourceTypeWeight(type: VeraSourceType) {
+function weightedSourceTypes(evidenceType: QueryEvidenceType) {
+  return Object.fromEntries(sourceTypes.map((type) => [type, sourceTypeWeight(type, evidenceType)]));
+}
+
+function sourceTypeWeight(type: VeraSourceType, evidenceType: QueryEvidenceType = "local_recommendation") {
+  if (evidenceType === "dominant_platform") {
+    if (type === "professional_review") return 2.2;
+    if (type === "editorial") return 2;
+    if (type === "review_site") return 1.4;
+    if (type === "official") return 1.2;
+    if (type === "reddit" || type === "forum") return 0.8;
+    if (type === "local_guide") return 1;
+    return 1;
+  }
+
+  if (evidenceType === "product_recommendation" || evidenceType === "software_tool") {
+    if (type === "professional_review") return 2.2;
+    if (type === "editorial") return 1.8;
+    if (type === "review_site") return 1.4;
+    if (type === "reddit" || type === "forum") return 1;
+    if (type === "local_guide") return 1;
+    if (type === "official") return 0.5;
+    return 1;
+  }
+
   if (type === "reddit" || type === "forum" || type === "review_site") return 1;
   if (type === "editorial" || type === "local_guide" || type === "professional_review") return 2;
   if (type === "official") return 0.5;
