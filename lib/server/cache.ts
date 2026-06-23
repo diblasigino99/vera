@@ -22,6 +22,18 @@ type LocalCacheEntry = {
 
 type LocalCacheFile = Record<string, LocalCacheEntry>;
 
+type SupabaseSearchCacheRow = {
+  id?: string;
+  original_query?: string | null;
+  query?: string | null;
+  normalized_query?: string | null;
+  result_json?: ConsensusResponse | null;
+  result?: ConsensusResponse | null;
+  sources_json?: ConsensusResponse["sources"] | null;
+  cache_version?: number | null;
+  updated_at?: string | null;
+};
+
 type LocalSavesFile = Record<
   string,
   {
@@ -38,9 +50,44 @@ const memorySaves = new Map<string, LocalSavesFile[string]>();
 
 export async function getCachedConsensus(query: string) {
   const normalizedQuery = normalizeQuery(query);
+  const supabase = getSupabaseAdmin();
+
+  if (supabase) {
+    console.log("[vera:cache] cache lookup started", {
+      normalizedQuery,
+      cacheVersion: localCacheVersion,
+      store: "supabase"
+    });
+
+    const supabaseHit = await getSupabaseCachedConsensus(query, normalizedQuery);
+
+    if (supabaseHit) {
+      memorySearches.set(normalizedQuery, supabaseHit);
+      console.log("[vera:cache] cache hit", {
+        normalizedQuery,
+        cacheVersion: localCacheVersion,
+        store: "supabase",
+        searchId: supabaseHit.id
+      });
+      return { ...supabaseHit, cached: true };
+    }
+
+    console.log("[vera:cache] cache miss", {
+      normalizedQuery,
+      cacheVersion: localCacheVersion,
+      store: "supabase"
+    });
+  }
+
   const local = memorySearches.get(normalizedQuery);
 
   if (local) {
+    console.log("[vera:cache] cache hit", {
+      normalizedQuery,
+      cacheVersion: localCacheVersion,
+      store: "memory",
+      searchId: local.id
+    });
     return { ...local, cached: true };
   }
 
@@ -49,38 +96,21 @@ export async function getCachedConsensus(query: string) {
 
   if (localFileHit?.result && localFileHit.cache_version === localCacheVersion) {
     memorySearches.set(normalizedQuery, localFileHit.result);
+    console.log("[vera:cache] cache hit", {
+      normalizedQuery,
+      cacheVersion: localCacheVersion,
+      store: "local-json",
+      searchId: localFileHit.result.id
+    });
     return { ...localFileHit.result, cached: true };
   }
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase) {
-    return null;
-  }
-
-  const { data, error } = await supabase
-    .from("search_cache")
-    .select("result")
-    .eq("normalized_query", normalizedQuery)
-    .maybeSingle();
-
-  if (error || !data?.result) {
-    return null;
-  }
-
-  const result = data.result as ConsensusResponse;
-
-  if (result.cacheVersion !== localCacheVersion) {
-    console.log("[vera:cache] Ignoring stale Supabase cache entry", {
-      query,
-      normalizedQuery,
-      cachedVersion: result.cacheVersion ?? "missing",
-      expectedVersion: localCacheVersion,
-      cachedMode: result.mode
-    });
-    return null;
-  }
-
-  return { ...result, cached: true };
+  console.log("[vera:cache] cache miss", {
+    normalizedQuery,
+    cacheVersion: localCacheVersion,
+    store: supabase ? "memory/local-json-after-supabase" : "memory/local-json"
+  });
+  return null;
 }
 
 export async function getConsensusById(searchId: string) {
@@ -105,41 +135,178 @@ export async function getConsensusById(searchId: string) {
 
   const { data, error } = await supabase
     .from("search_cache")
-    .select("result")
+    .select("result_json, result, sources_json, cache_version")
     .eq("id", searchId)
     .maybeSingle();
 
-  if (error || !data?.result) {
+  if (error) {
+    const legacy = await supabase.from("search_cache").select("result").eq("id", searchId).maybeSingle();
+    const legacyResult = legacy.data?.result as ConsensusResponse | undefined;
+
+    if (!legacy.error && legacyResult) {
+      return legacyResult;
+    }
+
     return null;
   }
 
-  return data.result as ConsensusResponse;
+  const result = consensusFromSupabaseRow(data as SupabaseSearchCacheRow);
+
+  if (!result) {
+    return null;
+  }
+
+  return result;
 }
 
 export async function cacheConsensus(consensus: ConsensusResponse) {
   const versionedConsensus = { ...consensus, cacheVersion: localCacheVersion };
 
   memorySearches.set(versionedConsensus.normalizedQuery, versionedConsensus);
-  await writeLocalCacheEntry(versionedConsensus);
 
   const supabase = getSupabaseAdmin();
+  if (supabase) {
+    await writeSupabaseCacheEntry(versionedConsensus);
+    return;
+  }
+
+  await writeLocalCacheEntry(versionedConsensus);
+}
+
+async function getSupabaseCachedConsensus(query: string, normalizedQuery: string) {
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("search_cache")
+    .select("id, original_query, normalized_query, result_json, sources_json, cache_version, updated_at")
+    .eq("normalized_query", normalizedQuery)
+    .eq("cache_version", localCacheVersion)
+    .maybeSingle();
+
+  if (!error) {
+    return consensusFromSupabaseRow(data as SupabaseSearchCacheRow | null);
+  }
+
+  console.log("[vera:cache] cache lookup failed", {
+    normalizedQuery,
+    cacheVersion: localCacheVersion,
+    store: "supabase",
+    error: error.message
+  });
+
+  const legacy = await supabase.from("search_cache").select("result").eq("normalized_query", normalizedQuery).maybeSingle();
+
+  if (legacy.error || !legacy.data?.result) {
+    return null;
+  }
+
+  const legacyResult = legacy.data.result as ConsensusResponse;
+
+  if (legacyResult.cacheVersion !== localCacheVersion) {
+    console.log("[vera:cache] Ignoring stale Supabase cache entry", {
+      query,
+      normalizedQuery,
+      cachedVersion: legacyResult.cacheVersion ?? "missing",
+      expectedVersion: localCacheVersion,
+      cachedMode: legacyResult.mode
+    });
+    return null;
+  }
+
+  return legacyResult;
+}
+
+async function writeSupabaseCacheEntry(consensus: ConsensusResponse) {
+  const supabase = getSupabaseAdmin();
+
   if (!supabase) {
     return;
   }
 
-  await supabase.from("search_cache").upsert(
-    {
-      id: consensus.id,
-      query: consensus.query,
-      normalized_query: consensus.normalizedQuery,
-      result: versionedConsensus,
-      created_at: consensus.createdAt,
-      updated_at: new Date().toISOString()
-    },
-    {
-      onConflict: "normalized_query"
-    }
-  );
+  const payload = {
+    id: consensus.id,
+    query: consensus.query,
+    original_query: consensus.query,
+    normalized_query: consensus.normalizedQuery,
+    result: consensus,
+    result_json: consensus,
+    sources_json: consensus.sources,
+    cache_version: localCacheVersion,
+    created_at: consensus.createdAt,
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = await supabase.from("search_cache").upsert(payload, {
+    onConflict: "normalized_query"
+  });
+
+  if (!error) {
+    console.log("[vera:cache] cache write success", {
+      normalizedQuery: consensus.normalizedQuery,
+      cacheVersion: localCacheVersion,
+      store: "supabase",
+      searchId: consensus.id
+    });
+    return;
+  }
+
+  console.log("[vera:cache] cache write failed", {
+    normalizedQuery: consensus.normalizedQuery,
+    cacheVersion: localCacheVersion,
+    store: "supabase",
+    error: error.message
+  });
+
+  const legacyPayload = {
+    id: consensus.id,
+    query: consensus.query,
+    normalized_query: consensus.normalizedQuery,
+    result: consensus,
+    created_at: consensus.createdAt,
+    updated_at: new Date().toISOString()
+  };
+  const legacyWrite = await supabase.from("search_cache").upsert(legacyPayload, {
+    onConflict: "normalized_query"
+  });
+
+  if (legacyWrite.error) {
+    console.log("[vera:cache] cache write failed", {
+      normalizedQuery: consensus.normalizedQuery,
+      cacheVersion: localCacheVersion,
+      store: "supabase-legacy",
+      error: legacyWrite.error.message
+    });
+    return;
+  }
+
+  console.log("[vera:cache] cache write success", {
+    normalizedQuery: consensus.normalizedQuery,
+    cacheVersion: localCacheVersion,
+    store: "supabase-legacy",
+    searchId: consensus.id
+  });
+}
+
+function consensusFromSupabaseRow(row?: SupabaseSearchCacheRow | null): ConsensusResponse | null {
+  if (!row) {
+    return null;
+  }
+
+  const result = row.result_json ?? row.result;
+
+  if (!result) {
+    return null;
+  }
+
+  return {
+    ...result,
+    cacheVersion: row.cache_version ?? result.cacheVersion,
+    sources: row.sources_json ?? result.sources
+  } satisfies ConsensusResponse;
 }
 
 export async function getSavedState(actorId: string, searchId: string, resultId?: string) {
@@ -272,23 +439,7 @@ async function ensureSupabaseSearch(searchId: string) {
     throw new Error("Saved search could not be found.");
   }
 
-  const { error } = await supabase.from("search_cache").upsert(
-    {
-      id: consensus.id,
-      query: consensus.query,
-      normalized_query: consensus.normalizedQuery,
-      result: consensus,
-      created_at: consensus.createdAt,
-      updated_at: new Date().toISOString()
-    },
-    {
-      onConflict: "normalized_query"
-    }
-  );
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  await writeSupabaseCacheEntry(consensus);
 }
 
 export async function saveSearch(searchId: string, actorId: string) {
@@ -365,12 +516,18 @@ export async function getProfileSnapshot(actorId?: string): Promise<ProfileSnaps
 
   if (supabase) {
     const [{ data: remoteRecent }, { data: savedSearchRows }, { data: savedResultRows }] = await Promise.all([
-      supabase.from("search_cache").select("id, query, result, created_at").order("created_at", { ascending: false }).limit(8),
+      supabase
+        .from("search_cache")
+        .select("id, original_query, query, result_json, result, sources_json, cache_version, created_at")
+        .order("created_at", { ascending: false })
+        .limit(8),
       supabase.from("saved_searches").select("search_id").eq("profile_id", actorId).order("created_at", { ascending: false }),
       supabase.from("saved_results").select("search_id, result_id").eq("profile_id", actorId).order("created_at", { ascending: false })
     ]);
 
-    const recentSearches = (remoteRecent ?? []).map((row) => row.result as ConsensusResponse);
+    const recentSearches = (remoteRecent ?? [])
+      .map((row) => consensusFromSupabaseRow(row as SupabaseSearchCacheRow))
+      .filter((item): item is ConsensusResponse => Boolean(item));
     const savedSearches = await Promise.all((savedSearchRows ?? []).map((row) => getConsensusById(row.search_id)));
     const savedResults = await savedResultsSnapshot(savedResultRows ?? []);
 

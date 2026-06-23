@@ -2,12 +2,31 @@ create extension if not exists pgcrypto;
 
 create table if not exists public.search_cache (
   id uuid primary key default gen_random_uuid(),
-  query text not null,
+  query text,
+  original_query text,
   normalized_query text not null unique,
-  result jsonb not null,
+  result jsonb,
+  result_json jsonb,
+  sources_json jsonb,
+  cache_version integer,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.search_cache add column if not exists original_query text;
+alter table public.search_cache add column if not exists result_json jsonb;
+alter table public.search_cache add column if not exists sources_json jsonb;
+alter table public.search_cache add column if not exists cache_version integer;
+alter table public.search_cache alter column query drop not null;
+alter table public.search_cache alter column result drop not null;
+
+update public.search_cache
+set
+  original_query = coalesce(original_query, query),
+  result_json = coalesce(result_json, result),
+  sources_json = coalesce(sources_json, result -> 'sources'),
+  cache_version = coalesce(cache_version, (result ->> 'cacheVersion')::integer)
+where result is not null;
 
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
