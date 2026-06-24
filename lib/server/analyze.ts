@@ -37,6 +37,10 @@ const openAITimeoutMs = 8000;
 const dominantPlatformOpenAITimeoutMs = 12000;
 const maxOpenAISources = 10;
 const maxOpenAISnippetChars = 320;
+const dominantPlatformMaxOpenAISources = 6;
+const dominantPlatformMaxOpenAISnippetChars = 220;
+const maxOpenAICompletionTokens = 4200;
+const dominantPlatformMaxOpenAICompletionTokens = 1800;
 
 const SignalSchema = z.object({
   intent: z.object({
@@ -99,6 +103,10 @@ export async function analyzeConsensus(query: string, sources: VeraSource[]): Pr
   return debug.consensus;
 }
 
+export function buildNoReliableConsensus(query: string, sources: VeraSource[], explanation = "Not enough reliable data to form a consensus.") {
+  return notEnoughData(query, sources, explanation);
+}
+
 export async function analyzeConsensusWithDebug(query: string, sources: VeraSource[]) {
   const key = process.env.OPENAI_API_KEY;
 
@@ -106,7 +114,8 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     throw new Error("OPENAI_API_KEY is required to extract consensus from real sources.");
   }
 
-  const modelSources = prepareSourcesForOpenAI(sources);
+  const evidenceType = inferQueryEvidenceType(query);
+  const modelSources = prepareSourcesForOpenAI(sources, evidenceType);
 
   if (modelSources.length < 3) {
     const consensus = notEnoughData(query, sources, "Not enough reliable data to form a consensus.");
@@ -117,7 +126,6 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     };
   }
 
-  const evidenceType = inferQueryEvidenceType(query);
   const sourceSignals = await extractSourceSignals(query, modelSources, key, evidenceType);
   const structuredConsensus = aggregateSignals(sourceSignals.signals, modelSources, query);
 
@@ -143,7 +151,11 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
 
 async function extractSourceSignals(query: string, sources: VeraSource[], key: string, evidenceType: QueryEvidenceType) {
   const timeoutMs = evidenceType === "dominant_platform" ? dominantPlatformOpenAITimeoutMs : openAITimeoutMs;
-  const openai = new OpenAI({ apiKey: key, timeout: timeoutMs });
+  const maxSnippetChars = snippetLimitForEvidenceType(evidenceType);
+  const maxMentionsPerSource = evidenceType === "dominant_platform" ? 2 : 3;
+  const maxCompletionTokens =
+    evidenceType === "dominant_platform" ? dominantPlatformMaxOpenAICompletionTokens : maxOpenAICompletionTokens;
+  const openai = new OpenAI({ apiKey: key, timeout: timeoutMs, maxRetries: 0 });
   const startedAt = Date.now();
   console.log("[vera:openai] input prepared", {
     query,
@@ -152,7 +164,9 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     evidenceType,
     evidenceStrategy: evidenceStrategyFor(evidenceType),
     timeoutMs,
-    maxSnippetChars: maxOpenAISnippetChars
+    maxSnippetChars,
+    maxMentionsPerSource,
+    maxCompletionTokens
   });
   const sourceText = sources
     .map((source, index) => {
@@ -163,7 +177,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
         `Domain: ${source.domain}`,
         `Query variant: ${source.queryVariant ?? query}`,
         `Inferred source type: ${inferSourceType(source)}`,
-        `Snippet: ${trimForOpenAI(source.snippet ?? "", maxOpenAISnippetChars)}`
+        `Snippet: ${trimForOpenAI(source.snippet ?? "", maxSnippetChars)}`
       ].join("\n");
     })
     .join("\n\n");
@@ -171,7 +185,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
   const completion = await openai.chat.completions.create({
     model: openAIModel,
     temperature: 0,
-    max_completion_tokens: 4200,
+    max_completion_tokens: maxCompletionTokens,
     response_format: {
       type: "json_schema",
       json_schema: {
@@ -244,7 +258,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
           "Extract evidence signals only; do not rank, score, summarize, or decide a winner.",
           "Use only the provided source snippets and titles.",
           "Every mention must belong to one named contender. Do not combine contenders.",
-          "Return at most 3 mentions per source. Prefer the strongest source-grounded recommendations and concerns.",
+          `Return at most ${maxMentionsPerSource} mentions per source. Prefer the strongest source-grounded recommendations and concerns.`,
           "Do not use generic categories, product types, or technologies as contender names when a specific named product, place, service, or option is present.",
           "sentiment must be positive, neutral, or negative.",
           "mentionStrength must be weak for passing mentions, moderate for clear recommendations, and strong for explicit best/top/ideal recommendations.",
@@ -262,6 +276,9 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
         content: [`Query: ${query}`, "", sourceText].join("\n")
       }
     ]
+  }, {
+    timeout: timeoutMs,
+    maxRetries: 0
   });
 
   const content = completion.choices[0]?.message.content;
@@ -294,11 +311,18 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
   };
 }
 
-function prepareSourcesForOpenAI(sources: VeraSource[]) {
-  return sources.slice(0, maxOpenAISources).map((source) => ({
+function prepareSourcesForOpenAI(sources: VeraSource[], evidenceType: QueryEvidenceType) {
+  const sourceLimit = evidenceType === "dominant_platform" ? dominantPlatformMaxOpenAISources : maxOpenAISources;
+  const snippetLimit = snippetLimitForEvidenceType(evidenceType);
+
+  return sources.slice(0, sourceLimit).map((source) => ({
     ...source,
-    snippet: trimForOpenAI(source.snippet ?? "", maxOpenAISnippetChars)
+    snippet: trimForOpenAI(source.snippet ?? "", snippetLimit)
   }));
+}
+
+function snippetLimitForEvidenceType(evidenceType: QueryEvidenceType) {
+  return evidenceType === "dominant_platform" ? dominantPlatformMaxOpenAISnippetChars : maxOpenAISnippetChars;
 }
 
 function trimForOpenAI(text: string, maxChars: number) {

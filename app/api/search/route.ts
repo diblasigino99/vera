@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { analyzeConsensus } from "@/lib/server/analyze";
+import { analyzeConsensus, buildNoReliableConsensus } from "@/lib/server/analyze";
 import { cacheConsensus, getCachedConsensus, getCacheVersion } from "@/lib/server/cache";
 import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { searchPublicWeb } from "@/lib/server/search";
-import { canonicalizeQuery, normalizeQuery } from "@/lib/utils";
+import { canonicalizeQuery, inferQueryEvidenceType, normalizeQuery } from "@/lib/utils";
 import type { ConsensusResponse } from "@/lib/types";
 import type { SearchPublicWebTimings } from "@/lib/server/search";
 
@@ -130,12 +130,39 @@ export async function POST(request: Request) {
     });
     const openAIStartedAt = Date.now();
     externalCallCounts.openAiCalls += 1;
-    const consensus = await analyzeConsensus(body.data.query, sources);
+    let consensus: ConsensusResponse;
+    let openAITimedOut = false;
+
+    try {
+      consensus = await analyzeConsensus(body.data.query, sources);
+    } catch (error) {
+      openAITimedOut = isTimeoutError(error);
+
+      if (inferQueryEvidenceType(body.data.query) !== "dominant_platform" || !openAITimedOut || sources.length < 3) {
+        throw error;
+      }
+
+      consensus = buildNoReliableConsensus(
+        body.data.query,
+        sources,
+        "Vera found relevant sources, but the live evidence extraction timed out before it could form a reliable consensus."
+      );
+    }
+
     const openAIElapsedMs = Date.now() - openAIStartedAt;
+    logDominantPlatformTiming({
+      query: body.data.query,
+      tavilyMs: tavilyElapsedMs,
+      openAiMs: openAIElapsedMs,
+      sourceCount: sources.length,
+      inputSourceCount: inferQueryEvidenceType(body.data.query) === "dominant_platform" ? Math.min(sources.length, 6) : sources.length,
+      timedOut: openAITimedOut
+    });
     console.log("[vera:search] OpenAI analysis returned", {
       query: body.data.query,
       mode: consensus.mode,
       elapsedMs: openAIElapsedMs,
+      timedOut: openAITimedOut,
       storedSources: consensus.sources.length,
       results: consensus.results.map((result) => result.name)
     });
@@ -171,6 +198,42 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Vera could not complete this search.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+function isTimeoutError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /timeout|timed out|request timed out/i.test(`${error.name} ${error.message}`);
+}
+
+function logDominantPlatformTiming({
+  query,
+  tavilyMs,
+  openAiMs,
+  sourceCount,
+  inputSourceCount,
+  timedOut
+}: {
+  query: string;
+  tavilyMs: number;
+  openAiMs: number;
+  sourceCount: number;
+  inputSourceCount: number;
+  timedOut: boolean;
+}) {
+  if (inferQueryEvidenceType(query) !== "dominant_platform") {
+    return;
+  }
+
+  console.log("DOMINANT_PLATFORM_TIMING", {
+    tavilyMs,
+    openAiMs,
+    sourceCount,
+    inputSourceCount,
+    timedOut
+  });
 }
 
 function buildCacheTestResult(originalQuery: string, normalizedQuery: string): ConsensusResponse {
