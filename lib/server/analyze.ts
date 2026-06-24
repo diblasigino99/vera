@@ -89,6 +89,52 @@ export function buildNoReliableConsensus(query: string, sources: VeraSource[], e
   return notEnoughData(query, sources, explanation);
 }
 
+export function buildDominantPlatformFallbackConsensus(
+  query: string,
+  sources: VeraSource[],
+  explanation = "Vera found strong platform-default evidence, but live extraction timed out before all alternatives could be scored."
+): ConsensusResponse | null {
+  const evidenceType = inferQueryEvidenceType(query);
+  const incumbent = dominantPlatformForQuery(query);
+
+  if (evidenceType !== "dominant_platform" || isSpecializedDominantPlatformQuery(query) || !incumbent || sources.length < 3) {
+    return null;
+  }
+
+  const supportSources = sources.filter((source) => sourceMentionsPlatform(source, incumbent.aliases));
+  const resultSources = (supportSources.length ? supportSources : sources).slice(0, 5);
+  const createdAt = new Date().toISOString();
+
+  return {
+    id: crypto.randomUUID(),
+    query,
+    normalizedQuery: normalizeQuery(query),
+    canonicalQuery: canonicalizeQuery(query),
+    generated_at: createdAt,
+    model: openAIModel,
+    mode: "moderate_consensus",
+    headline: `${incumbent.label} is the default consensus pick.`,
+    explanation,
+    intent: intentFromQuery(query),
+    results: [
+      {
+        id: `${slugify(incumbent.label)}-1`,
+        rank: 1,
+        name: incumbent.label,
+        consensusPercentage: 70,
+        summary: `${incumbent.label} appears as the broad default for this platform category, with alternatives still worth comparing.`,
+        reasons: ["Default incumbent", "Broad recognition", "Market-leading usage"],
+        downsides: [],
+        evidence: [explanation],
+        sources: resultSources
+      }
+    ],
+    sources,
+    createdAt,
+    cached: false
+  };
+}
+
 export async function analyzeConsensusWithDebug(query: string, sources: VeraSource[]) {
   const key = process.env.OPENAI_API_KEY;
 
