@@ -217,7 +217,7 @@ function isTimeoutError(error: unknown) {
 }
 
 function openAIInputSourceCount(evidenceType: ReturnType<typeof inferQueryEvidenceType>, sourceCount: number) {
-  return Math.min(sourceCount, evidenceType === "dominant_platform" ? 6 : 8);
+  return Math.min(sourceCount, 5);
 }
 
 function logDominantPlatformTiming({

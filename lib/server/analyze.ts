@@ -35,37 +35,19 @@ const sourceTypes = [
 const openAIModel = "gpt-4.1-mini";
 const openAITimeoutMs = 8000;
 const dominantPlatformOpenAITimeoutMs = 12000;
-const maxOpenAISources = 8;
-const maxOpenAISnippetChars = 220;
-const dominantPlatformMaxOpenAISources = 6;
-const dominantPlatformMaxOpenAISnippetChars = 220;
-const maxOpenAICompletionTokens = 2200;
-const dominantPlatformMaxOpenAICompletionTokens = 1800;
+const maxOpenAISources = 5;
+const maxOpenAISnippetChars = 150;
+const maxOpenAICompletionTokens = 700;
 
 const SignalSchema = z.object({
-  intent: z.object({
-    category: z.string(),
-    location: z.string().optional(),
-    constraints: z.array(z.string()),
-    optimizeFor: z.array(z.string()),
-    avoid: z.array(z.string())
-  }),
-  sourceSignals: z.array(
+  extractions: z.array(
     z.object({
       sourceUrl: z.string(),
+      contender: z.string(),
+      sentiment: z.enum(["positive", "neutral", "negative"]),
+      reason: z.string(),
       sourceType: z.enum(sourceTypes),
-      sourceQuality: z.enum(["low", "medium", "high"]),
-      mentions: z.array(
-        z.object({
-          contenderName: z.string(),
-          sentiment: z.enum(["positive", "neutral", "negative"]),
-          mentionStrength: z.enum(["weak", "moderate", "strong"]),
-          positiveMention: z.string().nullable(),
-          negativeMention: z.string().nullable(),
-          extractedReason: z.string(),
-          themes: z.array(z.string())
-        })
-      )
+      noContender: z.boolean()
     })
   )
 });
@@ -115,7 +97,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   }
 
   const evidenceType = inferQueryEvidenceType(query);
-  const modelSources = prepareSourcesForOpenAI(sources, evidenceType);
+  const modelSources = prepareSourcesForOpenAI(sources);
 
   if (modelSources.length < 3) {
     const consensus = notEnoughData(query, sources, "Not enough reliable data to form a consensus.");
@@ -151,10 +133,8 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
 
 async function extractSourceSignals(query: string, sources: VeraSource[], key: string, evidenceType: QueryEvidenceType) {
   const timeoutMs = evidenceType === "dominant_platform" ? dominantPlatformOpenAITimeoutMs : openAITimeoutMs;
-  const maxSnippetChars = snippetLimitForEvidenceType(evidenceType);
-  const maxMentionsPerSource = 2;
-  const maxCompletionTokens =
-    evidenceType === "dominant_platform" ? dominantPlatformMaxOpenAICompletionTokens : maxOpenAICompletionTokens;
+  const maxSnippetChars = maxOpenAISnippetChars;
+  const maxCompletionTokens = maxOpenAICompletionTokens;
   const openai = new OpenAI({ apiKey: key, timeout: timeoutMs, maxRetries: 0 });
   const startedAt = Date.now();
   console.log("[vera:openai] input prepared", {
@@ -165,17 +145,16 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     evidenceStrategy: evidenceStrategyFor(evidenceType),
     timeoutMs,
     maxSnippetChars,
-    maxMentionsPerSource,
     maxCompletionTokens
   });
   console.log("OPENAI_EXTRACTION_CONFIG", {
     evidenceType,
     inputSourceCount: sources.length,
     maxSnippetChars,
-    maxMentionsPerSource,
     maxCompletionTokens,
     timeoutMs
   });
+  console.log("EXTRACTION_SOURCE_COUNT", sources.length);
   const sourceText = sources
     .map((source, index) => {
       return [
@@ -194,89 +173,21 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     model: openAIModel,
     temperature: 0,
     max_completion_tokens: maxCompletionTokens,
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "vera_source_signals",
-        strict: true,
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          required: ["intent", "sourceSignals"],
-          properties: {
-            intent: {
-              type: "object",
-              additionalProperties: false,
-              required: ["category", "location", "constraints", "optimizeFor", "avoid"],
-              properties: {
-                category: { type: "string" },
-                location: { type: "string" },
-                constraints: { type: "array", items: { type: "string" } },
-                optimizeFor: { type: "array", items: { type: "string" } },
-                avoid: { type: "array", items: { type: "string" } }
-              }
-            },
-            sourceSignals: {
-              type: "array",
-              items: {
-                type: "object",
-                additionalProperties: false,
-                required: ["sourceUrl", "sourceType", "sourceQuality", "mentions"],
-                properties: {
-                  sourceUrl: { type: "string" },
-                  sourceType: { type: "string", enum: [...sourceTypes] },
-                  sourceQuality: { type: "string", enum: ["low", "medium", "high"] },
-                  mentions: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      additionalProperties: false,
-                      required: [
-                        "contenderName",
-                        "sentiment",
-                        "mentionStrength",
-                        "positiveMention",
-                        "negativeMention",
-                        "extractedReason",
-                        "themes"
-                      ],
-                      properties: {
-                        contenderName: { type: "string" },
-                        sentiment: { type: "string", enum: ["positive", "neutral", "negative"] },
-                        mentionStrength: { type: "string", enum: ["weak", "moderate", "strong"] },
-                        positiveMention: { anyOf: [{ type: "string" }, { type: "null" }] },
-                        negativeMention: { anyOf: [{ type: "string" }, { type: "null" }] },
-                        extractedReason: { type: "string" },
-                        themes: { type: "array", items: { type: "string" } }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
+    response_format: { type: "json_object" },
     messages: [
       {
         role: "system",
         content: [
-          "You are Vera's source-signal extractor.",
-          "Extract evidence signals only; do not rank, score, summarize, or decide a winner.",
-          "Use only the provided source snippets and titles.",
-          "Every mention must belong to one named contender. Do not combine contenders.",
-          `Return at most ${maxMentionsPerSource} mentions per source. Prefer the strongest source-grounded recommendations and concerns.`,
-          "Do not use generic categories, product types, or technologies as contender names when a specific named product, place, service, or option is present.",
-          "sentiment must be positive, neutral, or negative.",
-          "mentionStrength must be weak for passing mentions, moderate for clear recommendations, and strong for explicit best/top/ideal recommendations.",
-          "positiveMention and negativeMention must be short source-grounded phrases, or null if not present.",
-          "extractedReason must be a short decision-oriented reason grounded in the mention.",
-          "Themes should be useful decision patterns such as romantic atmosphere, excellent cocktail program, conversation-friendly layout, strong wine program, good value, family friendly, reliable coverage, central location.",
-          "Avoid shallow one-word themes when a decision-oriented phrase is supported.",
-          "If a source is irrelevant or has no specific contender, return that source with an empty mentions array.",
-          "Classify sourceType as reddit, forum, review_site, editorial, local_guide, professional_review, official, or other.",
-          "sourceQuality should be high for reputable editorial/professional/local guides with specific recommendations, medium for useful discussions/review platforms, and low for thin, vague, promotional, or irrelevant pages."
+          'Return exactly this JSON shape: {"extractions":[{"sourceUrl":"","contender":"","sentiment":"positive","reason":"","sourceType":"other","noContender":false}]}',
+          "Extract one simple evidence record per source.",
+          "Analyze each source independently.",
+          "Do not rank, summarize, compare, explain consensus, or mention multiple contenders.",
+          "For each source choose the single most supported named contender, if one exists.",
+          "If no named contender is present, set noContender true and contender/reason to empty strings.",
+          "sentiment must be positive, negative, or neutral.",
+          "reason must be a short phrase grounded only in that source.",
+          "sourceType must be reddit, forum, review_site, editorial, local_guide, professional_review, official, or other.",
+          "Return JSON only."
         ].join(" ")
       },
       {
@@ -302,35 +213,30 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
   }
 
   const signals = normalizeSignals(parsed.data, sources, evidenceType);
+  const durationMs = Date.now() - startedAt;
 
   console.log("[vera:openai] output received", {
     query,
-    elapsedMs: Date.now() - startedAt,
-    sourceSignalsReturned: parsed.data.sourceSignals.length,
-    sourcesWithMentions: parsed.data.sourceSignals.filter((source) => source.mentions.length > 0).length,
+    elapsedMs: durationMs,
+    extractionOutputCount: parsed.data.extractions.length,
     normalizedSignals: signals.length
   });
+  console.log("EXTRACTION_OUTPUT_COUNT", parsed.data.extractions.length);
+  console.log("EXTRACTION_DURATION", durationMs);
 
   return {
     rawOpenAIContent: content,
     parsedOpenAIAnalysis: parsed.data,
-    intent: parsed.data.intent,
+    intent: intentFromQuery(query),
     signals
   };
 }
 
-function prepareSourcesForOpenAI(sources: VeraSource[], evidenceType: QueryEvidenceType) {
-  const sourceLimit = evidenceType === "dominant_platform" ? dominantPlatformMaxOpenAISources : maxOpenAISources;
-  const snippetLimit = snippetLimitForEvidenceType(evidenceType);
-
-  return sources.slice(0, sourceLimit).map((source) => ({
+function prepareSourcesForOpenAI(sources: VeraSource[]) {
+  return sources.slice(0, maxOpenAISources).map((source) => ({
     ...source,
-    snippet: trimForOpenAI(source.snippet ?? "", snippetLimit)
+    snippet: trimForOpenAI(source.snippet ?? "", maxOpenAISnippetChars)
   }));
-}
-
-function snippetLimitForEvidenceType(evidenceType: QueryEvidenceType) {
-  return evidenceType === "dominant_platform" ? dominantPlatformMaxOpenAISnippetChars : maxOpenAISnippetChars;
 }
 
 function trimForOpenAI(text: string, maxChars: number) {
@@ -338,24 +244,55 @@ function trimForOpenAI(text: string, maxChars: number) {
   return compact.length > maxChars ? `${compact.slice(0, maxChars).trim()}...` : compact;
 }
 
+function intentFromQuery(query: string): ConsensusResponse["intent"] {
+  const normalized = normalizeQuery(query);
+  const category = normalized
+    .replace(/\b(best|top|great|good|recommended|highest rated|most recommended)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return {
+    category: category || "Decision",
+    location: "",
+    constraints: [],
+    optimizeFor: [],
+    avoid: []
+  };
+}
+
+function inferMentionStrength(reason: string): SourceSignal["mentionStrength"] {
+  const normalized = normalizeQuery(reason);
+
+  if (/\b(best|top|favorite|strongly recommend|most recommended|clear winner|dominant|default)\b/.test(normalized)) {
+    return "strong";
+  }
+
+  if (/\b(recommend|recommended|good|great|useful|popular|credible|strong)\b/.test(normalized)) {
+    return "moderate";
+  }
+
+  return "weak";
+}
+
 function normalizeSignals(payload: SignalPayload, sources: VeraSource[], evidenceType: QueryEvidenceType): SourceSignal[] {
   const sourceByUrl = new Map(sources.map((source) => [source.url, source]));
 
-  const rawSignals = payload.sourceSignals.flatMap((sourceSignal) => {
-    const source = sourceByUrl.get(sourceSignal.sourceUrl);
+  const rawSignals = payload.extractions.flatMap((extraction) => {
+    const source = sourceByUrl.get(extraction.sourceUrl);
 
-    if (!source) {
+    if (!source || extraction.noContender || !extraction.contender.trim()) {
       return [];
     }
 
-    const sourceType = sourceSignal.sourceType || inferSourceType(source);
+    const sourceType = extraction.sourceType || inferSourceType(source);
     const sourceWeight = sourceTypeWeight(sourceType, evidenceType);
-    const sourceQuality = sourceSignal.sourceQuality || inferSourceQuality(source, sourceType);
+    const sourceQuality = inferSourceQuality(source, sourceType);
     const sourceQualityWeight = sourceQualityWeightFor(sourceQuality);
+    const reason = extraction.reason.trim() || "Mentioned as a contender";
+    const sentiment = extraction.sentiment;
 
-    return sourceSignal.mentions
-      .filter((mention) => mention.contenderName.trim())
-      .map((mention) => ({
+    return [
+      {
         sourceUrl: source.url,
         sourceTitle: source.title,
         domain: source.domain,
@@ -364,14 +301,15 @@ function normalizeSignals(payload: SignalPayload, sources: VeraSource[], evidenc
         sourceQuality,
         sourceQualityWeight,
         queryVariant: source.queryVariant,
-        contenderName: cleanName(mention.contenderName),
-        sentiment: mention.sentiment,
-        mentionStrength: mention.mentionStrength,
-        positiveMention: mention.sentiment === "positive" ? mention.positiveMention?.trim() || mention.extractedReason?.trim() || undefined : undefined,
-        negativeMention: mention.sentiment === "negative" ? mention.negativeMention?.trim() || mention.extractedReason?.trim() || undefined : undefined,
-        extractedReason: mention.extractedReason?.trim() || mention.positiveMention?.trim() || mention.negativeMention?.trim() || "Mentioned as a contender",
-        themes: mention.themes.map(normalizeTheme).filter(Boolean).slice(0, 8)
-      }));
+        contenderName: cleanName(extraction.contender),
+        sentiment,
+        mentionStrength: inferMentionStrength(reason),
+        positiveMention: sentiment === "positive" ? reason : undefined,
+        negativeMention: sentiment === "negative" ? reason : undefined,
+        extractedReason: reason,
+        themes: [normalizeTheme(reason)].filter(Boolean).slice(0, 1)
+      } satisfies SourceSignal
+    ];
   });
 
   const dedupedSignals = dedupeSignals(rawSignals);
