@@ -35,11 +35,11 @@ const sourceTypes = [
 const openAIModel = "gpt-4.1-mini";
 const openAITimeoutMs = 8000;
 const dominantPlatformOpenAITimeoutMs = 12000;
-const maxOpenAISources = 10;
-const maxOpenAISnippetChars = 320;
+const maxOpenAISources = 8;
+const maxOpenAISnippetChars = 220;
 const dominantPlatformMaxOpenAISources = 6;
 const dominantPlatformMaxOpenAISnippetChars = 220;
-const maxOpenAICompletionTokens = 4200;
+const maxOpenAICompletionTokens = 2200;
 const dominantPlatformMaxOpenAICompletionTokens = 1800;
 
 const SignalSchema = z.object({
@@ -152,7 +152,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
 async function extractSourceSignals(query: string, sources: VeraSource[], key: string, evidenceType: QueryEvidenceType) {
   const timeoutMs = evidenceType === "dominant_platform" ? dominantPlatformOpenAITimeoutMs : openAITimeoutMs;
   const maxSnippetChars = snippetLimitForEvidenceType(evidenceType);
-  const maxMentionsPerSource = evidenceType === "dominant_platform" ? 2 : 3;
+  const maxMentionsPerSource = 2;
   const maxCompletionTokens =
     evidenceType === "dominant_platform" ? dominantPlatformMaxOpenAICompletionTokens : maxOpenAICompletionTokens;
   const openai = new OpenAI({ apiKey: key, timeout: timeoutMs, maxRetries: 0 });
@@ -167,6 +167,14 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     maxSnippetChars,
     maxMentionsPerSource,
     maxCompletionTokens
+  });
+  console.log("OPENAI_EXTRACTION_CONFIG", {
+    evidenceType,
+    inputSourceCount: sources.length,
+    maxSnippetChars,
+    maxMentionsPerSource,
+    maxCompletionTokens,
+    timeoutMs
   });
   const sourceText = sources
     .map((source, index) => {

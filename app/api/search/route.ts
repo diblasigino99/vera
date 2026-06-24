@@ -132,15 +132,23 @@ export async function POST(request: Request) {
     externalCallCounts.openAiCalls += 1;
     let consensus: ConsensusResponse;
     let openAITimedOut = false;
+    const evidenceType = inferQueryEvidenceType(body.data.query);
 
     try {
       consensus = await analyzeConsensus(body.data.query, sources);
     } catch (error) {
       openAITimedOut = isTimeoutError(error);
 
-      if (inferQueryEvidenceType(body.data.query) !== "dominant_platform" || !openAITimedOut || sources.length < 3) {
+      if (!openAITimedOut || sources.length < 3) {
         throw error;
       }
+
+      console.log("OPENAI_EXTRACTION_TIMEOUT", {
+        evidenceType,
+        sourceCount: sources.length,
+        inputSourceCount: openAIInputSourceCount(evidenceType, sources.length),
+        fallbackReturned: true
+      });
 
       consensus = buildNoReliableConsensus(
         body.data.query,
@@ -155,7 +163,7 @@ export async function POST(request: Request) {
       tavilyMs: tavilyElapsedMs,
       openAiMs: openAIElapsedMs,
       sourceCount: sources.length,
-      inputSourceCount: inferQueryEvidenceType(body.data.query) === "dominant_platform" ? Math.min(sources.length, 6) : sources.length,
+      inputSourceCount: openAIInputSourceCount(evidenceType, sources.length),
       timedOut: openAITimedOut
     });
     console.log("[vera:search] OpenAI analysis returned", {
@@ -206,6 +214,10 @@ function isTimeoutError(error: unknown) {
   }
 
   return /timeout|timed out|request timed out/i.test(`${error.name} ${error.message}`);
+}
+
+function openAIInputSourceCount(evidenceType: ReturnType<typeof inferQueryEvidenceType>, sourceCount: number) {
+  return Math.min(sourceCount, evidenceType === "dominant_platform" ? 6 : 8);
 }
 
 function logDominantPlatformTiming({
