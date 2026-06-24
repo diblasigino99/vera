@@ -41,8 +41,12 @@ export type QueryEvidenceType = "local_recommendation" | "product_recommendation
 export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   const normalized = normalizeQuery(query);
 
+  if (/\b(team chat|work chat|business chat|workplace chat)\b/.test(normalized)) {
+    return "software_tool";
+  }
+
   if (
-    /\b(search engine|browser|email provider|email service|mail provider|maps app|map app|navigation app|video platform|video site|messaging app|messenger|chat app|music streaming|streaming music|cloud storage|spreadsheet app|spreadsheet|calendar app|calendar)\b/.test(
+    /\b(search engine|browser|email provider|email service|mail provider|maps app|map app|navigation app|video platform|video site|messaging app|messenger|music streaming|streaming music|cloud storage|spreadsheet app|spreadsheet|calendar app|calendar)\b/.test(
       normalized
     )
   ) {

@@ -427,7 +427,8 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
   const evidenceStrategy = evidenceStrategyFor(queryEvidenceType);
   const specializedDominantPlatformQuery = queryEvidenceType === "dominant_platform" && isSpecializedDominantPlatformQuery(query);
   const dominantPrior = dominantPlatformPrior(query, sources, signals, queryEvidenceType, specializedDominantPlatformQuery);
-  const evidenceSignals = [...signals, ...dominantPrior.signals];
+  const softwarePrior = softwareToolPrior(query, sources, signals, queryEvidenceType);
+  const evidenceSignals = [...signals, ...dominantPrior.signals, ...softwarePrior.signals];
   const dominantFilteredSignals =
     queryEvidenceType === "dominant_platform"
       ? evidenceSignals.filter((signal) => !isGenericDominantPlatformContender(signal.contenderName))
@@ -450,7 +451,8 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
         query,
         queryEvidenceType,
         specializedDominantPlatformQuery,
-        contenderSignals
+        contenderSignals,
+        softwarePrior
       )
     )
     .sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount);
@@ -484,6 +486,12 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
     console.log("DOMINANT_INCUMBENT", dominantPrior.incumbent?.label ?? null);
     console.log("DOMINANT_INCUMBENT_FOUND_IN_SOURCES", dominantPrior.foundInSources);
   }
+  if (queryEvidenceType === "software_tool") {
+    console.log("SOFTWARE_TOOL_PRIOR_APPLIED", softwarePrior.applied);
+    console.log("SOFTWARE_CATEGORY_DETECTED", softwarePrior.category?.key ?? null);
+    console.log("SOFTWARE_LEADERS_FOUND", softwarePrior.leadersFound);
+    console.log("SOFTWARE_SOURCE_WEIGHTS", softwareSourceWeightSummary(sources));
+  }
 
   const themeCounts = aggregateThemeCounts(filteredSignals);
   const sourceBreakdown = aggregateSourceBreakdown(sources, filteredSignals);
@@ -507,6 +515,19 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
       dominantPrior.incumbent
         ? contenders.findIndex((contender) => contenderMatchesPlatform(contender.name, dominantPrior.incumbent?.aliases ?? [])) + 1 || null
         : null
+    );
+  }
+  if (queryEvidenceType === "software_tool") {
+    console.log(
+      "SOFTWARE_FINAL_RANKS",
+      contenders.slice(0, 8).map((contender, index) => ({
+        rank: index + 1,
+        name: contender.name,
+        netWeightedScore: contender.netWeightedScore,
+        positiveMentionCount: contender.positiveMentionCount,
+        sourceCount: contender.sourceCount,
+        sourceTypes: contender.sourceTypes
+      }))
     );
   }
   const winner = consensusClassification === "no_reliable_consensus" ? undefined : contenders[0]?.name;
@@ -647,8 +668,13 @@ function applyEvidenceStrategy(
   query: string,
   evidenceType: QueryEvidenceType,
   specializedDominantPlatformQuery: boolean,
-  signals: SourceSignal[]
+  signals: SourceSignal[],
+  softwarePrior?: SoftwareToolPriorResult
 ): ContenderMetrics {
+  if (evidenceType === "software_tool") {
+    return applySoftwareToolStrategy(metrics, query, signals, softwarePrior);
+  }
+
   if (evidenceType !== "dominant_platform") {
     return metrics;
   }
@@ -676,6 +702,240 @@ function applyEvidenceStrategy(
     weightedPositiveScore: round1(metrics.weightedPositiveScore + defaultBoost / 4 + broadEvidenceBoost / 3 + expertEvidenceBoost / 4 + privacyBoost / 3),
     netWeightedScore
   };
+}
+
+type SoftwareLeader = {
+  label: string;
+  aliases: string[];
+};
+
+type SoftwareCategoryPrior = {
+  key: string;
+  leaders: SoftwareLeader[];
+};
+
+type SoftwareToolPriorResult = {
+  applied: boolean;
+  category: SoftwareCategoryPrior | null;
+  leadersFound: string[];
+  signals: SourceSignal[];
+};
+
+function applySoftwareToolStrategy(
+  metrics: ContenderMetrics,
+  query: string,
+  signals: SourceSignal[],
+  softwarePrior?: SoftwareToolPriorResult
+): ContenderMetrics {
+  const category = softwarePrior?.category ?? softwareCategoryForQuery(query);
+
+  if (!category) {
+    return applyGeneralSoftwareSourceQuality(metrics, signals);
+  }
+
+  const leaderIndex = category.leaders.findIndex((leader) => contenderMatchesPlatform(metrics.name, leader.aliases));
+  const isLeader = leaderIndex >= 0;
+  const highAuthoritySignals = signals.filter((signal) => softwareSourceAuthority(signal) === "high").length;
+  const lowAuthoritySignals = signals.filter((signal) => softwareSourceAuthority(signal) === "low").length;
+  const communitySignals = signals.filter((signal) => softwareSourceAuthority(signal) === "medium").length;
+  const leaderBoost = isLeader ? [26, 18, 14, 10, 7][leaderIndex] ?? 6 : 0;
+  const highAuthorityBoost = Math.min(highAuthoritySignals, 4) * 2.4;
+  const communityBoost = Math.min(communitySignals, 3) * 0.7;
+  const singleSourceNichePenalty = !isLeader && metrics.sourceCount <= 1 ? (lowAuthoritySignals > 0 ? 8 : 4) : 0;
+  const lowAuthorityOnlyPenalty = !isLeader && lowAuthoritySignals > 0 && lowAuthoritySignals === signals.length ? 5 : 0;
+  const netWeightedScore = round1(
+    metrics.netWeightedScore + leaderBoost + highAuthorityBoost + communityBoost - singleSourceNichePenalty - lowAuthorityOnlyPenalty
+  );
+
+  return {
+    ...metrics,
+    weightedPositiveScore: round1(metrics.weightedPositiveScore + leaderBoost / 4 + highAuthorityBoost / 3 + communityBoost / 3),
+    netWeightedScore
+  };
+}
+
+function applyGeneralSoftwareSourceQuality(metrics: ContenderMetrics, signals: SourceSignal[]) {
+  const highAuthoritySignals = signals.filter((signal) => softwareSourceAuthority(signal) === "high").length;
+  const lowAuthoritySignals = signals.filter((signal) => softwareSourceAuthority(signal) === "low").length;
+  const netWeightedScore = round1(metrics.netWeightedScore + Math.min(highAuthoritySignals, 4) * 1.8 - (metrics.sourceCount <= 1 ? lowAuthoritySignals * 3 : 0));
+
+  return {
+    ...metrics,
+    netWeightedScore
+  };
+}
+
+function softwareToolPrior(query: string, sources: VeraSource[], signals: SourceSignal[], evidenceType: QueryEvidenceType): SoftwareToolPriorResult {
+  const category = evidenceType === "software_tool" ? softwareCategoryForQuery(query) : null;
+
+  if (!category) {
+    return {
+      applied: false,
+      category,
+      leadersFound: [],
+      signals: []
+    };
+  }
+
+  const extractedLeaders = category.leaders.filter((leader) => signals.some((signal) => contenderMatchesPlatform(signal.contenderName, leader.aliases)));
+  const sourceLeaders = category.leaders.filter((leader) => sources.some((source) => sourceMentionsPlatform(source, leader.aliases)));
+  const leadersFound = Array.from(new Set([...extractedLeaders, ...sourceLeaders].map((leader) => leader.label)));
+  const priorSignals = sourceLeaders
+    .filter((leader) => !extractedLeaders.some((extracted) => extracted.label === leader.label))
+    .flatMap((leader) => {
+      const supportingSources = sources.filter((source) => sourceMentionsPlatform(source, leader.aliases));
+      return selectDiversePriorSources(supportingSources)
+        .slice(0, 2)
+        .map((source) => softwareLeaderSignal(source, leader, evidenceType));
+    });
+
+  return {
+    applied: extractedLeaders.length > 0 || priorSignals.length > 0,
+    category,
+    leadersFound,
+    signals: priorSignals
+  };
+}
+
+function softwareLeaderSignal(source: VeraSource, leader: SoftwareLeader, evidenceType: QueryEvidenceType): SourceSignal {
+  const sourceType = inferSourceType(source);
+  const sourceQuality = inferSourceQuality(source, sourceType);
+
+  return {
+    sourceUrl: source.url,
+    sourceTitle: source.title,
+    domain: source.domain,
+    sourceType,
+    sourceWeight: sourceTypeWeight(sourceType, evidenceType),
+    sourceQuality,
+    sourceQualityWeight: sourceQualityWeightFor(sourceQuality),
+    queryVariant: source.queryVariant,
+    contenderName: leader.label,
+    sentiment: "positive",
+    mentionStrength: softwareSourceAuthorityFromSource(source) === "high" ? "moderate" : "weak",
+    positiveMention: "Known category leader appears in the source set",
+    extractedReason: "Known category leader appears in the source set",
+    themes: ["category leader support"]
+  };
+}
+
+function softwareCategoryForQuery(query: string): SoftwareCategoryPrior | null {
+  const normalized = normalizeQuery(query);
+
+  if (/\bcrm\b/.test(normalized) && /\b(small business|small businesses|small team|startup)\b/.test(normalized)) {
+    return softwareCategory("crm small business", ["HubSpot", "Salesforce", "Pipedrive", "Zoho CRM"]);
+  }
+
+  if (/\bpassword manager\b/.test(normalized)) {
+    return softwareCategory("password manager", ["1Password", "Bitwarden", "Dashlane"]);
+  }
+
+  if (/\bproject management\b/.test(normalized) && /\b(small team|small teams|small business|small businesses)\b/.test(normalized)) {
+    return softwareCategory("project management small teams", ["Trello", "Asana", "ClickUp", "Monday.com"]);
+  }
+
+  if (/\bproject management\b/.test(normalized)) {
+    return softwareCategory("project management", ["Asana", "Monday.com", "ClickUp", "Trello", "Notion"]);
+  }
+
+  if (/\b(team chat|work chat|business chat|workplace chat)\b/.test(normalized)) {
+    return softwareCategory("team chat", ["Slack", "Microsoft Teams", "Discord"]);
+  }
+
+  if (/\banalytics\b/.test(normalized) && /\b(startup|startups|small business|small businesses)\b/.test(normalized)) {
+    return softwareCategory("analytics startups", ["Google Analytics", "Amplitude", "Mixpanel", "Heap"]);
+  }
+
+  if (/\b(help desk|customer support|support desk)\b/.test(normalized)) {
+    return softwareCategory("help desk small business", ["Zendesk", "Freshdesk", "Help Scout", "Intercom"]);
+  }
+
+  if (/\bemail marketing\b/.test(normalized)) {
+    return softwareCategory("email marketing", ["Mailchimp", "Klaviyo", "Constant Contact", "Brevo"]);
+  }
+
+  if (/\baccounting\b/.test(normalized) && /\b(small business|small businesses|startup|startups)\b/.test(normalized)) {
+    return softwareCategory("accounting small business", ["QuickBooks", "FreshBooks", "Xero", "Zoho Books"]);
+  }
+
+  if (/\bwebsite builder\b/.test(normalized)) {
+    return softwareCategory("website builder", ["Wix", "Squarespace", "Webflow"]);
+  }
+
+  if (/\becommerce platform|e-commerce platform|online store platform\b/.test(normalized)) {
+    return softwareCategory("ecommerce platform", ["Shopify", "WooCommerce", "BigCommerce"]);
+  }
+
+  if (/\bpayroll\b/.test(normalized) && /\b(small business|small businesses|startup|startups)\b/.test(normalized)) {
+    return softwareCategory("payroll small business", ["Gusto", "ADP", "OnPay", "SurePayroll"]);
+  }
+
+  return null;
+}
+
+function softwareCategory(key: string, labels: string[]): SoftwareCategoryPrior {
+  return {
+    key,
+    leaders: labels.map((label) => ({
+      label,
+      aliases: softwareLeaderAliases(label)
+    }))
+  };
+}
+
+function softwareLeaderAliases(label: string) {
+  const normalized = normalizeQuery(label);
+  const aliases = new Set([normalized]);
+
+  if (normalized === "hubspot") aliases.add("hubspot crm");
+  if (normalized === "zoho crm") aliases.add("zoho");
+  if (normalized === "monday.com") aliases.add("monday");
+  if (normalized === "1password") aliases.add("one password");
+  if (normalized === "microsoft teams") aliases.add("teams");
+  if (normalized === "google analytics") aliases.add("ga4");
+  if (normalized === "quickbooks") aliases.add("quickbooks online");
+  if (normalized === "constant contact") aliases.add("constantcontact");
+  if (normalized === "woocommerce") aliases.add("woo commerce");
+  if (normalized === "surepayroll") aliases.add("sure payroll");
+
+  return Array.from(aliases);
+}
+
+function softwareSourceAuthority(signal: SourceSignal): "high" | "medium" | "low" {
+  return softwareSourceAuthorityFromText(`${signal.domain} ${signal.sourceTitle} ${signal.extractedReason}`);
+}
+
+function softwareSourceAuthorityFromSource(source: VeraSource): "high" | "medium" | "low" {
+  return softwareSourceAuthorityFromText(`${source.domain} ${source.title} ${source.snippet ?? ""}`);
+}
+
+function softwareSourceAuthorityFromText(text: string): "high" | "medium" | "low" {
+  const normalized = normalizeQuery(text);
+
+  if (/\b(g2|capterra|getapp|gartner|software advice|pcmag|techradar|zapier|wirecutter|nytimes|forbes advisor|zdnet|tom s guide|consumer reports)\b/.test(normalized)) {
+    return "high";
+  }
+
+  if (/\b(reddit|hacker news|news ycombinator|product hunt|forum|community|stackoverflow|stack overflow|quora)\b/.test(normalized)) {
+    return "medium";
+  }
+
+  if (/\b(alternatives|vs|versus|comparison|compare|best .* software|affiliate|coupon|pricing|reviewed by)\b/.test(normalized)) {
+    return "low";
+  }
+
+  return "medium";
+}
+
+function softwareSourceWeightSummary(sources: VeraSource[]) {
+  return sources.reduce(
+    (summary, source) => {
+      const authority = softwareSourceAuthorityFromSource(source);
+      summary[authority] += 1;
+      return summary;
+    },
+    { high: 0, medium: 0, low: 0 } as Record<"high" | "medium" | "low", number>
+  );
 }
 
 function dominantPlatformPrior(
@@ -1407,10 +1667,33 @@ function inferSourceType(source: VeraSource): VeraSourceType {
   const value = `${source.domain} ${source.title}`.toLowerCase();
 
   if (value.includes("reddit")) return "reddit";
-  if (value.includes("forum") || value.includes("community")) return "forum";
-  if (value.includes("tripadvisor") || value.includes("booking") || value.includes("expedia") || value.includes("kayak") || value.includes("yelp")) return "review_site";
-  if (value.includes("infatuation") || value.includes("eater") || value.includes("timeout") || value.includes("conde") || value.includes("cntraveler")) return "editorial";
-  if (value.includes("forbes") || value.includes("wirecutter") || value.includes("consumer reports") || value.includes("usnews")) return "professional_review";
+  if (value.includes("hacker news") || value.includes("news.ycombinator") || value.includes("product hunt") || value.includes("forum") || value.includes("community")) return "forum";
+  if (
+    value.includes("tripadvisor") ||
+    value.includes("booking") ||
+    value.includes("expedia") ||
+    value.includes("kayak") ||
+    value.includes("yelp") ||
+    value.includes("g2") ||
+    value.includes("capterra") ||
+    value.includes("getapp") ||
+    value.includes("software advice")
+  ) {
+    return "review_site";
+  }
+  if (value.includes("infatuation") || value.includes("eater") || value.includes("timeout") || value.includes("conde") || value.includes("cntraveler") || value.includes("zapier")) return "editorial";
+  if (
+    value.includes("forbes") ||
+    value.includes("wirecutter") ||
+    value.includes("consumer reports") ||
+    value.includes("usnews") ||
+    value.includes("gartner") ||
+    value.includes("pcmag") ||
+    value.includes("techradar") ||
+    value.includes("zdnet")
+  ) {
+    return "professional_review";
+  }
   if (value.includes("guide") || value.includes("wanderlust") || value.includes("local")) return "local_guide";
   if (value.includes("official")) return "official";
 
