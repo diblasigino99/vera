@@ -8,7 +8,7 @@ import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
-const localCacheVersion = 6;
+const localCacheVersion = 7;
 const canUseLocalJsonFallback = !process.env.VERCEL && process.env.NODE_ENV !== "production";
 
 type LocalCacheEntry = {
@@ -52,6 +52,7 @@ type LocalSavesFile = Record<
 const memorySaves = new Map<string, LocalSavesFile[string]>();
 
 export function getCacheVersion() {
+  console.log("CACHE_VERSION", { cacheVersion: localCacheVersion });
   return localCacheVersion;
 }
 

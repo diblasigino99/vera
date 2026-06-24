@@ -34,6 +34,7 @@ const sourceTypes = [
 
 const openAIModel = "gpt-4.1-mini";
 const openAITimeoutMs = 8000;
+const dominantPlatformOpenAITimeoutMs = 12000;
 const maxOpenAISources = 10;
 const maxOpenAISnippetChars = 320;
 
@@ -141,7 +142,8 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
 }
 
 async function extractSourceSignals(query: string, sources: VeraSource[], key: string, evidenceType: QueryEvidenceType) {
-  const openai = new OpenAI({ apiKey: key, timeout: openAITimeoutMs });
+  const timeoutMs = evidenceType === "dominant_platform" ? dominantPlatformOpenAITimeoutMs : openAITimeoutMs;
+  const openai = new OpenAI({ apiKey: key, timeout: timeoutMs });
   const startedAt = Date.now();
   console.log("[vera:openai] input prepared", {
     query,
@@ -149,7 +151,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     model: openAIModel,
     evidenceType,
     evidenceStrategy: evidenceStrategyFor(evidenceType),
-    timeoutMs: openAITimeoutMs,
+    timeoutMs,
     maxSnippetChars: maxOpenAISnippetChars
   });
   const sourceText = sources
