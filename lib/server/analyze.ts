@@ -382,9 +382,13 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
   const specializedDominantPlatformQuery = queryEvidenceType === "dominant_platform" && isSpecializedDominantPlatformQuery(query);
   const dominantPrior = dominantPlatformPrior(query, sources, signals, queryEvidenceType, specializedDominantPlatformQuery);
   const evidenceSignals = [...signals, ...dominantPrior.signals];
+  const dominantFilteredSignals =
+    queryEvidenceType === "dominant_platform"
+      ? evidenceSignals.filter((signal) => !isGenericDominantPlatformContender(signal.contenderName))
+      : evidenceSignals;
   const byName = new Map<string, SourceSignal[]>();
 
-  for (const signal of evidenceSignals) {
+  for (const signal of dominantFilteredSignals) {
     const existing = byName.get(signal.contenderName) ?? [];
     existing.push(signal);
     byName.set(signal.contenderName, existing);
@@ -407,7 +411,7 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
 
   const { contenders, removed } = filterContendersByCategory(contendersBeforeFiltering, intendedCategory);
   const contenderNames = new Set(contenders.map((contender) => contender.name));
-  const filteredSignals = evidenceSignals.filter((signal) => contenderNames.has(signal.contenderName));
+  const filteredSignals = dominantFilteredSignals.filter((signal) => contenderNames.has(signal.contenderName));
   console.log("INTENDED_CATEGORY", intendedCategory);
   console.log(
     "CONTENDER_CATEGORY",
@@ -751,7 +755,7 @@ function dominantPlatformForQuery(query: string) {
   }
 
   if (/\b(video platform|video site)\b/.test(normalized)) {
-    return { label: "YouTube", aliases: ["youtube"] };
+    return { label: "YouTube", aliases: ["youtube", "youtube.com", "you tube"] };
   }
 
   if (/\b(messaging app|messenger|chat app)\b/.test(normalized)) {
@@ -784,6 +788,15 @@ function contenderMatchesPlatform(name: string, aliases: string[]) {
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isGenericDominantPlatformContender(name: string) {
+  const spaced = name.replace(/([a-z])([A-Z])/g, "$1 $2");
+  const normalized = normalizeQuery(spaced);
+
+  return /^(media platform|video platform|platform|search engine|browser|maps app|map app|email provider|email service|messaging app|messenger|music streaming service|cloud storage|spreadsheet app|calendar app)$/.test(
+    normalized
+  );
 }
 
 function filterContendersByCategory(contenders: ContenderMetrics[], intendedCategory: VeraEntityCategory) {
