@@ -369,6 +369,11 @@ async function saveReport(report) {
 function namesMatch(actual, expected) {
   const actualName = normalizeName(actual);
   const expectedName = normalizeName(expected);
+
+  if (!actualName || !expectedName) {
+    return false;
+  }
+
   const expectedAliases = aliasSet(expectedName);
   const actualAliases = aliasSet(actualName);
 

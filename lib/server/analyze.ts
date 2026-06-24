@@ -659,16 +659,16 @@ function dominantPlatformPrior(
   const supportingSources = sources.filter((source) => sourceMentionsPlatform(source, incumbent.aliases));
   const foundInSources = supportingSources.length > 0;
 
-  if (incumbentAlreadyExtracted || !foundInSources) {
+  if (incumbentAlreadyExtracted) {
     return {
-      applied: incumbentAlreadyExtracted,
+      applied: true,
       incumbent,
       foundInSources,
       signals: []
     };
   }
 
-  const diverseSources = selectDiversePriorSources(supportingSources).slice(0, 3);
+  const diverseSources = selectDiversePriorSources(foundInSources ? supportingSources : sources).slice(0, foundInSources ? 3 : 2);
   const priorSignals = diverseSources.map((source) => {
     const sourceType = inferSourceType(source);
     const sourceQuality = inferSourceQuality(source, sourceType);
@@ -684,10 +684,14 @@ function dominantPlatformPrior(
       queryVariant: source.queryVariant,
       contenderName: incumbent.label,
       sentiment: "positive",
-      mentionStrength: "moderate",
-      positiveMention: "Default incumbent appears in the source set for this broad platform query",
-      extractedReason: "Default incumbent appears in the source set for this broad platform query",
-      themes: ["default incumbent support"]
+      mentionStrength: foundInSources ? "moderate" : "weak",
+      positiveMention: foundInSources
+        ? "Default incumbent appears in the source set for this broad platform query"
+        : "Mapped default incumbent for this broad platform category",
+      extractedReason: foundInSources
+        ? "Default incumbent appears in the source set for this broad platform query"
+        : "Mapped default incumbent for this broad platform category",
+      themes: [foundInSources ? "default incumbent support" : "category incumbent support"]
     } satisfies SourceSignal;
   });
 
