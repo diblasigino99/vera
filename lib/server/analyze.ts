@@ -33,11 +33,11 @@ const sourceTypes = [
 ] as const;
 
 const openAIModel = "gpt-4.1-mini";
-const openAITimeoutMs = 8000;
+const openAITimeoutMs = 12000;
 const dominantPlatformOpenAITimeoutMs = 12000;
-const maxOpenAISources = 5;
+const maxOpenAISources = 8;
 const maxOpenAISnippetChars = 150;
-const maxOpenAICompletionTokens = 700;
+const maxOpenAICompletionTokens = 1400;
 
 const SignalSchema = z.object({
   extractions: z.array(
@@ -179,10 +179,12 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
         role: "system",
         content: [
           'Return exactly this JSON shape: {"extractions":[{"sourceUrl":"","contender":"","sentiment":"positive","reason":"","sourceType":"other","noContender":false}]}',
-          "Extract one simple evidence record per source.",
+          "Extract up to three simple evidence records per source.",
           "Analyze each source independently.",
-          "Do not rank, summarize, compare, explain consensus, or mention multiple contenders.",
-          "For each source choose the single most supported named contender, if one exists.",
+          "Do not rank, summarize, compare, or explain consensus.",
+          "For each source choose the named contenders that receive clear support or criticism.",
+          "Prefer concrete product/tool names over generic categories.",
+          "If a source names several credible contenders, include up to three of the strongest.",
           "If no named contender is present, set noContender true and contender/reason to empty strings.",
           "sentiment must be positive, negative, or neutral.",
           "reason must be a short phrase grounded only in that source.",
@@ -222,6 +224,11 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     normalizedSignals: signals.length
   });
   console.log("EXTRACTION_OUTPUT_COUNT", parsed.data.extractions.length);
+  console.log("EXTRACTION_SIGNAL_COUNT", signals.length);
+  console.log(
+    "UNIQUE_CONTENDERS_EXTRACTED",
+    Array.from(new Set(signals.map((signal) => signal.contenderName))).sort()
+  );
   console.log("EXTRACTION_DURATION", durationMs);
 
   return {

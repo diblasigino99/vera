@@ -1,0 +1,302 @@
+[
+  {
+    "query": "best search engine",
+    "expectedWinner": "Google",
+    "expectedTopContenders": ["Google", "Bing", "DuckDuckGo"],
+    "category": "dominant_platform"
+  },
+  {
+    "query": "best browser",
+    "expectedWinner": "Google Chrome",
+    "expectedTopContenders": ["Google Chrome", "Safari", "Firefox", "Microsoft Edge"],
+    "category": "dominant_platform"
+  },
+  {
+    "query": "best maps app",
+    "expectedWinner": "Google Maps",
+    "expectedTopContenders": ["Google Maps", "Apple Maps", "Waze"],
+    "category": "dominant_platform"
+  },
+  {
+    "query": "best email provider",
+    "expectedWinner": "Gmail",
+    "expectedTopContenders": ["Gmail", "Outlook", "Proton Mail"],
+    "category": "dominant_platform"
+  },
+  {
+    "query": "best video platform",
+    "expectedWinner": "YouTube",
+    "expectedTopContenders": ["YouTube", "Vimeo", "TikTok"],
+    "category": "dominant_platform"
+  },
+  {
+    "query": "best messaging app",
+    "expectedWinner": "WhatsApp",
+    "expectedTopContenders": ["WhatsApp", "Signal", "Telegram", "iMessage"],
+    "category": "dominant_platform"
+  },
+  {
+    "query": "best music streaming service",
+    "expectedWinner": "Spotify",
+    "expectedTopContenders": ["Spotify", "Apple Music", "YouTube Music"],
+    "category": "dominant_platform"
+  },
+  {
+    "query": "best cloud storage",
+    "expectedWinner": "Google Drive",
+    "expectedTopContenders": ["Google Drive", "Dropbox", "OneDrive", "iCloud"],
+    "category": "dominant_platform"
+  },
+  {
+    "query": "best spreadsheet app",
+    "expectedWinner": "Microsoft Excel",
+    "expectedTopContenders": ["Microsoft Excel", "Google Sheets", "Airtable"],
+    "category": "dominant_platform"
+  },
+  {
+    "query": "best calendar app",
+    "expectedWinner": "Google Calendar",
+    "expectedTopContenders": ["Google Calendar", "Apple Calendar", "Outlook Calendar"],
+    "category": "dominant_platform"
+  },
+  {
+    "query": "best ai coding assistant",
+    "expectedWinner": "Cursor",
+    "expectedTopContenders": ["Cursor", "Claude Code", "GitHub Copilot"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best CRM for small business",
+    "expectedWinner": "HubSpot",
+    "expectedTopContenders": ["HubSpot", "Salesforce", "Zoho CRM", "Pipedrive"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best password manager",
+    "expectedWinner": "1Password",
+    "expectedTopContenders": ["1Password", "Bitwarden", "Dashlane"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best project management software",
+    "expectedWinner": "Asana",
+    "expectedTopContenders": ["Asana", "ClickUp", "Monday.com", "Trello", "Notion"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best project management software for small teams",
+    "expectedWinner": "Trello",
+    "expectedTopContenders": ["Trello", "Asana", "ClickUp", "Monday.com", "Notion"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best note taking app",
+    "expectedWinner": "Notion",
+    "expectedTopContenders": ["Notion", "Obsidian", "Evernote", "OneNote"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best team chat app",
+    "expectedWinner": "Slack",
+    "expectedTopContenders": ["Slack", "Microsoft Teams", "Discord"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best design tool",
+    "expectedWinner": "Figma",
+    "expectedTopContenders": ["Figma", "Sketch", "Adobe XD"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best analytics tool for startups",
+    "expectedWinner": "Google Analytics",
+    "expectedTopContenders": ["Google Analytics", "Mixpanel", "Amplitude", "PostHog"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best help desk software for small business",
+    "expectedWinner": "Zendesk",
+    "expectedTopContenders": ["Zendesk", "Freshdesk", "Intercom", "Help Scout"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best email marketing software",
+    "expectedWinner": "Mailchimp",
+    "expectedTopContenders": ["Mailchimp", "Klaviyo", "Constant Contact", "ConvertKit"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best accounting software for small business",
+    "expectedWinner": "QuickBooks",
+    "expectedTopContenders": ["QuickBooks", "Xero", "FreshBooks"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best website builder",
+    "expectedWinner": "Wix",
+    "expectedTopContenders": ["Wix", "Squarespace", "Webflow", "WordPress"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best ecommerce platform",
+    "expectedWinner": "Shopify",
+    "expectedTopContenders": ["Shopify", "WooCommerce", "BigCommerce"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best payroll software for small business",
+    "expectedWinner": "Gusto",
+    "expectedTopContenders": ["Gusto", "ADP", "QuickBooks Payroll"],
+    "category": "software_tool"
+  },
+  {
+    "query": "best Wi-Fi router for a large house",
+    "expectedWinner": "Eero Pro 6E",
+    "expectedTopContenders": ["Eero Pro 6E", "Netgear Orbi", "TP-Link Deco"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best running shoes for beginners",
+    "expectedWinner": "Brooks Ghost",
+    "expectedTopContenders": ["Brooks Ghost", "Nike Pegasus", "Asics Gel-Nimbus", "Hoka Clifton"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best carry-on suitcase",
+    "expectedWinner": "Away Carry-On",
+    "expectedTopContenders": ["Away Carry-On", "Travelpro Platinum Elite", "Monos Carry-On"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best noise cancelling headphones",
+    "expectedWinner": "Sony WH-1000XM5",
+    "expectedTopContenders": ["Sony WH-1000XM5", "Bose QuietComfort Ultra", "Apple AirPods Max"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best espresso machine for beginners",
+    "expectedWinner": "Breville Bambino Plus",
+    "expectedTopContenders": ["Breville Bambino Plus", "Breville Barista Express", "De'Longhi Dedica"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best budget laptop",
+    "expectedWinner": "Acer Aspire",
+    "expectedTopContenders": ["Acer Aspire", "Lenovo IdeaPad", "Asus Vivobook"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best mechanical keyboard",
+    "expectedWinner": "Keychron Q1",
+    "expectedTopContenders": ["Keychron Q1", "Keychron K2", "Logitech MX Mechanical"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best office chair",
+    "expectedWinner": "Herman Miller Aeron",
+    "expectedTopContenders": ["Herman Miller Aeron", "Steelcase Gesture", "Herman Miller Embody"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best robot vacuum",
+    "expectedWinner": "Roborock",
+    "expectedTopContenders": ["Roborock", "iRobot Roomba", "Eufy"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best air purifier",
+    "expectedWinner": "Coway Airmega AP-1512HH",
+    "expectedTopContenders": ["Coway Airmega AP-1512HH", "Blueair Blue Pure", "Levoit Core"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best restaurant in Williamsburg",
+    "expectedWinner": "Lilia",
+    "expectedTopContenders": ["Lilia", "Maison Premiere", "Misi", "Peter Luger"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best first date restaurant in Williamsburg",
+    "expectedWinner": "Maison Premiere",
+    "expectedTopContenders": ["Maison Premiere", "Fresh Kills", "Lilia"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best coffee shop in NYC",
+    "expectedWinner": "La Cabra",
+    "expectedTopContenders": ["La Cabra", "Sey Coffee", "Devocion", "Abraco"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best coffee shop to work from in Williamsburg",
+    "expectedWinner": "Devocion",
+    "expectedTopContenders": ["Devocion", "Partners Coffee", "Hungry Ghost"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best budget hotel in Seattle",
+    "expectedWinner": "The Moore Hotel",
+    "expectedTopContenders": ["The Moore Hotel", "Staypineapple", "Belltown Inn"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best hotel in Seattle",
+    "expectedWinner": "Four Seasons Hotel Seattle",
+    "expectedTopContenders": ["Four Seasons Hotel Seattle", "The Edgewater", "Thompson Seattle"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best pizza in Brooklyn",
+    "expectedWinner": "Lucali",
+    "expectedTopContenders": ["Lucali", "Di Fara", "L'Industrie", "Roberta's"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best sushi in Manhattan",
+    "expectedWinner": "Sushi Nakazawa",
+    "expectedTopContenders": ["Sushi Nakazawa", "Masa", "Sushi Yasuda"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best kid-friendly restaurant in Manhattan",
+    "expectedWinner": "Carmine's",
+    "expectedTopContenders": ["Carmine's", "Serendipity3", "Ellen's Stardust Diner"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best espresso martini in NYC",
+    "expectedWinner": "Dante",
+    "expectedTopContenders": ["Dante", "Double Chicken Please", "Temple Bar"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best golf course on Long Island",
+    "expectedWinner": "Bethpage Black",
+    "expectedTopContenders": ["Bethpage Black", "Shinnecock Hills", "National Golf Links of America"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best restaurant in Massapequa NY",
+    "expectedWinner": "Big Daddy's",
+    "expectedTopContenders": ["Big Daddy's", "All American Hamburger Drive-In", "Cara Mia"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best ramen in Los Angeles",
+    "expectedWinner": "Tsujita LA Artisan Noodle",
+    "expectedTopContenders": ["Tsujita LA Artisan Noodle", "Daikokuya", "Men Oh Tokushima"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best tacos in Austin",
+    "expectedWinner": "Veracruz All Natural",
+    "expectedTopContenders": ["Veracruz All Natural", "Taco Joint", "Cuantos Tacos"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best cocktail bar in Chicago",
+    "expectedWinner": "The Violet Hour",
+    "expectedTopContenders": ["The Violet Hour", "Aviary", "Three Dots and a Dash"],
+    "category": "local_recommendation"
+  }
+]

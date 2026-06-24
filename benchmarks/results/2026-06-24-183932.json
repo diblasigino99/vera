@@ -1,0 +1,79 @@
+{
+  "timestamp": "2026-06-24T18:39:32.603Z",
+  "commitHash": "5596622",
+  "baseUrl": "http://127.0.0.1:3117",
+  "benchmarkCount": 1,
+  "completedCount": 1,
+  "metrics": {
+    "winnerAccuracy": 1,
+    "top3Accuracy": 1,
+    "contenderAccuracy": 0.3333333333333333
+  },
+  "counts": {
+    "winnerHits": 1,
+    "top3Hits": 1,
+    "contenderHits": 1,
+    "contenderSlots": 3,
+    "errors": 0
+  },
+  "byCategory": {
+    "dominant_platform": {
+      "benchmarks": 1,
+      "winnerAccuracy": 1,
+      "top3Accuracy": 1,
+      "contenderAccuracy": 0.3333333333333333
+    }
+  },
+  "failures": [
+    {
+      "query": "best search engine",
+      "category": "dominant_platform",
+      "expectedWinner": "Google",
+      "expectedTopContenders": [
+        "Google",
+        "Bing",
+        "DuckDuckGo"
+      ],
+      "actualWinner": "Google",
+      "actualResults": [
+        "Google"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 7217,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    }
+  ],
+  "cases": [
+    {
+      "query": "best search engine",
+      "category": "dominant_platform",
+      "expectedWinner": "Google",
+      "expectedTopContenders": [
+        "Google",
+        "Bing",
+        "DuckDuckGo"
+      ],
+      "actualWinner": "Google",
+      "actualResults": [
+        "Google"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 7217,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    }
+  ]
+}
