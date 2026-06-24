@@ -380,9 +380,11 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
   const queryEvidenceType = inferQueryEvidenceType(query);
   const evidenceStrategy = evidenceStrategyFor(queryEvidenceType);
   const specializedDominantPlatformQuery = queryEvidenceType === "dominant_platform" && isSpecializedDominantPlatformQuery(query);
+  const dominantPrior = dominantPlatformPrior(query, sources, signals, queryEvidenceType, specializedDominantPlatformQuery);
+  const evidenceSignals = [...signals, ...dominantPrior.signals];
   const byName = new Map<string, SourceSignal[]>();
 
-  for (const signal of signals) {
+  for (const signal of evidenceSignals) {
     const existing = byName.get(signal.contenderName) ?? [];
     existing.push(signal);
     byName.set(signal.contenderName, existing);
@@ -391,7 +393,10 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
   const contendersBeforeFiltering = Array.from(byName.entries())
     .map(([name, contenderSignals]) =>
       applyEvidenceStrategy(
-        applyCategoryRelevance(buildContenderMetrics(name, contenderSignals, queryEvidenceType), intendedCategory, contenderSignals),
+        applyDominantPlatformCategory(
+          applyCategoryRelevanceForEvidenceType(buildContenderMetrics(name, contenderSignals, queryEvidenceType), intendedCategory, contenderSignals, queryEvidenceType),
+          queryEvidenceType
+        ),
         query,
         queryEvidenceType,
         specializedDominantPlatformQuery,
@@ -402,7 +407,7 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
 
   const { contenders, removed } = filterContendersByCategory(contendersBeforeFiltering, intendedCategory);
   const contenderNames = new Set(contenders.map((contender) => contender.name));
-  const filteredSignals = signals.filter((signal) => contenderNames.has(signal.contenderName));
+  const filteredSignals = evidenceSignals.filter((signal) => contenderNames.has(signal.contenderName));
   console.log("INTENDED_CATEGORY", intendedCategory);
   console.log(
     "CONTENDER_CATEGORY",
@@ -424,6 +429,11 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
   console.log("QUERY_EVIDENCE_TYPE", queryEvidenceType);
   console.log("EVIDENCE_STRATEGY", evidenceStrategy);
   console.log("WEIGHTED_SOURCE_TYPES", weightedSourceTypes(queryEvidenceType));
+  if (queryEvidenceType === "dominant_platform") {
+    console.log("DOMINANT_PRIOR_APPLIED", dominantPrior.applied);
+    console.log("DOMINANT_INCUMBENT", dominantPrior.incumbent?.label ?? null);
+    console.log("DOMINANT_INCUMBENT_FOUND_IN_SOURCES", dominantPrior.foundInSources);
+  }
 
   const themeCounts = aggregateThemeCounts(filteredSignals);
   const sourceBreakdown = aggregateSourceBreakdown(sources, filteredSignals);
@@ -441,6 +451,14 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
       sourceTypes: contender.sourceTypes
     }))
   );
+  if (queryEvidenceType === "dominant_platform") {
+    console.log(
+      "DOMINANT_INCUMBENT_FINAL_RANK",
+      dominantPrior.incumbent
+        ? contenders.findIndex((contender) => contenderMatchesPlatform(contender.name, dominantPrior.incumbent?.aliases ?? [])) + 1 || null
+        : null
+    );
+  }
   const winner = consensusClassification === "no_reliable_consensus" ? undefined : contenders[0]?.name;
   const mentionCounts = Object.fromEntries(
     contenders.map((contender) => [
@@ -549,6 +567,31 @@ function applyCategoryRelevance(metrics: ContenderMetrics, intendedCategory: Ver
   };
 }
 
+function applyCategoryRelevanceForEvidenceType(
+  metrics: ContenderMetrics,
+  intendedCategory: VeraEntityCategory,
+  signals: SourceSignal[],
+  evidenceType: QueryEvidenceType
+): ContenderMetrics {
+  if (evidenceType === "dominant_platform") {
+    return metrics;
+  }
+
+  return applyCategoryRelevance(metrics, intendedCategory, signals);
+}
+
+function applyDominantPlatformCategory(metrics: ContenderMetrics, evidenceType: QueryEvidenceType): ContenderMetrics {
+  if (evidenceType !== "dominant_platform") {
+    return metrics;
+  }
+
+  return {
+    ...metrics,
+    contenderCategory: "software",
+    categoryConfidence: "medium"
+  };
+}
+
 function applyEvidenceStrategy(
   metrics: ContenderMetrics,
   query: string,
@@ -571,7 +614,7 @@ function applyEvidenceStrategy(
     const text = normalizeQuery(`${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""} ${signal.themes.join(" ")}`);
     return /\b(private|privacy|independent|secure|anonymous|tracking|no tracking)\b/.test(text);
   }).length;
-  const defaultBoost = !specializedDominantPlatformQuery && isDefaultPlatform ? 18 : 0;
+  const defaultBoost = !specializedDominantPlatformQuery && isDefaultPlatform ? 36 : 0;
   const broadEvidenceBoost = Math.min(broadEvidenceSignals, 4) * 2.2;
   const expertEvidenceBoost = Math.min(expertSignals, 4) * 1.4;
   const nichePenalty = !specializedDominantPlatformQuery && !isDefaultPlatform && privacySignals >= 2 ? 5 : 0;
@@ -583,6 +626,109 @@ function applyEvidenceStrategy(
     weightedPositiveScore: round1(metrics.weightedPositiveScore + defaultBoost / 4 + broadEvidenceBoost / 3 + expertEvidenceBoost / 4 + privacyBoost / 3),
     netWeightedScore
   };
+}
+
+function dominantPlatformPrior(
+  query: string,
+  sources: VeraSource[],
+  signals: SourceSignal[],
+  evidenceType: QueryEvidenceType,
+  specializedDominantPlatformQuery: boolean
+): {
+  applied: boolean;
+  incumbent: ReturnType<typeof dominantPlatformForQuery>;
+  foundInSources: boolean;
+  signals: SourceSignal[];
+} {
+  const incumbent = dominantPlatformForQuery(query);
+
+  if (evidenceType !== "dominant_platform" || specializedDominantPlatformQuery || !incumbent) {
+    return {
+      applied: false,
+      incumbent,
+      foundInSources: false,
+      signals: []
+    };
+  }
+
+  const incumbentAlreadyExtracted = signals.some((signal) => contenderMatchesPlatform(signal.contenderName, incumbent.aliases));
+  const supportingSources = sources.filter((source) => sourceMentionsPlatform(source, incumbent.aliases));
+  const foundInSources = supportingSources.length > 0;
+
+  if (incumbentAlreadyExtracted || !foundInSources) {
+    return {
+      applied: incumbentAlreadyExtracted,
+      incumbent,
+      foundInSources,
+      signals: []
+    };
+  }
+
+  const diverseSources = selectDiversePriorSources(supportingSources).slice(0, 3);
+  const priorSignals = diverseSources.map((source) => {
+    const sourceType = inferSourceType(source);
+    const sourceQuality = inferSourceQuality(source, sourceType);
+
+    return {
+      sourceUrl: source.url,
+      sourceTitle: source.title,
+      domain: source.domain,
+      sourceType,
+      sourceWeight: sourceTypeWeight(sourceType, evidenceType),
+      sourceQuality,
+      sourceQualityWeight: sourceQualityWeightFor(sourceQuality),
+      queryVariant: source.queryVariant,
+      contenderName: incumbent.label,
+      sentiment: "positive",
+      mentionStrength: "moderate",
+      positiveMention: "Default incumbent appears in the source set for this broad platform query",
+      extractedReason: "Default incumbent appears in the source set for this broad platform query",
+      themes: ["default incumbent support"]
+    } satisfies SourceSignal;
+  });
+
+  return {
+    applied: priorSignals.length > 0,
+    incumbent,
+    foundInSources,
+    signals: priorSignals
+  };
+}
+
+function selectDiversePriorSources(sources: VeraSource[]) {
+  const selected: VeraSource[] = [];
+  const seenTypes = new Set<VeraSourceType>();
+
+  for (const source of sources) {
+    const sourceType = inferSourceType(source);
+
+    if (seenTypes.has(sourceType)) {
+      continue;
+    }
+
+    selected.push(source);
+    seenTypes.add(sourceType);
+  }
+
+  for (const source of sources) {
+    if (selected.length >= 3) {
+      break;
+    }
+
+    if (!selected.some((selectedSource) => selectedSource.url === source.url)) {
+      selected.push(source);
+    }
+  }
+
+  return selected;
+}
+
+function sourceMentionsPlatform(source: VeraSource, aliases: string[]) {
+  const text = normalizeQuery(`${source.title} ${source.domain} ${source.snippet ?? ""}`);
+  return aliases.some((alias) => {
+    const normalizedAlias = normalizeQuery(alias);
+    return new RegExp(`\\b${escapeRegExp(normalizedAlias).replace(/\s+/g, "\\s+")}\\b`).test(text);
+  });
 }
 
 function dominantPlatformForQuery(query: string) {
@@ -608,12 +754,36 @@ function dominantPlatformForQuery(query: string) {
     return { label: "YouTube", aliases: ["youtube"] };
   }
 
+  if (/\b(messaging app|messenger|chat app)\b/.test(normalized)) {
+    return { label: "WhatsApp", aliases: ["whatsapp", "whats app"] };
+  }
+
+  if (/\b(music streaming|streaming music)\b/.test(normalized)) {
+    return { label: "Spotify", aliases: ["spotify"] };
+  }
+
+  if (/\bcloud storage\b/.test(normalized)) {
+    return { label: "Google Drive", aliases: ["google drive"] };
+  }
+
+  if (/\b(spreadsheet app|spreadsheet)\b/.test(normalized)) {
+    return { label: "Microsoft Excel", aliases: ["microsoft excel", "excel"] };
+  }
+
+  if (/\b(calendar app|calendar)\b/.test(normalized)) {
+    return { label: "Google Calendar", aliases: ["google calendar"] };
+  }
+
   return null;
 }
 
 function contenderMatchesPlatform(name: string, aliases: string[]) {
   const normalized = normalizeQuery(name);
   return aliases.some((alias) => normalized === alias || normalized.includes(alias));
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function filterContendersByCategory(contenders: ContenderMetrics[], intendedCategory: VeraEntityCategory) {

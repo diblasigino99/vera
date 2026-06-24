@@ -41,7 +41,11 @@ export type QueryEvidenceType = "local_recommendation" | "product_recommendation
 export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   const normalized = normalizeQuery(query);
 
-  if (/\b(search engine|browser|email provider|email service|mail provider|maps app|map app|navigation app|video platform|video site)\b/.test(normalized)) {
+  if (
+    /\b(search engine|browser|email provider|email service|mail provider|maps app|map app|navigation app|video platform|video site|messaging app|messenger|chat app|music streaming|streaming music|cloud storage|spreadsheet app|spreadsheet|calendar app|calendar)\b/.test(
+      normalized
+    )
+  ) {
     return "dominant_platform";
   }
 
