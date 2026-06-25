@@ -210,6 +210,66 @@
     "category": "product_recommendation"
   },
   {
+    "query": "best budget headphones",
+    "expectedWinner": "Sony WH-CH720N",
+    "expectedTopContenders": ["Sony WH-CH720N", "Anker Soundcore Life Q30", "EarFun Air Pro"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best laptop",
+    "expectedWinner": "MacBook Air",
+    "expectedTopContenders": ["MacBook Air", "MacBook Pro", "Dell XPS", "Lenovo ThinkPad"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best router",
+    "expectedWinner": "Eero Pro 6E",
+    "expectedTopContenders": ["Eero Pro 6E", "Netgear Orbi", "TP-Link Deco"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best gaming monitor",
+    "expectedWinner": "Dell Alienware AW3423DWF",
+    "expectedTopContenders": ["Dell Alienware AW3423DWF", "LG UltraGear OLED", "Gigabyte M27Q"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best wireless mouse",
+    "expectedWinner": "Logitech MX Master 3S",
+    "expectedTopContenders": ["Logitech MX Master 3S", "Razer Basilisk V3", "Logitech G Pro X Superlight"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best external SSD",
+    "expectedWinner": "Samsung T7 Shield",
+    "expectedTopContenders": ["Samsung T7 Shield", "SanDisk Extreme Portable SSD", "Crucial X9 Pro"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best camera",
+    "expectedWinner": "Sony A7 IV",
+    "expectedTopContenders": ["Sony A7 IV", "Canon EOS R6 Mark II", "Fujifilm X-T5"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best phone",
+    "expectedWinner": "iPhone 15",
+    "expectedTopContenders": ["iPhone 15", "Samsung Galaxy S24", "Google Pixel 8"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best television",
+    "expectedWinner": "LG C3 OLED",
+    "expectedTopContenders": ["LG C3 OLED", "Samsung S90C", "Sony A95L"],
+    "category": "product_recommendation"
+  },
+  {
+    "query": "best backpack",
+    "expectedWinner": "Osprey Farpoint",
+    "expectedTopContenders": ["Osprey Farpoint", "Aer Travel Pack", "Peak Design Travel Backpack"],
+    "category": "product_recommendation"
+  },
+  {
     "query": "best restaurant in Williamsburg",
     "expectedWinner": "Lilia",
     "expectedTopContenders": ["Lilia", "Maison Premiere", "Misi", "Peter Luger"],

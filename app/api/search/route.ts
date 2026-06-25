@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { analyzeConsensus, buildDominantPlatformFallbackConsensus, buildNoReliableConsensus } from "@/lib/server/analyze";
+import { analyzeConsensus, buildDominantPlatformFallbackConsensus, buildNoReliableConsensus, buildProductFallbackConsensus } from "@/lib/server/analyze";
 import { cacheConsensus, getCachedConsensus, getCacheVersion } from "@/lib/server/cache";
 import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
@@ -156,6 +156,11 @@ export async function POST(request: Request) {
           sources,
           "Vera found broad default-platform evidence, but live extraction timed out before all alternatives could be scored."
         ) ??
+        buildProductFallbackConsensus(
+          body.data.query,
+          sources,
+          "Vera found product-review evidence, but live extraction timed out before all alternatives could be scored."
+        ) ??
         buildNoReliableConsensus(
           body.data.query,
           sources,
@@ -164,6 +169,15 @@ export async function POST(request: Request) {
     }
 
     const openAIElapsedMs = Date.now() - openAIStartedAt;
+    if (evidenceType === "product_recommendation" && consensus.results.length === 0) {
+      consensus =
+        buildProductFallbackConsensus(
+          body.data.query,
+          sources,
+          "Vera found product-review evidence, but the extracted product signals were too thin to score directly."
+        ) ?? consensus;
+    }
+
     logDominantPlatformTiming({
       query: body.data.query,
       tavilyMs: tavilyElapsedMs,

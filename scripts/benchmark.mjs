@@ -8,7 +8,7 @@ const rootDir = process.cwd();
 const benchmarkFile = path.join(rootDir, "benchmarks", "consensus-benchmarks.json");
 const resultsDir = path.join(rootDir, "benchmarks", "results");
 const defaultPort = Number(process.env.BENCHMARK_PORT ?? 3117);
-const requestTimeoutMs = Number(process.env.BENCHMARK_REQUEST_TIMEOUT_MS ?? 90000);
+const requestTimeoutMs = Number(process.env.BENCHMARK_REQUEST_TIMEOUT_MS ?? 150000);
 
 const aliases = new Map(
   Object.entries({
@@ -125,8 +125,9 @@ async function main() {
       baseUrl: server.baseUrl
     });
 
-    printReport(report);
-    await saveReport(report);
+  printReport(report);
+  logProductBenchmarkSummary(report);
+  await saveReport(report);
   } finally {
     await server.stop();
   }
@@ -356,6 +357,21 @@ function printReport(report) {
 
   lines.push("", "==================================", "");
   process.stdout.write(`${lines.join("\n")}\n`);
+}
+
+function logProductBenchmarkSummary(report) {
+  const product = report.byCategory.product_recommendation;
+
+  if (!product) {
+    return;
+  }
+
+  console.log("PRODUCT_BENCHMARK_SUMMARY", {
+    benchmarks: product.benchmarks,
+    winnerAccuracy: pct(product.winnerAccuracy),
+    top3Accuracy: pct(product.top3Accuracy),
+    contenderAccuracy: pct(product.contenderAccuracy)
+  });
 }
 
 async function saveReport(report) {

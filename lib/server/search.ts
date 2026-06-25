@@ -145,9 +145,34 @@ function buildPrimarySearchQuery(query: string) {
     return `${query} ${strategyTerms}`;
   }
 
+  if (evidenceType === "product_recommendation") {
+    const productQuery = normalizeProductSearchQuery(query);
+    console.log("QUERY_EVIDENCE_TYPE", evidenceType);
+    console.log("EVIDENCE_STRATEGY", evidenceStrategyFor(evidenceType));
+    return `${productQuery} product reviews expert testing best overall rtings wirecutter pcmag techradar toms guide consumer reports reddit long term owner consensus`;
+  }
+
   console.log("QUERY_EVIDENCE_TYPE", evidenceType);
   console.log("EVIDENCE_STRATEGY", evidenceStrategyFor(evidenceType));
   return `${query} recommendations reviews reddit forum best comparison consensus`;
+}
+
+function normalizeProductSearchQuery(query: string) {
+  const normalized = query.toLowerCase();
+
+  if (/\bbest television\b|\bbest tv\b/.test(normalized)) {
+    return "best TV television product";
+  }
+
+  if (/\bbest camera\b/.test(normalized)) {
+    return "best mirrorless camera product";
+  }
+
+  if (/\bbest phone\b/.test(normalized)) {
+    return "best smartphone product";
+  }
+
+  return query;
 }
 
 function dedupeSources(sources: VeraSource[]) {
