@@ -358,5 +358,41 @@
     "expectedWinner": "The Violet Hour",
     "expectedTopContenders": ["The Violet Hour", "Aviary", "Three Dots and a Dash"],
     "category": "local_recommendation"
+  },
+  {
+    "query": "best brunch in Brooklyn",
+    "expectedWinner": "Sunday in Brooklyn",
+    "expectedTopContenders": ["Sunday in Brooklyn", "Cafe Mogador", "Five Leaves"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best bakery in San Francisco",
+    "expectedWinner": "Tartine Bakery",
+    "expectedTopContenders": ["Tartine Bakery", "B. Patisserie", "Arsicault Bakery"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best attractions in Seattle",
+    "expectedWinner": "Space Needle",
+    "expectedTopContenders": ["Space Needle", "Pike Place Market", "Chihuly Garden and Glass"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best gyms in Williamsburg Brooklyn",
+    "expectedWinner": "Equinox Williamsburg",
+    "expectedTopContenders": ["Equinox Williamsburg", "Grind House", "Vital Brooklyn"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best dentists in Austin TX",
+    "expectedWinner": "Swish Dental",
+    "expectedTopContenders": ["Swish Dental", "Forest Family Dentistry", "Austin Dental Spa"],
+    "category": "local_recommendation"
+  },
+  {
+    "query": "best plumbers in Seattle",
+    "expectedWinner": "O'Neill Plumbing",
+    "expectedTopContenders": ["O'Neill Plumbing", "Beacon Plumbing", "Raymark Plumbing"],
+    "category": "local_recommendation"
   }
 ]

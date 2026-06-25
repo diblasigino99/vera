@@ -53,7 +53,12 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
     return "dominant_platform";
   }
 
-  if (/\b(restaurant|pizza|pizzeria|bar|pub|cocktail|hotel|motel|inn|resort|coffee shop|cafe|café|golf course|place to eat|place to stay)\b/.test(normalized)) {
+  if (
+    /\b(restaurant|restaurants|pizza|pizzeria|brunch|bakery|bakeries|bar|bars|pub|cocktail|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|attraction|attractions|museum|spa|salon|place to eat|place to stay|near me)\b/.test(
+      normalized
+    ) ||
+    /\b\d{5}(?:-\d{4})?\b/.test(normalized)
+  ) {
     return "local_recommendation";
   }
 
@@ -85,7 +90,7 @@ export function evidenceStrategyFor(type: QueryEvidenceType) {
     return "expert reviews, comparison sites, user reviews, Reddit/forums, and repeated recommendations";
   }
 
-  return "reviews, local guides, Reddit/community discussions, and editorial lists";
+  return "Google Maps-style business listings, Yelp, TripAdvisor, local guides, Reddit local communities, editorial lists, and booking/review platforms";
 }
 
 export function isSpecializedDominantPlatformQuery(query: string) {

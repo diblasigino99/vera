@@ -561,6 +561,11 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
     console.log("PRODUCT_SOURCE_WEIGHTS", productSourceWeightSummary(sources));
     console.log("PRODUCT_LEADERS_FOUND", productPrior.leadersFound);
   }
+  if (queryEvidenceType === "local_recommendation") {
+    console.log("LOCAL_CATEGORY_DETECTED", localCategoryForQuery(query));
+    console.log("LOCAL_BUSINESSES_FOUND", Array.from(byName.keys()).slice(0, 20));
+    console.log("LOCAL_SOURCE_WEIGHTS", localSourceWeightSummary(sources));
+  }
 
   const themeCounts = aggregateThemeCounts(filteredSignals);
   const sourceBreakdown = aggregateSourceBreakdown(sources, filteredSignals);
@@ -612,6 +617,21 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
       }))
     );
   }
+  if (queryEvidenceType === "local_recommendation") {
+    console.log(
+      "LOCAL_FINAL_RANKS",
+      contenders.slice(0, 8).map((contender, index) => ({
+        rank: index + 1,
+        name: contender.name,
+        consensusScore: consensusScore(contender),
+        netWeightedScore: contender.netWeightedScore,
+        sourceCount: contender.sourceCount,
+        averageRating: contender.averageRating,
+        sourceTypes: contender.sourceTypes,
+        confidence: contender.confidence
+      }))
+    );
+  }
   const winner = consensusClassification === "no_reliable_consensus" ? undefined : contenders[0]?.name;
   const mentionCounts = Object.fromEntries(
     contenders.map((contender) => [
@@ -628,7 +648,9 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
         communitySupportCount: contender.communitySupportCount,
         weightedPositiveScore: contender.weightedPositiveScore,
         weightedNegativeScore: contender.weightedNegativeScore,
-        netWeightedScore: contender.netWeightedScore
+        netWeightedScore: contender.netWeightedScore,
+        averageRating: contender.averageRating,
+        confidence: contender.confidence
       }
     ])
   );
@@ -762,6 +784,10 @@ function applyEvidenceStrategy(
     return applyProductRecommendationStrategy(metrics, query, signals, productPrior);
   }
 
+  if (evidenceType === "local_recommendation") {
+    return applyLocalRecommendationStrategy(metrics, query, signals);
+  }
+
   if (evidenceType !== "dominant_platform") {
     return metrics;
   }
@@ -789,6 +815,109 @@ function applyEvidenceStrategy(
     weightedPositiveScore: round1(metrics.weightedPositiveScore + defaultBoost / 4 + broadEvidenceBoost / 3 + expertEvidenceBoost / 4 + privacyBoost / 3),
     netWeightedScore
   };
+}
+
+function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: string, signals: SourceSignal[]): ContenderMetrics {
+  const highAuthoritySignals = signals.filter((signal) => localSourceAuthority(signal) === "high").length;
+  const mediumAuthoritySignals = signals.filter((signal) => localSourceAuthority(signal) === "medium").length;
+  const lowAuthoritySignals = signals.filter((signal) => localSourceAuthority(signal) === "low").length;
+  const averageRating = localAverageRating(signals);
+  const ratingBoost = averageRating ? Math.max(0, (averageRating - 4) * 2.5) : 0;
+  const diversityBoost = Math.min(metrics.sourceTypes.length, 4) * 1.1;
+  const highAuthorityBoost = Math.min(highAuthoritySignals, 5) * 2.4;
+  const mediumAuthorityBoost = Math.min(mediumAuthoritySignals, 5) * 0.8;
+  const oneOffPenalty = metrics.sourceCount <= 1 && lowAuthoritySignals > 0 ? 5 : 0;
+  const netWeightedScore = round1(metrics.netWeightedScore + highAuthorityBoost + mediumAuthorityBoost + diversityBoost + ratingBoost - oneOffPenalty);
+
+  return {
+    ...metrics,
+    averageRating,
+    confidence: localConfidence(metrics.sourceCount, metrics.sourceTypes.length, highAuthoritySignals),
+    weightedPositiveScore: round1(metrics.weightedPositiveScore + highAuthorityBoost / 3 + mediumAuthorityBoost / 4 + ratingBoost / 3),
+    netWeightedScore
+  };
+}
+
+function localCategoryForQuery(query: string) {
+  const normalized = normalizeQuery(query);
+
+  if (/\b(hotel|motel|inn|resort|lodging|place to stay)\b/.test(normalized)) return "hotel";
+  if (/\b(coffee shop|coffee shops|coffee|cafe|cafes|café)\b/.test(normalized)) return "coffee";
+  if (/\b(pizza|pizzeria)\b/.test(normalized)) return "pizza";
+  if (/\b(brunch)\b/.test(normalized)) return "brunch";
+  if (/\b(bakery|bakeries)\b/.test(normalized)) return "bakery";
+  if (/\b(bar|bars|pub|cocktail|brewery|taproom)\b/.test(normalized)) return "bar";
+  if (/\b(gym|gyms|fitness)\b/.test(normalized)) return "gym";
+  if (/\b(dentist|dentists|dental)\b/.test(normalized)) return "dentist";
+  if (/\b(plumber|plumbers|plumbing)\b/.test(normalized)) return "plumber";
+  if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
+  if (/\b(golf course|golf club)\b/.test(normalized)) return "golf_course";
+  if (/\b(restaurant|restaurants|place to eat|dinner|lunch)\b/.test(normalized)) return "restaurant";
+
+  return "local_business";
+}
+
+function localSourceAuthority(signal: SourceSignal): "high" | "medium" | "low" {
+  return localSourceAuthorityFromText(`${signal.domain} ${signal.sourceTitle} ${signal.extractedReason}`);
+}
+
+function localSourceAuthorityFromSource(source: VeraSource): "high" | "medium" | "low" {
+  return localSourceAuthorityFromText(`${source.domain} ${source.title} ${source.snippet ?? ""}`);
+}
+
+function localSourceAuthorityFromText(text: string): "high" | "medium" | "low" {
+  const normalized = normalizeQuery(text);
+
+  if (
+    /\b(google maps|maps.google|yelp|tripadvisor|opentable|resy|booking.com|hotels.com|eater|infatuation|timeout|michelin|cntraveler|conde nast|local guide|local guides|new york magazine|nymag|seattle met|thrillist)\b/.test(
+      normalized
+    )
+  ) {
+    return "high";
+  }
+
+  if (/\b(reddit|local community|forum|neighborhood|facebook group|nextdoor|youtube|blog)\b/.test(normalized)) {
+    return "medium";
+  }
+
+  if (/\b(official site|sponsored|coupon|deal|advertisement|press release)\b/.test(normalized)) {
+    return "low";
+  }
+
+  return "medium";
+}
+
+function localAverageRating(signals: SourceSignal[]) {
+  const ratings = signals
+    .flatMap((signal) => {
+      const text = `${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""}`;
+      const matches = Array.from(text.matchAll(/\b([3-5](?:\.\d)?)\s*(?:\/\s*5|stars?|rating)\b/gi));
+      return matches.map((match) => Number(match[1])).filter((rating) => rating >= 3 && rating <= 5);
+    })
+    .slice(0, 8);
+
+  if (!ratings.length) {
+    return undefined;
+  }
+
+  return round1(ratings.reduce((total, rating) => total + rating, 0) / ratings.length);
+}
+
+function localConfidence(sourceCount: number, sourceDiversity: number, highAuthoritySignals: number): "low" | "medium" | "high" {
+  if (sourceCount >= 4 && sourceDiversity >= 3 && highAuthoritySignals >= 2) return "high";
+  if (sourceCount >= 2 && sourceDiversity >= 2) return "medium";
+  return "low";
+}
+
+function localSourceWeightSummary(sources: VeraSource[]) {
+  return sources.reduce(
+    (summary, source) => {
+      const authority = localSourceAuthorityFromSource(source);
+      summary[authority] += 1;
+      return summary;
+    },
+    { high: 0, medium: 0, low: 0 } as Record<"high" | "medium" | "low", number>
+  );
 }
 
 type SoftwareLeader = {
@@ -1566,9 +1695,11 @@ function inferIntendedCategory(query: string): VeraEntityCategory {
 
   if (/\b(coffee shop|cafe|café|espresso)\b/.test(normalized)) return "cafe";
   if (/\b(bar|pub|cocktail|brewery|taproom|speakeasy)\b/.test(normalized)) return "bar";
-  if (/\b(restaurant|pizza|pizzeria|sushi|steakhouse|diner|brunch|lunch|dinner|place to eat|food)\b/.test(normalized)) return "restaurant";
+  if (/\b(restaurant|pizza|pizzeria|sushi|steakhouse|diner|brunch|bakery|bakeries|lunch|dinner|place to eat|food)\b/.test(normalized)) return "restaurant";
   if (/\b(hotel|motel|inn|resort|lodging|place to stay)\b/.test(normalized)) return "hotel";
   if (/\b(golf course|golf club|country club|links)\b/.test(normalized)) return "golf_course";
+  if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
+  if (/\b(gym|gyms|fitness|dentist|dentists|dental|plumber|plumbers|plumbing|spa|salon)\b/.test(normalized)) return "service";
   if (/\b(crm|software|app|platform|tool|ai coding assistant|coding assistant)\b/.test(normalized)) return "software";
   if (/\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress|product)\b/.test(normalized)) return "product";
   if (/\b(service|contractor|agency|consultant)\b/.test(normalized)) return "service";
@@ -1702,8 +1833,8 @@ function buildConsensus(
     generated_at: createdAt,
     model: openAIModel,
     mode,
-    headline: consensusHeadline(mode, contenders, intent),
-    explanation: consensusExplanation(mode, contenders, intent),
+    headline: consensusHeadline(mode, contenders, intent, structuredConsensus.queryEvidenceType),
+    explanation: consensusExplanation(mode, contenders, intent, structuredConsensus.queryEvidenceType),
     intent,
     results: contenders.map((contender, index) => buildResult(contender, structuredConsensus, sources, index)),
     sources,
@@ -1771,6 +1902,10 @@ function notEnoughData(query: string, sources: VeraSource[], explanation: string
 function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number, evidenceType: QueryEvidenceType): ConsensusMode {
   if (sourceCount < classificationThresholds.minimumSourceCount || contenders.length === 0) {
     return "no_reliable_consensus";
+  }
+
+  if (evidenceType === "local_recommendation") {
+    return classifyLocalConsensus(contenders);
   }
 
   const totalPositiveMentions = contenders.reduce((total, contender) => total + contender.positiveMentionCount, 0);
@@ -1844,6 +1979,30 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
   }
 
   return "split_consensus";
+}
+
+function classifyLocalConsensus(contenders: ContenderMetrics[]): ConsensusMode {
+  const top = contenders[0];
+  const second = contenders[1];
+
+  if (!top || top.positiveMentionCount === 0) {
+    return "no_reliable_consensus";
+  }
+
+  if (!second) {
+    return top.sourceCount >= 3 ? "moderate_consensus" : "split_consensus";
+  }
+
+  const scoreGap = consensusScore(top) - consensusScore(second);
+  const weightedGap = top.netWeightedScore - second.netWeightedScore;
+  const overwhelming =
+    top.sourceCount >= 5 &&
+    top.sourceDiversityScore >= 3 &&
+    top.positiveMentionCount >= second.positiveMentionCount + 3 &&
+    scoreGap >= 24 &&
+    weightedGap >= 10;
+
+  return overwhelming ? "strong_consensus" : "split_consensus";
 }
 
 function logConsensusDiagnostics(contenders: ContenderMetrics[], sourceCount: number, classification: ConsensusMode) {
@@ -1963,8 +2122,12 @@ function consensusScore(contender: ContenderMetrics) {
   return Math.max(1, Math.min(95, Math.round(raw)));
 }
 
-function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], intent: ConsensusResponse["intent"]) {
+function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], intent: ConsensusResponse["intent"], evidenceType?: QueryEvidenceType) {
   const winner = contenders[0];
+
+  if (evidenceType === "local_recommendation" && mode === "split_consensus") {
+    return `Top 5 local consensus for ${decisionSubject(intent)}.`;
+  }
 
   if (mode === "clear_consensus") {
     return `${winner?.name ?? "One option"} is the clear consensus pick.`;
@@ -1985,10 +2148,14 @@ function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], 
   return "No reliable consensus.";
 }
 
-function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[], intent: ConsensusResponse["intent"]) {
+function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[], intent: ConsensusResponse["intent"], evidenceType?: QueryEvidenceType) {
   const winner = contenders[0];
   const second = contenders[1];
   const criteria = intent.optimizeFor.slice(0, 4);
+
+  if (evidenceType === "local_recommendation" && mode === "split_consensus") {
+    return "Several local businesses have credible support. Vera ranks the top options by source support, review-platform evidence, local coverage, and community mentions without forcing a single winner.";
+  }
 
   if (mode === "clear_consensus") {
     return `One option is recommended far more consistently than the rest. ${winner?.name ?? "The winner"} appears across ${winner?.sourceCount ?? 0} sources with ${winner?.positiveMentionCount ?? 0} positive recommendations.`;
@@ -2095,6 +2262,11 @@ function inferSourceType(source: VeraSource): VeraSourceType {
     value.includes("expedia") ||
     value.includes("kayak") ||
     value.includes("yelp") ||
+    value.includes("google maps") ||
+    value.includes("maps.google") ||
+    value.includes("opentable") ||
+    value.includes("resy") ||
+    value.includes("hotels.com") ||
     value.includes("g2") ||
     value.includes("capterra") ||
     value.includes("getapp") ||
@@ -2103,7 +2275,17 @@ function inferSourceType(source: VeraSource): VeraSourceType {
   ) {
     return "review_site";
   }
-  if (value.includes("infatuation") || value.includes("eater") || value.includes("timeout") || value.includes("conde") || value.includes("cntraveler") || value.includes("zapier")) return "editorial";
+  if (
+    value.includes("infatuation") ||
+    value.includes("eater") ||
+    value.includes("timeout") ||
+    value.includes("conde") ||
+    value.includes("cntraveler") ||
+    value.includes("thrillist") ||
+    value.includes("local guide") ||
+    value.includes("zapier")
+  )
+    return "editorial";
   if (
     value.includes("forbes") ||
     value.includes("wirecutter") ||
@@ -2158,8 +2340,9 @@ function sourceTypeWeight(type: VeraSourceType, evidenceType: QueryEvidenceType 
     return 1;
   }
 
-  if (type === "reddit" || type === "forum" || type === "review_site") return 1;
-  if (type === "editorial" || type === "local_guide" || type === "professional_review") return 2;
+  if (type === "review_site") return 1.7;
+  if (type === "reddit" || type === "forum") return 1.1;
+  if (type === "editorial" || type === "local_guide" || type === "professional_review") return 2.1;
   if (type === "official") return 0.5;
   return 1;
 }

@@ -152,6 +152,12 @@ function buildPrimarySearchQuery(query: string) {
     return `${productQuery} product reviews expert testing best overall rtings wirecutter pcmag techradar toms guide consumer reports reddit long term owner consensus`;
   }
 
+  if (evidenceType === "local_recommendation") {
+    console.log("QUERY_EVIDENCE_TYPE", evidenceType);
+    console.log("EVIDENCE_STRATEGY", evidenceStrategyFor(evidenceType));
+    return `${query} Yelp TripAdvisor Google Maps reviews Reddit local Eater local guide OpenTable Booking.com best recommended`;
+  }
+
   console.log("QUERY_EVIDENCE_TYPE", evidenceType);
   console.log("EVIDENCE_STRATEGY", evidenceStrategyFor(evidenceType));
   return `${query} recommendations reviews reddit forum best comparison consensus`;

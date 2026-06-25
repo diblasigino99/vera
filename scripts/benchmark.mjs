@@ -127,6 +127,7 @@ async function main() {
 
   printReport(report);
   logProductBenchmarkSummary(report);
+  logLocalBenchmarkSummary(report);
   await saveReport(report);
   } finally {
     await server.stop();
@@ -371,6 +372,21 @@ function logProductBenchmarkSummary(report) {
     winnerAccuracy: pct(product.winnerAccuracy),
     top3Accuracy: pct(product.top3Accuracy),
     contenderAccuracy: pct(product.contenderAccuracy)
+  });
+}
+
+function logLocalBenchmarkSummary(report) {
+  const local = report.byCategory.local_recommendation;
+
+  if (!local) {
+    return;
+  }
+
+  console.log("LOCAL_BENCHMARK_SUMMARY", {
+    benchmarks: local.benchmarks,
+    winnerAccuracy: pct(local.winnerAccuracy),
+    top3Accuracy: pct(local.top3Accuracy),
+    contenderAccuracy: pct(local.contenderAccuracy)
   });
 }
 
