@@ -8,7 +8,7 @@ import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
-const localCacheVersion = 40;
+const localCacheVersion = 44;
 const canUseLocalJsonFallback = !process.env.VERCEL && process.env.NODE_ENV !== "production";
 
 type LocalCacheEntry = {
@@ -145,6 +145,84 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
   });
   console.log("CACHE_HIT_TYPE", "miss");
   return null;
+}
+
+export async function getStaleCachedConsensus(query: string, callCounts?: ExternalCallCounts) {
+  const normalizedQuery = normalizeQuery(query);
+  const canonicalQuery = canonicalizeQuery(query);
+  const local = memorySearches.get(canonicalQuery) ?? memorySearches.get(normalizedQuery);
+
+  if (local) {
+    console.log("[vera:cache] stale cache hit", {
+      normalizedQuery,
+      canonicalQuery,
+      store: "memory",
+      searchId: local.id,
+      cacheVersion: local.cacheVersion ?? null
+    });
+    return { ...local, cached: true };
+  }
+
+  const localFileCache = await readLocalCache();
+  const localFileHit = localFileCache[canonicalQuery] ?? localFileCache[normalizedQuery];
+
+  if (localFileHit?.result) {
+    memorySearches.set(normalizedQuery, localFileHit.result);
+    memorySearches.set(canonicalQuery, localFileHit.result);
+    console.log("[vera:cache] stale cache hit", {
+      normalizedQuery,
+      canonicalQuery,
+      store: "local-json",
+      searchId: localFileHit.result.id,
+      cacheVersion: localFileHit.cache_version ?? null
+    });
+    return { ...localFileHit.result, cached: true };
+  }
+
+  const supabase = getSupabaseAdmin();
+
+  if (!supabase) {
+    return null;
+  }
+
+  if (callCounts) {
+    callCounts.supabaseReads += 1;
+  }
+
+  const { data, error } = await supabase
+    .from("search_cache")
+    .select("id, original_query, normalized_query, canonical_query, result_json, result, sources_json, cache_version, updated_at")
+    .or(`canonical_query.eq.${escapePostgrestValue(canonicalQuery)},normalized_query.eq.${escapePostgrestValue(normalizedQuery)}`)
+    .order("cache_version", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.warn("[vera:cache] stale cache lookup failed", {
+      normalizedQuery,
+      canonicalQuery,
+      error
+    });
+    return null;
+  }
+
+  const row = ((data ?? []) as SupabaseSearchCacheRow[])[0] ?? null;
+  const hit = consensusFromSupabaseRow(row);
+
+  if (!hit) {
+    return null;
+  }
+
+  memorySearches.set(normalizedQuery, hit);
+  memorySearches.set(canonicalQuery, hit);
+  console.log("[vera:cache] stale cache hit", {
+    normalizedQuery,
+    canonicalQuery,
+    store: "supabase",
+    searchId: hit.id,
+    cacheVersion: row?.cache_version ?? hit.cacheVersion ?? null
+  });
+  return { ...hit, cached: true };
 }
 
 export async function getConsensusById(searchId: string) {

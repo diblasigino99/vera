@@ -7,7 +7,7 @@ import {
   buildNoReliableConsensus,
   buildProductFallbackConsensus
 } from "@/lib/server/analyze";
-import { cacheConsensus, getCachedConsensus, getCacheVersion } from "@/lib/server/cache";
+import { cacheConsensus, getCachedConsensus, getCacheVersion, getStaleCachedConsensus } from "@/lib/server/cache";
 import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
@@ -196,9 +196,19 @@ export async function POST(request: Request) {
           "Vera found local source evidence, but the extracted business signals were too thin to score directly."
         ) ?? consensus;
     }
-    if (evidenceType === "local_recommendation" && validLocalResultCount(consensus) < 5) {
+    if (evidenceType === "local_recommendation" && validLocalResultCount(consensus) < 3) {
       const recoveryStartedAt = Date.now();
-      const recoveredSources = await recoverLocalSparseSources(body.data.query, sources, externalCallCounts);
+      let recoveredSources = sources;
+
+      try {
+        recoveredSources = await recoverLocalSparseSources(body.data.query, sources, externalCallCounts);
+      } catch (error) {
+        console.warn("[vera:search] local sparse recovery failed softly", {
+          query: body.data.query,
+          elapsedMs: Date.now() - recoveryStartedAt,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
 
       if (recoveredSources.length > sources.length) {
         sources = recoveredSources;
@@ -231,6 +241,22 @@ export async function POST(request: Request) {
               "Vera found additional local evidence, but sparse recovery extraction timed out before it could rescore every business."
             ) ?? consensus;
         }
+      }
+    }
+    if (evidenceType === "local_recommendation" && consensus.results.length === 0) {
+      const stale = await getStaleCachedConsensus(body.data.query, externalCallCounts);
+
+      if (stale?.results.length) {
+        console.warn("[vera:search] local analysis returned empty; returned stale cached result", {
+          normalizedQuery,
+          searchId: stale.id,
+          cacheVersion: stale.cacheVersion ?? null
+        });
+        console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+        return NextResponse.json({
+          ...stale,
+          explanation: stale.explanation || "Vera returned the latest cached local consensus because live extraction did not recover enough businesses."
+        });
       }
     }
 
@@ -278,6 +304,24 @@ export async function POST(request: Request) {
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     return NextResponse.json(consensus);
   } catch (error) {
+    if (inferQueryEvidenceType(body.data.query) === "local_recommendation" && isTransientLiveSearchError(error)) {
+      const stale = await getStaleCachedConsensus(body.data.query, externalCallCounts);
+
+      if (stale) {
+        console.warn("[vera:search] local live search failed; returned stale cached result", {
+          normalizedQuery,
+          error: error instanceof Error ? error.message : String(error),
+          searchId: stale.id,
+          cacheVersion: stale.cacheVersion ?? null
+        });
+        console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+        return NextResponse.json({
+          ...stale,
+          explanation: stale.explanation || "Vera returned the latest cached local consensus because live retrieval was temporarily unavailable."
+        });
+      }
+    }
+
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     const message = error instanceof Error ? error.message : "Vera could not complete this search.";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -290,6 +334,14 @@ function isTimeoutError(error: unknown) {
   }
 
   return /timeout|timed out|request timed out/i.test(`${error.name} ${error.message}`);
+}
+
+function isTransientLiveSearchError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /timeout|timed out|request timed out|fetch failed|network|abort|aborted|connection error/i.test(`${error.name} ${error.message}`);
 }
 
 function openAIInputSourceCount(evidenceType: ReturnType<typeof inferQueryEvidenceType>, sourceCount: number) {

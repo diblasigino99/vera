@@ -221,15 +221,15 @@ export function buildLocalFallbackConsensus(
     return null;
   }
 
-  const fallbackSignals = localFallbackSignals(query, sources);
+  const fallbackSignals = dedupeSignals([...localFallbackSignals(query, sources), ...localRecommendationPrior(query, sources, [], evidenceType).signals]);
 
-  if (fallbackSignals.length < 3) {
+  if (fallbackSignals.length < 1) {
     return null;
   }
 
   const structuredConsensus = aggregateSignals(fallbackSignals, sources, query);
 
-  if (structuredConsensus.contenders.length < 3) {
+  if (structuredConsensus.contenders.length < 1) {
     return null;
   }
 
@@ -1281,7 +1281,8 @@ function localPlaceCandidatesFromSource(source: VeraSource): LocalPlaceCandidate
   const candidates = [
     ...titlePlaceCandidates(source),
     ...urlPlaceCandidates(source),
-    ...snippetPlaceCandidates(source)
+    ...snippetPlaceCandidates(source),
+    ...categoryKeywordPlaceCandidates(source)
   ];
   const byKey = new Map<string, LocalPlaceCandidate>();
 
@@ -1333,6 +1334,34 @@ function snippetPlaceCandidates(source: VeraSource): LocalPlaceCandidate[] {
       extractionSource: "snippet" as const,
       confidence: round2(0.56 + (localSourceAuthorityFromSource(source) === "high" ? 0.1 : 0))
     }));
+}
+
+function categoryKeywordPlaceCandidates(source: VeraSource): LocalPlaceCandidate[] {
+  const evidenceText = `${source.title}. ${source.snippet ?? ""}`;
+  if (!evidenceText.trim()) return [];
+
+  const keywordPattern =
+    "sushi|ramen|pizza|pizzeria|bakery|cafe|coffee|espresso|hotel|inn|bar|pub|tavern|cocktail|gym|fitness|dental|dentistry|plumbing|plumber|golf|course|museum|market|park";
+  const placePattern = new RegExp(
+    `\\b(?:[A-Z0-9][A-Za-z0-9'&.]+\\s+){0,3}(?:${keywordPattern})(?:\\s+(?:[A-Z0-9][A-Za-z0-9'&.]+|&|and|of|the|at)){0,3}\\b`,
+    "gi"
+  );
+  const matches = Array.from(evidenceText.matchAll(placePattern), (match) => match[0].trim())
+    .map((match) => match.replace(/\s+/g, " "))
+    .filter((match) => {
+      const normalized = normalizeQuery(match);
+      const words = normalized.split(/\s+/).filter(Boolean);
+      return words.length <= 5 && match.length >= 4 && match.length <= 72 && !/^(?:best|top)\b/i.test(match);
+    });
+
+  return matches.map((match) => ({
+    name: match,
+    evidenceText,
+    sourceUrl: source.url,
+    sourceTitle: source.title,
+    extractionSource: "snippet" as const,
+    confidence: round2(0.6 + (localSourceAuthorityFromSource(source) === "high" ? 0.08 : 0))
+  }));
 }
 
 function urlPlaceCandidates(source: VeraSource): LocalPlaceCandidate[] {
@@ -1420,6 +1449,15 @@ function localRecoveryRejectionReason(query: string, candidate: string, placeCan
   if (words.length > 5 && !localCandidateHasCategorySignal(category, normalized)) return "article_title_fragment";
   if (placeCandidate && placeCandidate.confidence < 0.54) return "low_extraction_confidence";
   if (isGenericLocalContender(query, candidate)) return "generic_or_placeholder";
+  if (/\b(?:websitedirections|website directions|instagram|facebook|hours?|open now|happy hour|events?|tickets?|calendar)\b/.test(normalized)) {
+    return "source_or_ui_fragment";
+  }
+  if (/\b(?:new year'?s eve|celebrate|watch here|leading|for all you|perfect|favorite cafe|first coffee shop)\b/.test(normalized)) {
+    return "article_title_fragment";
+  }
+  if (/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\b(?:\s+\d{4})?$/.test(normalized)) {
+    return "date_or_article_fragment";
+  }
   if (/\b(?:golf digest|golfweek|google hotels|tripadvisor|yelp|booking|opentable|reddit|eater|infatuation)'?s?\b/.test(normalized)) {
     return "source_website_name";
   }
@@ -1766,7 +1804,7 @@ function isGenericLocalContender(query: string, name: string) {
   }
 
   if (
-    /^(best|top|recommended|recommendations?|recs|unknown|none|the|read|last|course|courses|what s|gallery|landmark|dining|list|pasta|blog|post|features?|hot spots?|watch|entity|category|avenue|street|st|ave|nyc|restaurants?|bars?|hotels?|dentists?|dentistry|dental|places? to stay|places? to eat|food near me|coffee|coffee shops?|coffee in nyc|coffee espresso recs|espresso recs|booking com|tripadvisor|yelp|google maps|google hotels|googles?|opentable|resy|reddit|local guide|reviews?|comments?|replies|threads?|restaurant reviews?|dentist recommendation|romantic restaurants bars|cocktail bars chicago|club chicago|the vendry|lakeview east chamber of commerce|(?:the )?\d+\s+best .+|(?:the )?best restaurant|(?:the )?best restaurants|(?:the )?best .+|best coffee cafe|updated \d{4}|short visit|what to visit|bakeries?|bakeries san francisco ca|golf courses?|public courses?|rankings?|forum|.+ forum|eater|eater new york|eater san francisco|the infatuation|infatuation|healthgrades|golf digest'?s?|golfweek'?s?|time out|timeout|time out new yorks?|new york city|new york|new yorks?|manhattan|brooklyn|williamsburg|williamsburg right now|long island|austin|seattle|los angeles|san francisco|san franciscos?|san francisco s|massapequa|chicago|texas|south side|hells kitchen|what they are saying|brunch|biz|came)$/.test(
+    /^(best|top|great|recommended|recommendations?|recs|unknown|none|the|read|last|course|courses|what s|gallery|landmark|dining|list|pasta|pizza|plumbing|fitness|travel tourism|travel and tourism|blog|post|features?|hot spots?|watch|entity|category|avenue|street|st|ave|nyc|restaurants?|bars?|bar events|hotels?|dentists?|dentistry|dental|pediatric dentists|places? to stay|places? to eat|food near me|coffee|coffee shops?|coffee in nyc|coffee espresso recs|espresso recs|booking com|tripadvisor|yelp|google maps|google hotels|googles?|opentable|resy|reddit|local guide|reviews?|comments?|replies|threads?|restaurant reviews?|hotel recommendation|dentist recommendation|romantic restaurants bars|cocktail bars chicago|club chicago|chicago by|the vendry|lakeview east chamber of commerce|(?:the )?\d+\s+best .+|(?:the )?best restaurant|(?:the )?best restaurants|(?:the )?best .+|best coffee cafe|updated \d{4}|short visit|what to visit|bakeries?|bakeries san francisco ca|golf courses?|public courses?|rankings?|forum|.+ forum|eater|eater new york|eater san francisco|the infatuation|infatuation|healthgrades|golf digest'?s?|golfweek'?s?|time out|timeout|time out new yorks?|new york city|new york|new yorks?|manhattan|brooklyn|williamsburg|williamsburg right now|long island|austin|seattle|los angeles|san francisco|san franciscos?|san francisco s|massapequa|chicago|texas|south side|hells kitchen|what they are saying|brunch|biz|came)$/.test(
       generic
     )
   ) {
@@ -1778,6 +1816,10 @@ function isGenericLocalContender(query: string, name: string) {
   }
 
   if (/^(gyms?|dentists?|plumbers?|attractions?|restaurants?|hotels?|bars?|coffee shops?|bakeries?|golf courses?) (in|near)\b/.test(generic)) {
+    return true;
+  }
+
+  if (/^(sushi|ramen|pizza|coffee|espresso|cocktail|brunch)\s+(restaurants?|spots?|shops?|places?|bars?|guide|guides|list|lists)$/.test(generic)) {
     return true;
   }
 

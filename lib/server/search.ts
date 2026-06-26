@@ -9,8 +9,8 @@ type TavilyResult = {
 };
 
 const maxTavilyCallsPerRequest = 2;
-const maxLocalTavilyCallsPerRequest = 6;
-const maxLocalSparseRecoveryCalls = 5;
+const maxLocalTavilyCallsPerRequest = 3;
+const maxLocalSparseRecoveryCalls = 2;
 const tavilyTimeoutMs = 6000;
 const tavilyRetryDelayMs = 350;
 
@@ -57,7 +57,13 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
     variantsToFetch.push(variant);
   }
 
-  const settledResponses = await Promise.allSettled(variantsToFetch.map((variant) => searchVariantWithRetry(variant, key, callCounts)));
+  const settledResponses = await Promise.allSettled(
+    variantsToFetch.map((variant) =>
+      searchVariantWithRetry(variant, key, callCounts, {
+        retry: evidenceType !== "local_recommendation"
+      })
+    )
+  );
   const failures = settledResponses.filter((response) => response.status === "rejected");
 
   if (failures.length) {
@@ -131,7 +137,7 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
     console.log("LOCAL_SPARSE_RECOVERY_QUERY", variant);
   }
 
-  const settledResponses = await Promise.allSettled(variants.map((variant) => searchVariantWithRetry(variant, key, callCounts)));
+  const settledResponses = await Promise.allSettled(variants.map((variant) => searchVariantWithRetry(variant, key, callCounts, { retry: false })));
   const recoveredSources = settledResponses.flatMap((response) => (response.status === "fulfilled" ? response.value : []));
   const failures = settledResponses.filter((response) => response.status === "rejected");
 
@@ -155,11 +161,16 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
   return merged;
 }
 
-async function searchVariantWithRetry(queryVariant: string, key: string, callCounts?: ExternalCallCounts): Promise<VeraSource[]> {
+async function searchVariantWithRetry(
+  queryVariant: string,
+  key: string,
+  callCounts?: ExternalCallCounts,
+  options: { retry?: boolean } = { retry: true }
+): Promise<VeraSource[]> {
   try {
     return await searchVariant(queryVariant, key, callCounts);
   } catch (error) {
-    if (!isRetryableTavilyError(error)) {
+    if (!options.retry || !isRetryableTavilyError(error)) {
       throw error;
     }
 
