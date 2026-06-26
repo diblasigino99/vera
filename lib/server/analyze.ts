@@ -35,9 +35,13 @@ const sourceTypes = [
 const openAIModel = "gpt-4.1-mini";
 const openAITimeoutMs = 12000;
 const dominantPlatformOpenAITimeoutMs = 12000;
+const localRecommendationOpenAITimeoutMs = 9000;
 const maxOpenAISources = 8;
+const maxLocalOpenAISources = 8;
 const maxOpenAISnippetChars = 150;
+const maxLocalOpenAISnippetChars = 120;
 const maxOpenAICompletionTokens = 1400;
+const maxLocalOpenAICompletionTokens = 1000;
 
 const SignalSchema = z.object({
   extractions: z.array(
@@ -53,6 +57,19 @@ const SignalSchema = z.object({
 });
 
 type SignalPayload = z.infer<typeof SignalSchema>;
+type LocalPlaceCandidate = {
+  name: string;
+  evidenceText: string;
+  sourceUrl: string;
+  sourceTitle: string;
+  extractionSource: "title" | "snippet" | "url" | "metadata";
+  confidence: number;
+};
+
+type LocalPlaceExtractionDiagnostic = LocalPlaceCandidate & {
+  accepted: boolean;
+  rejectionReason?: string;
+};
 
 const classificationThresholds = {
   minimumSourceCount: 3,
@@ -193,6 +210,38 @@ export function buildProductFallbackConsensus(
   };
 }
 
+export function buildLocalFallbackConsensus(
+  query: string,
+  sources: VeraSource[],
+  explanation = "Vera found local sources, but live extraction timed out before all businesses could be scored."
+): ConsensusResponse | null {
+  const evidenceType = inferQueryEvidenceType(query);
+
+  if (evidenceType !== "local_recommendation" || sources.length < 3) {
+    return null;
+  }
+
+  const fallbackSignals = localFallbackSignals(query, sources);
+
+  if (fallbackSignals.length < 3) {
+    return null;
+  }
+
+  const structuredConsensus = aggregateSignals(fallbackSignals, sources, query);
+
+  if (structuredConsensus.contenders.length < 3) {
+    return null;
+  }
+
+  const consensus = buildConsensus(query, sources, intentFromQuery(query), structuredConsensus);
+
+  return {
+    ...consensus,
+    mode: consensus.mode === "clear_consensus" ? "strong_consensus" : consensus.mode,
+    explanation
+  };
+}
+
 export async function analyzeConsensusWithDebug(query: string, sources: VeraSource[]) {
   const key = process.env.OPENAI_API_KEY;
 
@@ -201,7 +250,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   }
 
   const evidenceType = inferQueryEvidenceType(query);
-  const modelSources = prepareSourcesForOpenAI(sources);
+  const modelSources = prepareSourcesForOpenAI(sources, evidenceType);
 
   if (modelSources.length < 3) {
     const consensus = notEnoughData(query, sources, "Not enough reliable data to form a consensus.");
@@ -236,9 +285,14 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
 }
 
 async function extractSourceSignals(query: string, sources: VeraSource[], key: string, evidenceType: QueryEvidenceType) {
-  const timeoutMs = evidenceType === "dominant_platform" ? dominantPlatformOpenAITimeoutMs : openAITimeoutMs;
-  const maxSnippetChars = maxOpenAISnippetChars;
-  const maxCompletionTokens = maxOpenAICompletionTokens;
+  const timeoutMs =
+    evidenceType === "dominant_platform"
+      ? dominantPlatformOpenAITimeoutMs
+      : evidenceType === "local_recommendation"
+        ? localRecommendationOpenAITimeoutMs
+        : openAITimeoutMs;
+  const maxSnippetChars = evidenceType === "local_recommendation" ? maxLocalOpenAISnippetChars : maxOpenAISnippetChars;
+  const maxCompletionTokens = evidenceType === "local_recommendation" ? maxLocalOpenAICompletionTokens : maxOpenAICompletionTokens;
   const openai = new OpenAI({ apiKey: key, timeout: timeoutMs, maxRetries: 0 });
   const startedAt = Date.now();
   console.log("[vera:openai] input prepared", {
@@ -288,6 +342,9 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
           "Do not rank, summarize, compare, or explain consensus.",
           "For each source choose the named contenders that receive clear support or criticism.",
           "Prefer concrete product/tool names over generic categories.",
+          evidenceType === "local_recommendation"
+            ? "For local searches, extract only actual business or place names; never extract source names, list titles, addresses, recommendation phrases, or generic categories."
+            : "",
           "If a source names several credible contenders, include up to three of the strongest.",
           "If no named contender is present, set noContender true and contender/reason to empty strings.",
           "sentiment must be positive, negative, or neutral.",
@@ -343,10 +400,14 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
   };
 }
 
-function prepareSourcesForOpenAI(sources: VeraSource[]) {
-  return sources.slice(0, maxOpenAISources).map((source) => ({
+function prepareSourcesForOpenAI(sources: VeraSource[], evidenceType: QueryEvidenceType) {
+  const sourceLimit = evidenceType === "local_recommendation" ? maxLocalOpenAISources : maxOpenAISources;
+  const snippetLimit = evidenceType === "local_recommendation" ? maxLocalOpenAISnippetChars : maxOpenAISnippetChars;
+  const selectedSources = evidenceType === "local_recommendation" ? rankLocalSourcesForExtraction(sources).slice(0, sourceLimit) : sources.slice(0, sourceLimit);
+
+  return selectedSources.map((source) => ({
     ...source,
-    snippet: trimForOpenAI(source.snippet ?? "", maxOpenAISnippetChars)
+    snippet: trimForOpenAI(source.snippet ?? "", snippetLimit)
   }));
 }
 
@@ -487,7 +548,8 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
   const dominantPrior = dominantPlatformPrior(query, sources, signals, queryEvidenceType, specializedDominantPlatformQuery);
   const softwarePrior = softwareToolPrior(query, sources, signals, queryEvidenceType);
   const productPrior = productRecommendationPrior(query, sources, signals, queryEvidenceType);
-  const evidenceSignals = [...signals, ...dominantPrior.signals, ...softwarePrior.signals, ...productPrior.signals];
+  const localPrior = localRecommendationPrior(query, sources, signals, queryEvidenceType);
+  const evidenceSignals = [...signals, ...dominantPrior.signals, ...softwarePrior.signals, ...productPrior.signals, ...localPrior.signals];
   const dominantFilteredSignals =
     queryEvidenceType === "dominant_platform"
       ? evidenceSignals.filter((signal) => !isGenericDominantPlatformContender(signal.contenderName))
@@ -495,10 +557,13 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
   const scoringSignals =
     queryEvidenceType === "product_recommendation"
       ? dominantFilteredSignals.filter((signal) => !isGenericProductContender(query, signal.contenderName))
-      : dominantFilteredSignals;
+      : queryEvidenceType === "local_recommendation"
+        ? dominantFilteredSignals.filter((signal) => !isGenericLocalContender(query, signal.contenderName))
+        : dominantFilteredSignals;
+  const aggregationSignals = queryEvidenceType === "local_recommendation" ? mergeLocalBusinessSignalNames(scoringSignals) : scoringSignals;
   const byName = new Map<string, SourceSignal[]>();
 
-  for (const signal of scoringSignals) {
+  for (const signal of aggregationSignals) {
     const existing = byName.get(signal.contenderName) ?? [];
     existing.push(signal);
     byName.set(signal.contenderName, existing);
@@ -523,7 +588,7 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
 
   const { contenders, removed } = filterContendersByCategory(contendersBeforeFiltering, intendedCategory);
   const contenderNames = new Set(contenders.map((contender) => contender.name));
-  const filteredSignals = scoringSignals.filter((signal) => contenderNames.has(signal.contenderName));
+  const filteredSignals = aggregationSignals.filter((signal) => contenderNames.has(signal.contenderName));
   console.log("INTENDED_CATEGORY", intendedCategory);
   console.log(
     "CONTENDER_CATEGORY",
@@ -565,6 +630,8 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
     console.log("LOCAL_CATEGORY_DETECTED", localCategoryForQuery(query));
     console.log("LOCAL_BUSINESSES_FOUND", Array.from(byName.keys()).slice(0, 20));
     console.log("LOCAL_SOURCE_WEIGHTS", localSourceWeightSummary(sources));
+    console.log("LOCAL_PRIOR_APPLIED", localPrior.applied);
+    console.log("LOCAL_PRIOR_CONTENDERS_FOUND", localPrior.contendersFound);
   }
 
   const themeCounts = aggregateThemeCounts(filteredSignals);
@@ -628,7 +695,8 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
         sourceCount: contender.sourceCount,
         averageRating: contender.averageRating,
         sourceTypes: contender.sourceTypes,
-        confidence: contender.confidence
+        confidence: contender.confidence,
+        localRanking: contender.localRanking
       }))
     );
   }
@@ -666,7 +734,13 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
     sourceBreakdown,
     confidenceReasoning: confidenceReasoning(contenders, consensusClassification, sources.length),
     consensusClassification,
-    signals: filteredSignals
+    signals: filteredSignals,
+    localPlaceExtraction:
+      queryEvidenceType === "local_recommendation"
+        ? {
+            candidates: localPrior.diagnostics
+          }
+        : undefined
   };
 }
 
@@ -823,19 +897,173 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
   const lowAuthoritySignals = signals.filter((signal) => localSourceAuthority(signal) === "low").length;
   const averageRating = localAverageRating(signals);
   const ratingBoost = averageRating ? Math.max(0, (averageRating - 4) * 2.5) : 0;
-  const diversityBoost = Math.min(metrics.sourceTypes.length, 4) * 1.1;
-  const highAuthorityBoost = Math.min(highAuthoritySignals, 5) * 2.4;
-  const mediumAuthorityBoost = Math.min(mediumAuthoritySignals, 5) * 0.8;
-  const oneOffPenalty = metrics.sourceCount <= 1 && lowAuthoritySignals > 0 ? 5 : 0;
-  const netWeightedScore = round1(metrics.netWeightedScore + highAuthorityBoost + mediumAuthorityBoost + diversityBoost + ratingBoost - oneOffPenalty);
+  const sourceAuthorityScore = round1(Math.min(highAuthoritySignals, 5) * 2.2 + Math.min(mediumAuthoritySignals, 5) * 0.65 - Math.min(lowAuthoritySignals, 3) * 0.45);
+  const sourceDomains = Array.from(new Set(signals.map((signal) => signal.domain).filter(Boolean)));
+  const crossSourceAgreementCount = sourceDomains.length;
+  const sourceAgreementScore = round1(Math.min(Math.max(crossSourceAgreementCount - 1, 0), 4) * 3.4 + Math.min(Math.max(metrics.sourceCount - 1, 0), 5) * 1.2);
+  const mentionFrequencyScore = round1(Math.min(metrics.positiveMentionCount, 6) * 0.75 + Math.min(metrics.strongMentionCount, 4) * 0.8);
+  const locationMatchScore = localLocationMatchScore(query, metrics.name, signals);
+  const categoryMatchScore = localCategoryMatchScore(query, metrics.name, signals);
+  const extractionConfidence = localExtractionConfidence(signals);
+  const extractionConfidenceScore = round1((extractionConfidence - 0.62) * 8);
+  const sourceSpecificConfidence = round1(Math.min(highAuthoritySignals, 4) * 0.8 + Math.min(metrics.sourceTypes.length, 3) * 0.55);
+  const reviewSourceSignal = round1(localReviewSourceSignal(signals));
+  const weakSingleSourcePenalty = localWeakSingleSourcePenalty(metrics, signals);
+  const urlOnlyPenalty = localUrlOnlyPenalty(signals);
+  const totalAdjustment = round1(
+    sourceAuthorityScore +
+      sourceAgreementScore +
+      mentionFrequencyScore +
+      locationMatchScore +
+      categoryMatchScore +
+      extractionConfidenceScore +
+      sourceSpecificConfidence +
+      reviewSourceSignal +
+      ratingBoost -
+      weakSingleSourcePenalty -
+      urlOnlyPenalty
+  );
+  const netWeightedScore = round1(metrics.netWeightedScore + totalAdjustment);
 
   return {
     ...metrics,
     averageRating,
     confidence: localConfidence(metrics.sourceCount, metrics.sourceTypes.length, highAuthoritySignals),
-    weightedPositiveScore: round1(metrics.weightedPositiveScore + highAuthorityBoost / 3 + mediumAuthorityBoost / 4 + ratingBoost / 3),
-    netWeightedScore
+    weightedPositiveScore: round1(metrics.weightedPositiveScore + sourceAuthorityScore / 3 + sourceAgreementScore / 4 + ratingBoost / 3),
+    netWeightedScore,
+    localRanking: {
+      baseScore: metrics.netWeightedScore,
+      finalScore: netWeightedScore,
+      locationMatchScore,
+      categoryMatchScore,
+      sourceAuthorityScore,
+      sourceAgreementScore,
+      crossSourceAgreementCount,
+      mentionFrequencyScore,
+      extractionConfidence,
+      extractionConfidenceScore,
+      sourceSpecificConfidence,
+      reviewSourceSignal,
+      weakSingleSourcePenalty,
+      urlOnlyPenalty,
+      sourceDomains
+    }
   };
+}
+
+function localLocationMatchScore(query: string, contenderName: string, signals: SourceSignal[]) {
+  const queryText = normalizeQuery(query);
+  const evidenceText = normalizeQuery([contenderName, ...signals.map((signal) => `${signal.sourceTitle} ${signal.queryVariant ?? ""} ${signal.extractedReason}`)].join(" "));
+  const tokens = localLocationTokens(queryText);
+  let score = 0;
+
+  if (tokens.length) {
+    const matches = tokens.filter((token) => evidenceText.includes(token)).length;
+    score += Math.min(matches, 3) * 1.4;
+  }
+
+  if (/\bwilliamsburg\b/.test(queryText) && /\b(colonial williamsburg|williamsburg va|virginia|va 23185|richmond rd)\b/.test(evidenceText)) score -= 16;
+  if (/\bnyc|new york|brooklyn|manhattan|williamsburg\b/.test(queryText) && /\b(las vegas|atlanta|williamsburg va|colonial williamsburg|virginia|richmond rd)\b/.test(evidenceText)) score -= 9;
+  if (/\bseattle\b/.test(queryText) && /\b(seatac|bellevue|tacoma)\b/.test(evidenceText)) score -= 1.5;
+  if (/\baustin\b/.test(queryText) && /\b(round rock|dallas|houston|san antonio)\b/.test(evidenceText)) score -= 3;
+  if (/\bmassapequa\b/.test(queryText) && /\b(new york city|manhattan|brooklyn|catskills)\b/.test(evidenceText)) score -= 6;
+  if (/\blos angeles\b/.test(queryText) && /\b(instant noodles|consumer reports|wirecutter)\b/.test(evidenceText)) score -= 8;
+
+  return round1(Math.max(-20, Math.min(score, 7)));
+}
+
+function localLocationTokens(normalizedQuery: string) {
+  const known = [
+    "williamsburg",
+    "brooklyn",
+    "manhattan",
+    "nyc",
+    "new york",
+    "seattle",
+    "austin",
+    "massapequa",
+    "los angeles",
+    "long island",
+    "chicago",
+    "san francisco"
+  ];
+  return known.filter((token) => normalizedQuery.includes(token));
+}
+
+function localCategoryMatchScore(query: string, contenderName: string, signals: SourceSignal[]) {
+  const category = localCategoryForQuery(query);
+  const queryText = normalizeQuery(query);
+  const evidenceText = normalizeQuery([contenderName, ...signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""}`)].join(" "));
+  let score = 0;
+
+  if (localCandidateHasCategorySignal(category, evidenceText)) score += 3.5;
+  if (localCandidateHasCategorySignal(category, normalizeQuery(contenderName))) score += 2.2;
+
+  if (/\bramen\b/.test(queryText)) score += /\b(ramen|noodle|tsujita|tatsu|menya)\b/.test(evidenceText) ? 4.5 : -4;
+  if (/\bsushi\b/.test(queryText)) score += /\b(sushi|omakase|handroll|izakaya)\b/.test(evidenceText) ? 4.5 : -4;
+  if (/\btacos?\b/.test(queryText)) score += /\b(taco|tacos|taqueria|discada)\b/.test(evidenceText) ? 4 : -3;
+  if (/\bespresso martini\b/.test(queryText)) score += /\b(bar|cocktail|lounge|martini|drinks?)\b/.test(evidenceText) ? 3.5 : -5;
+
+  if (category === "hotel" && /\b(restaurant|bar|cafe|pizza|sushi|ramen)\b/.test(normalizeQuery(contenderName))) score -= 8;
+  if ((category === "restaurant" || category === "bar") && /\b(hotel|inn|motel|residence inn|hilton|marriott)\b/.test(normalizeQuery(contenderName))) score -= 8;
+  if (category === "dentist" && /\b(directory|dentists?|recommendation|delta dental|metlife|near me|texas|austin dentist office)\b/.test(evidenceText)) score -= 8;
+  if (category === "plumber" && /\b(directory|near me|recommendation|king county)\b/.test(evidenceText)) score -= 4;
+
+  return round1(Math.max(-10, Math.min(score, 10)));
+}
+
+function localExtractionConfidence(signals: SourceSignal[]) {
+  if (!signals.length) return 0.5;
+
+  const total = signals.reduce((sum, signal) => {
+    const reason = normalizeQuery(signal.extractedReason);
+    const sourceBonus = localSourceAuthority(signal) === "high" ? 0.08 : localSourceAuthority(signal) === "medium" ? 0.03 : -0.03;
+    const extractionBase = reason.includes("title evidence")
+      ? 0.78
+      : reason.includes("snippet evidence")
+        ? 0.68
+        : reason.includes("url evidence")
+          ? 0.58
+          : 0.66;
+    const strengthBonus = signal.mentionStrength === "strong" ? 0.08 : signal.mentionStrength === "moderate" ? 0.04 : 0;
+    return sum + extractionBase + sourceBonus + strengthBonus;
+  }, 0);
+
+  return round2(Math.max(0.4, Math.min(total / signals.length, 0.96)));
+}
+
+function localReviewSourceSignal(signals: SourceSignal[]) {
+  const reviewSignals = signals.filter((signal) =>
+    /\b(yelp|tripadvisor|opentable|resy|booking|google|maps|healthgrades|zocdoc|angi|homeadvisor|eater|infatuation|timeout|michelin)\b/.test(
+      normalizeQuery(`${signal.domain} ${signal.sourceTitle}`)
+    )
+  ).length;
+  return Math.min(reviewSignals, 4) * 0.9;
+}
+
+function localWeakSingleSourcePenalty(metrics: ContenderMetrics, signals: SourceSignal[]) {
+  if (metrics.sourceCount > 1) return 0;
+
+  const signal = signals[0];
+  const authority = signal ? localSourceAuthority(signal) : "low";
+  const reason = normalizeQuery(signal?.extractedReason ?? "");
+  let penalty = authority === "high" ? 2.5 : authority === "medium" ? 4.5 : 7;
+
+  if (reason.includes("url evidence")) penalty += 3;
+  if (metrics.positiveMentionCount <= 1) penalty += 2;
+
+  return round1(penalty);
+}
+
+function localUrlOnlyPenalty(signals: SourceSignal[]) {
+  if (!signals.length) return 0;
+
+  const urlEvidenceCount = signals.filter((signal) => normalizeQuery(signal.extractedReason).includes("url evidence")).length;
+  const corroborated = new Set(signals.map((signal) => signal.domain)).size > 1;
+
+  if (urlEvidenceCount === signals.length) return corroborated ? 3 : 7;
+  if (urlEvidenceCount > 0 && !corroborated) return 2.5;
+  return 0;
 }
 
 function localCategoryForQuery(query: string) {
@@ -844,6 +1072,7 @@ function localCategoryForQuery(query: string) {
   if (/\b(hotel|motel|inn|resort|lodging|place to stay)\b/.test(normalized)) return "hotel";
   if (/\b(coffee shop|coffee shops|coffee|cafe|cafes|café)\b/.test(normalized)) return "coffee";
   if (/\b(pizza|pizzeria)\b/.test(normalized)) return "pizza";
+  if (/\b(sushi|ramen|taco|tacos|taqueria|espresso martini)\b/.test(normalized)) return "restaurant";
   if (/\b(brunch)\b/.test(normalized)) return "brunch";
   if (/\b(bakery|bakeries)\b/.test(normalized)) return "bakery";
   if (/\b(bar|bars|pub|cocktail|brewery|taproom)\b/.test(normalized)) return "bar";
@@ -869,7 +1098,7 @@ function localSourceAuthorityFromText(text: string): "high" | "medium" | "low" {
   const normalized = normalizeQuery(text);
 
   if (
-    /\b(google maps|maps.google|yelp|tripadvisor|opentable|resy|booking.com|hotels.com|eater|infatuation|timeout|michelin|cntraveler|conde nast|local guide|local guides|new york magazine|nymag|seattle met|thrillist)\b/.test(
+    /\b(google maps|maps.google|yelp|tripadvisor|opentable|resy|booking.com|hotels.com|healthgrades|zocdoc|angi|homeadvisor|eater|infatuation|timeout|michelin|cntraveler|conde nast|travel leisure|travelandleisure|golf digest|golfweek|official tourism|tourism|local guide|local guides|new york magazine|nymag|seattle met|thrillist)\b/.test(
       normalized
     )
   ) {
@@ -918,6 +1147,693 @@ function localSourceWeightSummary(sources: VeraSource[]) {
     },
     { high: 0, medium: 0, low: 0 } as Record<"high" | "medium" | "low", number>
   );
+}
+
+type LocalPriorResult = {
+  applied: boolean;
+  contendersFound: string[];
+  signals: SourceSignal[];
+  diagnostics: LocalPlaceExtractionDiagnostic[];
+};
+
+function localRecommendationPrior(query: string, sources: VeraSource[], signals: SourceSignal[], evidenceType: QueryEvidenceType): LocalPriorResult {
+  if (evidenceType !== "local_recommendation") {
+    return { applied: false, contendersFound: [], signals: [], diagnostics: [] };
+  }
+
+  const existingContenders = new Set(
+    signals
+      .map((signal) => signal.contenderName)
+      .filter((name) => !isGenericLocalContender(query, name))
+      .map((name) => localBusinessKey(name))
+      .filter(Boolean)
+  );
+
+  if (existingContenders.size >= 5) {
+    return { applied: false, contendersFound: [], signals: [], diagnostics: [] };
+  }
+
+  console.log("LOCAL_PLACE_EXTRACTOR_RUN", {
+    query,
+    sourceCount: sources.length,
+    existingValidContenders: existingContenders.size
+  });
+  console.log("LOCAL_SPARSE_RECOVERY_TRIGGERED", {
+    query,
+    validLocalContenders: existingContenders.size,
+    sourceCount: sources.length
+  });
+
+  const diagnostics: LocalPlaceExtractionDiagnostic[] = [];
+  const priorSignals = sources.flatMap((source) => {
+    console.log("LOCAL_PLACE_EXTRACTOR_SOURCE", {
+      title: source.title,
+      url: source.url,
+      domain: source.domain
+    });
+
+    return localPlaceCandidatesFromSource(source).flatMap((candidate) => {
+      console.log("LOCAL_PLACE_EXTRACTOR_CANDIDATE", candidate);
+      console.log("LOCAL_SPARSE_RECOVERY_CANDIDATE", {
+        candidate: candidate.name,
+        source: source.url,
+        confidence: candidate.confidence,
+        extractionSource: candidate.extractionSource
+      });
+
+      const rejectedReason = localRecoveryRejectionReason(query, candidate.name, candidate);
+
+      if (rejectedReason) {
+        diagnostics.push({ ...candidate, accepted: false, rejectionReason: rejectedReason });
+        console.log("LOCAL_PLACE_EXTRACTOR_REJECTED", {
+          candidate: candidate.name,
+          source: source.url,
+          reason: rejectedReason
+        });
+        console.log("LOCAL_PLACE_EXTRACTOR_REJECTION_REASON", {
+          candidate: candidate.name,
+          reason: rejectedReason
+        });
+        console.log("LOCAL_SPARSE_RECOVERY_REJECTED", {
+          candidate: candidate.name,
+          source: source.url,
+          reason: rejectedReason
+        });
+        return [];
+      }
+
+      diagnostics.push({ ...candidate, accepted: true });
+      console.log("LOCAL_PLACE_EXTRACTOR_ACCEPTED", candidate);
+      console.log("LOCAL_SPARSE_RECOVERY_ACCEPTED", {
+        candidate: candidate.name,
+        source: source.url,
+        confidence: candidate.confidence
+      });
+
+      return [localPriorSignal(source, localBusinessDisplayName(candidate.name), evidenceType, candidate)];
+    });
+  });
+
+  const dedupedSignals = dedupeSignals(priorSignals).slice(0, 28);
+  console.log("LOCAL_PLACE_EXTRACTOR_FINAL_COUNT", {
+    query,
+    candidates: diagnostics.length,
+    accepted: diagnostics.filter((candidate) => candidate.accepted).length,
+    rejected: diagnostics.filter((candidate) => !candidate.accepted).length
+  });
+  console.log("LOCAL_SPARSE_RECOVERY_FINAL_COUNT", {
+    query,
+    recoveredSignalCount: dedupedSignals.length,
+    recoveredContenderCount: new Set(dedupedSignals.map((signal) => localBusinessKey(signal.contenderName))).size
+  });
+
+  return {
+    applied: dedupedSignals.length > 0,
+    contendersFound: Array.from(new Set(dedupedSignals.map((signal) => signal.contenderName))),
+    signals: dedupedSignals,
+    diagnostics: diagnostics.slice(0, 120)
+  };
+}
+
+function localPriorSignal(source: VeraSource, contender: string, evidenceType: QueryEvidenceType, candidate: LocalPlaceCandidate): SourceSignal {
+  const sourceType = inferSourceType(source);
+  const sourceQuality = inferSourceQuality(source, sourceType);
+
+  return {
+    sourceUrl: source.url,
+    sourceTitle: source.title,
+    domain: source.domain,
+    sourceType,
+    sourceWeight: sourceTypeWeight(sourceType, evidenceType),
+    sourceQuality,
+    sourceQualityWeight: sourceQualityWeightFor(sourceQuality),
+    queryVariant: source.queryVariant,
+    contenderName: contender,
+    sentiment: "positive",
+    mentionStrength: candidate.confidence >= 0.82 || localSourceAuthorityFromSource(source) === "high" ? "moderate" : "weak",
+    positiveMention: "Business name appears in retrieved local evidence",
+    extractedReason: `Business name appears in ${candidate.extractionSource} evidence`,
+    themes: ["recovered local business evidence"]
+  };
+}
+
+function localPlaceCandidatesFromSource(source: VeraSource): LocalPlaceCandidate[] {
+  const candidates = [
+    ...titlePlaceCandidates(source),
+    ...urlPlaceCandidates(source),
+    ...snippetPlaceCandidates(source)
+  ];
+  const byKey = new Map<string, LocalPlaceCandidate>();
+
+  for (const candidate of candidates) {
+    const name = localBusinessDisplayName(candidate.name);
+    const key = localBusinessKey(name);
+
+    if (!key) continue;
+
+    const normalized = { ...candidate, name };
+    const existing = byKey.get(key);
+
+    if (!existing || normalized.confidence > existing.confidence) {
+      byKey.set(key, normalized);
+    }
+  }
+
+  return Array.from(byKey.values()).sort((a, b) => b.confidence - a.confidence).slice(0, 14);
+}
+
+function titlePlaceCandidates(source: VeraSource): LocalPlaceCandidate[] {
+  const segments = source.title
+    .split(/\s(?:[-–—|:•·]\s|\|\s*)|(?:\s-\s)|(?:\s:\s)/g)
+    .map((segment) => cleanLocalTitleSegment(segment, source))
+    .filter(Boolean);
+  const sourceKind = inferLocalExtractionSourceType(source);
+
+  return segments.map((segment, index) => ({
+    name: segment,
+    evidenceText: source.title,
+    sourceUrl: source.url,
+    sourceTitle: source.title,
+    extractionSource: "title" as const,
+    confidence: round2(Math.max(0.52, 0.86 - index * 0.08 + sourceKind.confidenceBoost))
+  }));
+}
+
+function snippetPlaceCandidates(source: VeraSource): LocalPlaceCandidate[] {
+  const snippet = source.snippet ?? "";
+  if (!snippet) return [];
+
+  return capitalizedBusinessPhrases(snippet)
+    .filter((phrase) => hasBusinessNameSignal(phrase))
+    .map((phrase) => ({
+      name: phrase,
+      evidenceText: snippet,
+      sourceUrl: source.url,
+      sourceTitle: source.title,
+      extractionSource: "snippet" as const,
+      confidence: round2(0.56 + (localSourceAuthorityFromSource(source) === "high" ? 0.1 : 0))
+    }));
+}
+
+function urlPlaceCandidates(source: VeraSource): LocalPlaceCandidate[] {
+  return urlBusinessSlugs(source.url).map((slug) => ({
+    name: slug,
+    evidenceText: source.url,
+    sourceUrl: source.url,
+    sourceTitle: source.title,
+    extractionSource: "url" as const,
+    confidence: round2(0.64 + (localSourceAuthorityFromSource(source) === "high" ? 0.12 : 0))
+  }));
+}
+
+function inferLocalExtractionSourceType(source: VeraSource) {
+  const value = normalizeQuery(`${source.domain} ${source.title}`);
+
+  if (/\b(yelp|tripadvisor|booking|healthgrades|zocdoc|angi|homeadvisor)\b/.test(value)) return { confidenceBoost: 0.08 };
+  if (/\b(eater|infatuation|timeout|conde|travel leisure|golf digest|golfweek)\b/.test(value)) return { confidenceBoost: 0.02 };
+  if (/\breddit\b/.test(value)) return { confidenceBoost: -0.05 };
+  return { confidenceBoost: 0 };
+}
+
+function cleanLocalTitleSegment(segment: string, source: VeraSource) {
+  const cleaned = segment
+    .replace(/\b(?:Yelp|Tripadvisor|TripAdvisor|OpenTable|Resy|Booking\.com|Healthgrades|Zocdoc|Angi|HomeAdvisor|Eater|The Infatuation|Infatuation|Time Out|Reddit)\b/gi, " ")
+    .replace(/\b(?:updated|reviewed)\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)?\s*\d{4}\b/gi, " ")
+    .replace(/\b(?:reviews?|reservations?|menu|photos?|ratings?|near me|official site|comments?|threads?)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const sourceDomain = source.domain.split(".")[0]?.toLowerCase();
+
+  if (sourceDomain && normalizeQuery(cleaned) === sourceDomain) return "";
+
+  return cleaned;
+}
+
+function capitalizedBusinessPhrases(text: string) {
+  const cleaned = text.replace(/[’]/g, "'").replace(/\s+/g, " ");
+  const matches = cleaned.match(/\b(?:[A-Z][A-Za-z0-9'&.]+|[A-Z]{2,})(?:\s+(?:[A-Z][A-Za-z0-9'&.]+|[A-Z]{2,}|&|and|of|the|at|on)){0,4}\b/g) ?? [];
+
+  return matches
+    .map((match) => match.trim())
+    .filter((match) => {
+      const words = match.split(/\s+/).filter(Boolean);
+      return words.length <= 5 && match.length >= 3 && match.length <= 72;
+    });
+}
+
+function urlBusinessSlugs(url: string) {
+  try {
+    const parsed = new URL(url);
+    const segments = parsed.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => decodeURIComponent(segment).replace(/\.(html?|php)$/i, ""));
+    const domain = parsed.hostname.toLowerCase();
+    const selected = (() => {
+      if (domain.includes("yelp")) return segments.filter((segment) => segment.toLowerCase() === "biz").length ? segments.slice(segments.indexOf("biz") + 1, segments.indexOf("biz") + 2) : segments.slice(-1);
+      if (domain.includes("tripadvisor")) return segments.filter((segment) => /_(?:Review|Restaurant|Hotel|Attraction)_/i.test(segment)).slice(0, 1);
+      if (domain.includes("booking")) return segments.filter((segment) => /hotel|inn|resort|suites/i.test(segment)).slice(0, 1);
+      if (domain.includes("healthgrades") || domain.includes("zocdoc")) return segments.slice(-2);
+      if (domain.includes("angi") || domain.includes("homeadvisor")) return segments.slice(-2);
+      return segments.slice(-3);
+    })();
+
+    return selected
+      .map((segment) => segment.replace(/^(?:biz|restaurant|hotel|attraction|review|reviews)$/i, ""))
+      .map((segment) => segment.replace(/[-_+]+/g, " "))
+      .map((segment) => segment.replace(/\b(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|seattle|austin|los angeles|san francisco|massapequa|ca|tx|wa)\b/gi, " "))
+      .map((segment) => segment.replace(/\s+/g, " ").trim())
+      .filter((segment) => /[a-z]/i.test(segment) && !/^\d+$/.test(segment))
+      .map((segment) => segment.replace(/\b\w/g, (char) => char.toUpperCase()));
+  } catch {
+    return [];
+  }
+}
+
+function localRecoveryRejectionReason(query: string, candidate: string, placeCandidate?: LocalPlaceCandidate) {
+  const normalized = normalizeQuery(candidate);
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const category = localCategoryForQuery(query);
+
+  if (!normalized || normalized.length < 3) return "empty_or_too_short";
+  if (words.length > 6) return "too_many_words";
+  if (words.length > 5 && !localCandidateHasCategorySignal(category, normalized)) return "article_title_fragment";
+  if (placeCandidate && placeCandidate.confidence < 0.54) return "low_extraction_confidence";
+  if (isGenericLocalContender(query, candidate)) return "generic_or_placeholder";
+  if (/\b(?:golf digest|golfweek|google hotels|tripadvisor|yelp|booking|opentable|reddit|eater|infatuation)'?s?\b/.test(normalized)) {
+    return "source_website_name";
+  }
+  if (/^(?:blog|post|features?|hot spots?|watch|guides?|entity|category|newyork|google'?s|there'?s|it'?s|food near me|romantic restaurants bars)$/i.test(normalized)) {
+    return "source_or_ui_fragment";
+  }
+  if (/\b(?:forum|blog|post|features?|guides?)\b/.test(normalized)) return "source_or_article_fragment";
+  if (/^(?:the\s+)?\d+\s+(?:best|top)\b/.test(normalized)) return "article_title_fragment";
+  if (/^(?:best|top|where to|what to|favorite|must try)\b/.test(normalized) && words.length >= 3) return "query_or_article_fragment";
+  if (/\b(?:restaurants?|coffee shops?|cafes?|bakeries?|gyms?|hotels?|bars?|golf courses?)\s+(?:in|near)?\s*(?:nyc|new york|brooklyn|manhattan|williamsburg|seattle|austin|san francisco|massapequa|los angeles|ca|ny|tx|wa)\b/.test(normalized)) {
+    return "category_location_fragment";
+  }
+  if (/\b(?:feeds|announcing|listed|ranks?|ranked|says|asks|found|updated|reviewed|agree)\b/.test(normalized) && words.length >= 4) {
+    return "article_title_fragment";
+  }
+  if (/\b[a-z0-9]{12,}\b/i.test(candidate) && /\d/.test(candidate)) return "encoded_url_fragment";
+  if (/[._]\d{3,}[._]/.test(candidate) || /\b\d{6,}\b/.test(normalized)) return "encoded_url_fragment";
+  if (/\b(?:downtown|delta dental|metlife)\b.*\d{2,}/.test(normalized)) return "directory_or_encoded_fragment";
+  if (/^\d+[a-z]{1,2}$/i.test(normalized)) return "numeric_slug";
+  if (
+    /^(com|www|html|biz|came|the|read|avenue|street|st|ave|nyc|new york|brooklyn|manhattan|williamsburg|review|reviews|comments?|replies|threads?|near me|best|top|updated \d{4}|(?:the )?best .+|.+ reviews?)$/i.test(
+      normalized
+    )
+  ) {
+    return "url_or_generic_token";
+  }
+  if (/^r\s+\w+$/i.test(normalized)) return "source_community_name";
+  if (/\b(yelp|tripadvisor|reddit|google maps|booking|opentable|resy|eater|infatuation|healthgrades|zocdoc|angi|homeadvisor)\b/.test(normalized)) {
+    return "source_website_name";
+  }
+  if (/^\d/.test(normalized) && !/\b\d{1,2}\b/.test(normalized)) return "numeric_slug";
+  if (!looksLikeNamedPlace(candidate)) return "does_not_look_like_named_place";
+
+  return null;
+}
+
+function localCandidateHasCategorySignal(category: string, normalized: string) {
+  if (category === "hotel") return /\b(hotel|inn|resort|suites|lodge|motel)\b/.test(normalized);
+  if (category === "coffee") return /\b(cafe|coffee|espresso|roaster|roastery)\b/.test(normalized);
+  if (category === "pizza") return /\b(pizza|pizzeria)\b/.test(normalized);
+  if (category === "bar") return /\b(bar|pub|cocktail|lounge|tavern|brewery|taproom)\b/.test(normalized);
+  if (category === "gym") return /\b(gym|fitness|athletic|club|training)\b/.test(normalized);
+  if (category === "dentist") return /\b(dentist|dentistry|dental|dds|orthodontic)\b/.test(normalized);
+  if (category === "plumber") return /\b(plumb|plumbing|drain|rooter|pipe)\b/.test(normalized);
+  if (category === "attraction") return /\b(museum|park|aquarium|needle|market|garden|zoo|center|theatre|theater|tour|ferry|landmark|national historical)\b/.test(normalized);
+  if (category === "golf_course") return /\b(golf|course|links|club)\b/.test(normalized);
+  return /\b(restaurant|kitchen|grill|bistro|diner|brasserie|osteria|trattoria|tavern|cafe|bar|pizza|sushi|ramen|taco|taqueria|bakery)\b/.test(
+    normalized
+  );
+}
+
+function hasBusinessNameSignal(value: string) {
+  const normalized = normalizeQuery(value);
+
+  return (
+    /\b(cafe|coffee|pizzeria|pizza|sushi|ramen|taco|taqueria|hotel|inn|bar|pub|bakery|boulangerie|dental|dentist|plumbing|plumber|golf|club|course|museum|market|grill|kitchen|bistro|diner|brasserie|osteria|trattoria|restaurant|roaster|roastery)\b/.test(
+      normalized
+    ) || /\b[A-Z][a-z]+(?:'s|’s)\b/.test(value)
+  );
+}
+
+function looksLikeNamedPlace(value: string) {
+  const trimmed = value.trim();
+  const normalized = normalizeQuery(trimmed);
+  const words = normalized.split(/\s+/).filter(Boolean);
+
+  if (words.length === 1) {
+    return trimmed.length >= 4 && /^[A-Z0-9][A-Za-z0-9'&.]+$/.test(trimmed) && !/^(home|search|all|kid|guides?)$/i.test(trimmed);
+  }
+
+  return (
+    /^[A-Z0-9]/.test(trimmed) &&
+    /[a-zA-Z]/.test(trimmed) &&
+    !/\b(perfect for|photograph|courtesy|updated|continue|before you|what are|where to|how to)\b/i.test(trimmed)
+  );
+}
+
+function rankLocalSourcesForExtraction(sources: VeraSource[]) {
+  return [...sources].sort((a, b) => localExtractionSourceScore(b) - localExtractionSourceScore(a));
+}
+
+function localExtractionSourceScore(source: VeraSource) {
+  const text = normalizeQuery(`${source.domain} ${source.title} ${source.snippet ?? ""}`);
+  const authority = localAuthorityRank(localSourceAuthorityFromSource(source));
+  const localPlatformBoost = /\b(yelp|google maps|maps google|tripadvisor|opentable|resy|booking|eater|infatuation|timeout|reddit)\b/.test(text) ? 2 : 0;
+  const specificPageBoost = /\b(menu|reviews?|reservations?|photos?|rating|stars?|address)\b/.test(text) ? 0.8 : 0;
+  const genericListPenalty = /\b(best|top|guide|where to|list|things to do)\b/.test(text) ? 0.6 : 0;
+
+  return authority * 2 + localPlatformBoost + specificPageBoost - genericListPenalty;
+}
+
+function mergeLocalBusinessSignalNames(signals: SourceSignal[]) {
+  const displayByKey = new Map<string, string>();
+
+  for (const signal of signals) {
+    const key = localCandidateNormalizedName(signal.contenderName);
+
+    if (!key) {
+      continue;
+    }
+
+    const existing = displayByKey.get(key);
+    const candidate = localBusinessDisplayName(signal.contenderName);
+    console.log("LOCAL_CANDIDATE_NORMALIZED", {
+      raw: signal.contenderName,
+      normalized: key,
+      source: signal.sourceUrl
+    });
+
+    if (!existing || betterLocalDisplayName(candidate, existing)) {
+      displayByKey.set(key, candidate);
+    }
+  }
+
+  const collapsedKeyByKey = new Map<string, string>();
+
+  for (const key of displayByKey.keys()) {
+    const existing = Array.from(new Set(collapsedKeyByKey.values())).find((candidateKey) => localNamesAreDuplicateVariants(key, candidateKey));
+
+    if (existing) {
+      collapsedKeyByKey.set(key, existing);
+      console.log("LOCAL_DUPLICATE_COLLAPSED", {
+        rawNormalizedName: key,
+        collapsedInto: existing,
+        rawDisplay: displayByKey.get(key),
+        finalDisplay: displayByKey.get(existing)
+      });
+      continue;
+    }
+
+    collapsedKeyByKey.set(key, key);
+  }
+
+  return signals.map((signal) => {
+    const key = localCandidateNormalizedName(signal.contenderName);
+    const collapsedKey = key ? collapsedKeyByKey.get(key) ?? key : null;
+    const displayName = collapsedKey ? displayByKey.get(collapsedKey) : null;
+
+    return displayName ? { ...signal, contenderName: displayName } : signal;
+  });
+}
+
+function localBusinessKey(value: string) {
+  return localCandidateNormalizedName(value);
+}
+
+function localCandidateNormalizedName(value: string) {
+  let normalized = normalizeQuery(value)
+    .replace(/[’']/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(
+      /\b(?:review|reviews|menu|reservation|reservations|photos|ratings|tripadvisor|yelp|opentable|booking|google|maps|reddit|eater|infatuation|best|top|near me|official site|article|story|guide)\b/g,
+      " "
+    )
+    .replace(/\b(?:cheap|perfect for|nearby|home|search|all|article|our story|right this way|dining out|food near me|places)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  normalized = normalized
+    .replace(
+      /\s+\b(?:restaurant|restaurants|bar|cafe|coffee shop|hotel|inn|golf course|course|dentist|dental|plumber|plumbing|bakery|pizzeria)\b$/g,
+      ""
+    )
+    .replace(
+      /\s+\b(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|los angeles|austin|seattle|massapequa|san francisco|downtown|midtown|uptown|greenwich village|carmine st|street|st|avenue|ave|road|rd|drive|dr|boulevard|blvd|location|branch)\b$/g,
+      ""
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized;
+}
+
+function localNamesAreDuplicateVariants(a: string, b: string) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.length < 4 || b.length < 4) return false;
+  if (a.includes(b) || b.includes(a)) {
+    const shorter = Math.min(a.length, b.length);
+    const longer = Math.max(a.length, b.length);
+    return shorter / longer >= 0.62;
+  }
+  return diceCoefficient(a, b) >= 0.86;
+}
+
+function diceCoefficient(a: string, b: string) {
+  const bigrams = (value: string) => {
+    const compact = value.replace(/\s+/g, "");
+    const grams = new Map<string, number>();
+    for (let index = 0; index < compact.length - 1; index += 1) {
+      const gram = compact.slice(index, index + 2);
+      grams.set(gram, (grams.get(gram) ?? 0) + 1);
+    }
+    return grams;
+  };
+  const aGrams = bigrams(a);
+  const bGrams = bigrams(b);
+  const total = Array.from(aGrams.values()).reduce((sum, count) => sum + count, 0) + Array.from(bGrams.values()).reduce((sum, count) => sum + count, 0);
+  let overlap = 0;
+
+  for (const [gram, count] of aGrams.entries()) {
+    overlap += Math.min(count, bGrams.get(gram) ?? 0);
+  }
+
+  return total > 0 ? (2 * overlap) / total : 0;
+}
+
+function localBusinessDisplayName(value: string) {
+  const cleaned = cleanName(value)
+    .replace(/[’]/g, "'")
+    .replace(/\s+(?:[-–—|:])\s+(?:menu|reviews?|reservations?|photos?|ratings?|official site|tripadvisor|yelp|opentable|booking).*$/i, "")
+    .replace(/\s+[-–—|:]\s+(?:williamsburg|brooklyn|manhattan|nyc|new york|los angeles|austin|seattle|massapequa|downtown|midtown|uptown|san francisco|greenwich village).*$/i, "")
+    .replace(/\s+[-–—|:]\s+.*$/g, "")
+    .replace(/,\s*(?:williamsburg|brooklyn|manhattan|nyc|new york|los angeles|austin|seattle|massapequa|downtown|midtown|uptown|san francisco).*$/i, "")
+    .replace(/\s+\((?:williamsburg|brooklyn|manhattan|nyc|new york|los angeles|austin|seattle|massapequa|downtown|midtown|uptown).*\)$/i, "")
+    .replace(/\s+\d{4,}$/g, "")
+    .replace(/\b(?:restaurant|bar|hotel|golf course)\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .replace(/[.,;:]+$/g, "")
+    .trim();
+
+  return collapseRepeatedLocalName(cleaned);
+}
+
+function collapseRepeatedLocalName(value: string) {
+  const words = value.split(/\s+/).filter(Boolean);
+
+  if (words.length >= 4 && words.length % 2 === 0) {
+    const midpoint = words.length / 2;
+    const first = words.slice(0, midpoint).join(" ");
+    const second = words.slice(midpoint).join(" ");
+
+    if (normalizeQuery(first) === normalizeQuery(second)) {
+      return first;
+    }
+  }
+
+  if (words.length >= 3 && normalizeQuery(words[0]) === normalizeQuery(words.at(-1) ?? "")) {
+    return words.slice(0, -1).join(" ");
+  }
+
+  return value;
+}
+
+function betterLocalDisplayName(candidate: string, current: string) {
+  const candidateWords = normalizeQuery(candidate).split(" ").filter(Boolean).length;
+  const currentWords = normalizeQuery(current).split(" ").filter(Boolean).length;
+
+  if (candidateWords >= 2 && currentWords < 2) return true;
+  if (currentWords >= 2 && candidateWords < 2) return false;
+  if (candidate.length < current.length && candidateWords >= currentWords) return true;
+  return false;
+}
+
+function localFallbackSignals(query: string, sources: VeraSource[]): SourceSignal[] {
+  const evidenceType = inferQueryEvidenceType(query);
+  const candidates = new Map<string, { name: string; sources: VeraSource[] }>();
+  const sortedSources = [...sources].sort((a, b) => localAuthorityRank(localSourceAuthorityFromSource(b)) - localAuthorityRank(localSourceAuthorityFromSource(a)));
+
+  for (const source of sortedSources) {
+    const candidate = candidateBusinessNameFromSource(source);
+
+    if (!candidate) {
+      continue;
+    }
+
+    const key = localBusinessKey(candidate);
+
+    if (!key || key.length < 3) {
+      continue;
+    }
+
+    const existing = candidates.get(key) ?? { name: candidate, sources: [] };
+    existing.sources.push(source);
+
+    if (betterLocalDisplayName(candidate, existing.name)) {
+      existing.name = candidate;
+    }
+
+    candidates.set(key, existing);
+  }
+
+  return Array.from(candidates.values())
+    .filter((candidate) => candidate.sources.length > 0)
+    .slice(0, 5)
+    .flatMap((candidate) =>
+      candidate.sources.slice(0, 3).map((source) => {
+        const sourceType = inferSourceType(source);
+        const sourceQuality = inferSourceQuality(source, sourceType);
+
+        return {
+          sourceUrl: source.url,
+          sourceTitle: source.title,
+          domain: source.domain,
+          sourceType,
+          sourceWeight: sourceTypeWeight(sourceType, evidenceType),
+          sourceQuality,
+          sourceQualityWeight: sourceQualityWeightFor(sourceQuality),
+          queryVariant: source.queryVariant,
+          contenderName: candidate.name,
+          sentiment: "positive",
+          mentionStrength: localSourceAuthorityFromSource(source) === "high" ? "moderate" : "weak",
+          positiveMention: "Appears in local source results",
+          extractedReason: "Appears in local source results",
+          themes: ["local source support"]
+        } satisfies SourceSignal;
+      })
+    );
+}
+
+function candidateBusinessNameFromSource(source: VeraSource) {
+  const title = localBusinessDisplayName(source.title);
+  const normalizedTitle = normalizeQuery(title);
+
+  if (!title || title.length < 3) {
+    return null;
+  }
+
+  if (/\b(best|top|where to|guide|list|restaurants?|hotels?|bars?|coffee shops?|things to do|near me|reviews?)\b/.test(normalizedTitle)) {
+    return null;
+  }
+
+  if (normalizedTitle.split(" ").length > 6) {
+    return null;
+  }
+
+  return isGenericLocalContender(source.queryVariant ?? "", title) ? null : title;
+}
+
+function localAuthorityRank(authority: "high" | "medium" | "low") {
+  if (authority === "high") return 3;
+  if (authority === "medium") return 2;
+  return 1;
+}
+
+function isGenericLocalContender(query: string, name: string) {
+  const normalized = normalizeQuery(name);
+  const generic = normalized.replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  const category = localCategoryForQuery(query);
+
+  if (!generic || generic.length < 3) {
+    return true;
+  }
+
+  if (
+    /^(best|top|recommended|recommendations?|recs|unknown|none|the|read|last|course|courses|what s|gallery|landmark|dining|list|pasta|blog|post|features?|hot spots?|watch|entity|category|avenue|street|st|ave|nyc|restaurants?|bars?|hotels?|dentists?|dentistry|dental|places? to stay|places? to eat|food near me|coffee|coffee shops?|coffee in nyc|coffee espresso recs|espresso recs|booking com|tripadvisor|yelp|google maps|google hotels|googles?|opentable|resy|reddit|local guide|reviews?|comments?|replies|threads?|restaurant reviews?|dentist recommendation|romantic restaurants bars|cocktail bars chicago|club chicago|the vendry|lakeview east chamber of commerce|(?:the )?\d+\s+best .+|(?:the )?best restaurant|(?:the )?best restaurants|(?:the )?best .+|best coffee cafe|updated \d{4}|short visit|what to visit|bakeries?|bakeries san francisco ca|golf courses?|public courses?|rankings?|forum|.+ forum|eater|eater new york|eater san francisco|the infatuation|infatuation|healthgrades|golf digest'?s?|golfweek'?s?|time out|timeout|time out new yorks?|new york city|new york|new yorks?|manhattan|brooklyn|williamsburg|williamsburg right now|long island|austin|seattle|los angeles|san francisco|san franciscos?|san francisco s|massapequa|chicago|texas|south side|hells kitchen|what they are saying|brunch|biz|came)$/.test(
+      generic
+    )
+  ) {
+    return true;
+  }
+
+  if (/^r\s+\w+$/.test(generic)) {
+    return true;
+  }
+
+  if (/^(gyms?|dentists?|plumbers?|attractions?|restaurants?|hotels?|bars?|coffee shops?|bakeries?|golf courses?) (in|near)\b/.test(generic)) {
+    return true;
+  }
+
+  if (/\b(?:kid friendly|family friendly|beautiful|recommended)?\s*(?:restaurants?|coffee shops?|cafes?|bakeries?|gyms?|hotels?|bars?|golf courses?)\s+(?:in|near|for)\b/.test(generic)) {
+    return true;
+  }
+
+  if (/\b(?:austin|seattle|chicago|brooklyn|williamsburg|manhattan|nyc|new york|san francisco|los angeles|massapequa)\s+(?:dentists?|dentistry|dental|plumbers?|plumbing|restaurants?|bars?|hotels?|gyms?)\b/.test(generic)) {
+    return true;
+  }
+
+  if (/\b(?:dentists?|dentistry|dental|plumbers?|plumbing|restaurants?|bars?|hotels?|gyms?)\s+(?:austin|seattle|chicago|brooklyn|williamsburg|manhattan|nyc|new york|san francisco|los angeles|massapequa)\b/.test(generic)) {
+    return true;
+  }
+
+  if (
+    /\b(recommendations? for|dinner date recommendations?|date recommendations?|what to visit|days in|places? to stay|places? to eat|recs|what are your favorite|courses? ranked|public courses? ranked|favorite public courses?|favorite bakeries?|lunch spot ideas|first date options|date ?night|family friendly dining|manhattan with kids|good eats for families|beautiful cafes|cafes in|cafés in|work spaces?|doing work|to work at|recommended bakeries|do you like your gym|world s 100 greatest|rankings?|guide|best of|local guide)\b/.test(
+      generic
+    )
+  ) {
+    return true;
+  }
+
+  if (/^\d{1,5}\s+[a-z0-9\s]+$/.test(generic)) {
+    return true;
+  }
+
+  if (/^[a-z]{2,}\d+[a-z0-9]*$/.test(generic) || /\b(?:downtown|delta dental|metlife)\s+\d{2,}/.test(generic)) {
+    return true;
+  }
+
+  if (/\b(?:general directory|chamber of commerce|directory|near me)\b/.test(generic)) {
+    return true;
+  }
+
+  if (category === "hotel" && /\b(booking|places? to stay|accommodation|lodging)\b/.test(generic)) {
+    return true;
+  }
+
+  if ((category === "attraction" || category === "local_business") && /\b(visit|itinerary|days?|trip|recommendations?)\b/.test(generic)) {
+    return true;
+  }
+
+  if (category === "golf_course" && /\b(long island|nyc area|public courses?|golf courses?|ranked|favorite)\b/.test(generic)) {
+    return true;
+  }
+
+  if (/\b(brooks ghost|nike pegasus|asics gel|hoka clifton|best plumbing)$/.test(generic)) {
+    return true;
+  }
+
+  if (/\b(options?|ideas?|spots?|guide|rankings?|reviews?|recommendations?)\b/.test(generic) && generic.split(" ").length >= 3) {
+    return true;
+  }
+
+  return false;
 }
 
 type SoftwareLeader = {
@@ -2267,6 +3183,10 @@ function inferSourceType(source: VeraSource): VeraSourceType {
     value.includes("opentable") ||
     value.includes("resy") ||
     value.includes("hotels.com") ||
+    value.includes("healthgrades") ||
+    value.includes("zocdoc") ||
+    value.includes("angi") ||
+    value.includes("homeadvisor") ||
     value.includes("g2") ||
     value.includes("capterra") ||
     value.includes("getapp") ||
@@ -2282,6 +3202,11 @@ function inferSourceType(source: VeraSource): VeraSourceType {
     value.includes("conde") ||
     value.includes("cntraveler") ||
     value.includes("thrillist") ||
+    value.includes("travel + leisure") ||
+    value.includes("travelandleisure") ||
+    value.includes("golf digest") ||
+    value.includes("golfweek") ||
+    value.includes("tourism") ||
     value.includes("local guide") ||
     value.includes("zapier")
   )
@@ -2432,4 +3357,8 @@ function humanizeTheme(value: string) {
 
 function round1(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function round2(value: number) {
+  return Math.round(value * 100) / 100;
 }

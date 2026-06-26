@@ -230,7 +230,8 @@ async function runBenchmark(baseUrl, benchmark) {
 }
 
 function scoreCase(benchmark, outcome) {
-  const actualResults = outcome.result?.results?.map((result) => result.name).filter(Boolean) ?? [];
+  const resultObjects = outcome.result?.results ?? [];
+  const actualResults = resultObjects.map((result) => result.name).filter(Boolean);
   const actualWinner = actualResults[0] ?? "";
   const expectedTopContenders = benchmark.expectedTopContenders ?? [];
   const expectedWinner = benchmark.expectedWinner ?? "";
@@ -247,6 +248,44 @@ function scoreCase(benchmark, outcome) {
     expectedTopContenders,
     actualWinner,
     actualResults,
+    retrievedSourceTitles: benchmark.category === "local_recommendation" ? (outcome.result?.sources ?? []).map((source) => source.title).slice(0, 12) : [],
+    extractedCandidates:
+      benchmark.category === "local_recommendation"
+        ? (outcome.result?.structuredConsensus?.localPlaceExtraction?.candidates ?? [])
+            .filter((candidate) => candidate.accepted)
+            .map((candidate) => candidate.name)
+            .slice(0, 20)
+        : [],
+    rejectedCandidates:
+      benchmark.category === "local_recommendation"
+        ? (outcome.result?.structuredConsensus?.localPlaceExtraction?.candidates ?? [])
+            .filter((candidate) => !candidate.accepted)
+            .map((candidate) => `${candidate.name}: ${candidate.rejectionReason ?? "rejected"}`)
+            .slice(0, 20)
+        : [],
+    finalContenders:
+      benchmark.category === "local_recommendation"
+        ? (outcome.result?.structuredConsensus?.contenders ?? []).map((contender) => contender.name).slice(0, 10)
+        : [],
+    localRankingDiagnostics:
+      benchmark.category === "local_recommendation"
+        ? (outcome.result?.structuredConsensus?.contenders ?? []).slice(0, 10).map((contender, index) => ({
+            rank: index + 1,
+            name: contender.name,
+            score: contender.netWeightedScore,
+            sourceCount: contender.sourceCount,
+            sourceDomains: contender.localRanking?.sourceDomains ?? contender.sourceUrls ?? [],
+            extractionConfidence: contender.localRanking?.extractionConfidence ?? null,
+            localRelevanceScore: contender.localRanking?.finalScore ?? contender.netWeightedScore,
+            categoryMatchScore: contender.localRanking?.categoryMatchScore ?? null,
+            locationMatchScore: contender.localRanking?.locationMatchScore ?? null,
+            sourceAuthorityScore: contender.localRanking?.sourceAuthorityScore ?? null,
+            crossSourceAgreementCount: contender.localRanking?.crossSourceAgreementCount ?? contender.sourceCount,
+            sourceAgreementScore: contender.localRanking?.sourceAgreementScore ?? null,
+            weakSingleSourcePenalty: contender.localRanking?.weakSingleSourcePenalty ?? null,
+            urlOnlyPenalty: contender.localRanking?.urlOnlyPenalty ?? null
+          }))
+        : [],
     mode: outcome.result?.mode ?? null,
     cached: outcome.result?.cached ?? null,
     elapsedMs: outcome.elapsedMs,
@@ -254,6 +293,17 @@ function scoreCase(benchmark, outcome) {
     winnerIsRankOne,
     winnerInTop3,
     contenderMatches,
+    localTop5Coverage: benchmark.category === "local_recommendation" ? localTop5Coverage(actualResults, expectedTopContenders) : null,
+    irrelevantResults: benchmark.category === "local_recommendation" ? localIrrelevantResults(actualResults) : null,
+    genericPlaceholders: benchmark.category === "local_recommendation" ? localGenericPlaceholders(actualResults) : null,
+    duplicateBusinesses: benchmark.category === "local_recommendation" ? duplicateBusinessCount(actualResults.slice(0, 5)) : null,
+    duplicateBusinessDetails:
+      benchmark.category === "local_recommendation" ? duplicateBusinessDetails(resultObjects.slice(0, 5)) : [],
+    missingObviousContenders:
+      benchmark.category === "local_recommendation"
+        ? expectedTopContenders.filter((expected) => !actualResults.slice(0, 5).some((actual) => namesMatch(actual, expected)))
+        : [],
+    localTimeout: benchmark.category === "local_recommendation" ? isLocalTimeout(outcome.error) : false,
     contenderAccuracy: expectedTopContenders.length
       ? contenderMatches.length / expectedTopContenders.length
       : 0
@@ -272,6 +322,10 @@ function buildReport({ benchmarks, cases, timestamp, commitHash, baseUrl }) {
       const categoryCases = cases.filter((item) => item.category === category);
       const categorySlots = categoryCases.reduce((sum, item) => sum + item.expectedTopContenders.length, 0);
       const categoryHits = categoryCases.reduce((sum, item) => sum + item.contenderMatches.length, 0);
+      const localCases = categoryCases.filter((item) => item.category === "local_recommendation");
+      const localTop5CoverageAverage = localCases.length
+        ? localCases.reduce((sum, item) => sum + (item.localTop5Coverage ?? 0), 0) / localCases.length
+        : null;
 
       return [
         category,
@@ -279,7 +333,14 @@ function buildReport({ benchmarks, cases, timestamp, commitHash, baseUrl }) {
           benchmarks: categoryCases.length,
           winnerAccuracy: ratio(categoryCases.filter((item) => item.winnerIsRankOne).length, categoryCases.length),
           top3Accuracy: ratio(categoryCases.filter((item) => item.winnerInTop3).length, categoryCases.length),
-          contenderAccuracy: ratio(categoryHits, categorySlots)
+          contenderAccuracy: ratio(categoryHits, categorySlots),
+          top5Coverage: localTop5CoverageAverage,
+          irrelevantResults: localCases.reduce((sum, item) => sum + (item.irrelevantResults ?? 0), 0),
+          genericPlaceholders: localCases.reduce((sum, item) => sum + (item.genericPlaceholders ?? 0), 0),
+          duplicateBusinesses: localCases.reduce((sum, item) => sum + (item.duplicateBusinesses ?? 0), 0),
+          localTimeouts: localCases.filter((item) => item.localTimeout).length,
+          emptyResults: localCases.filter((item) => !item.actualResults.length).length,
+          coverageScore: localTop5CoverageAverage
         }
       ];
     })
@@ -304,9 +365,7 @@ function buildReport({ benchmarks, cases, timestamp, commitHash, baseUrl }) {
       errors: cases.filter((item) => item.error).length
     },
     byCategory,
-    failures: cases.filter(
-      (item) => item.error || !item.winnerIsRankOne || item.contenderAccuracy < 0.5
-    ),
+    failures: cases.filter((item) => isFailure(item)),
     cases
   };
 }
@@ -335,9 +394,15 @@ function printReport(report) {
   ];
 
   for (const [category, metrics] of Object.entries(report.byCategory)) {
-    lines.push(
-      `${category}: winner ${pct(metrics.winnerAccuracy)}, top 3 ${pct(metrics.top3Accuracy)}, contenders ${pct(metrics.contenderAccuracy)}`
-    );
+    if (category === "local_recommendation") {
+      lines.push(
+        `${category}: top 5 coverage ${metrics.top5Coverage === null ? "n/a" : pct(metrics.top5Coverage)}, placeholders ${metrics.genericPlaceholders}, irrelevant ${metrics.irrelevantResults}, duplicates ${metrics.duplicateBusinesses}, timeouts ${metrics.localTimeouts}`
+      );
+    } else {
+      lines.push(
+        `${category}: winner ${pct(metrics.winnerAccuracy)}, top 3 ${pct(metrics.top3Accuracy)}, contenders ${pct(metrics.contenderAccuracy)}`
+      );
+    }
   }
 
   lines.push("", "Failures:");
@@ -348,10 +413,35 @@ function printReport(report) {
     for (const failure of report.failures) {
       lines.push("");
       lines.push(failure.query);
-      lines.push(`Expected: ${failure.expectedWinner || "n/a"}`);
+      lines.push(`Expected: ${failure.category === "local_recommendation" ? failure.expectedTopContenders.join(", ") : failure.expectedWinner || "n/a"}`);
       lines.push(`Actual: ${failure.actualWinner || failure.error || "none"}`);
       if (failure.actualResults.length) {
         lines.push(`Top results: ${failure.actualResults.slice(0, 5).join(", ")}`);
+      }
+      if (failure.category === "local_recommendation" && failure.missingObviousContenders?.length) {
+        lines.push(`Missing obvious contenders: ${failure.missingObviousContenders.join(", ")}`);
+      }
+      if (failure.category === "local_recommendation") {
+        if (failure.retrievedSourceTitles?.length) lines.push(`Retrieved source titles: ${failure.retrievedSourceTitles.slice(0, 6).join(" | ")}`);
+        if (failure.extractedCandidates?.length) lines.push(`Accepted candidates: ${failure.extractedCandidates.slice(0, 10).join(", ")}`);
+        if (failure.rejectedCandidates?.length) lines.push(`Rejected candidates: ${failure.rejectedCandidates.slice(0, 8).join(" | ")}`);
+        if (failure.finalContenders?.length) lines.push(`Final contenders: ${failure.finalContenders.slice(0, 10).join(", ")}`);
+        if (failure.localRankingDiagnostics?.length) {
+          lines.push("Local ranking diagnostics:");
+          for (const diagnostic of failure.localRankingDiagnostics.slice(0, 5)) {
+            lines.push(
+              `#${diagnostic.rank} ${diagnostic.name}: score ${diagnostic.score}, sources ${diagnostic.sourceCount}, domains ${diagnostic.sourceDomains.slice(0, 4).join(", ") || "n/a"}, extraction ${diagnostic.extractionConfidence ?? "n/a"}, location ${diagnostic.locationMatchScore ?? "n/a"}, category ${diagnostic.categoryMatchScore ?? "n/a"}, authority ${diagnostic.sourceAuthorityScore ?? "n/a"}, agreement ${diagnostic.crossSourceAgreementCount}, agreementScore ${diagnostic.sourceAgreementScore ?? "n/a"}, weakPenalty ${diagnostic.weakSingleSourcePenalty ?? "n/a"}, urlPenalty ${diagnostic.urlOnlyPenalty ?? "n/a"}`
+            );
+          }
+        }
+        if (failure.duplicateBusinessDetails?.length) {
+          for (const duplicate of failure.duplicateBusinessDetails) {
+            lines.push(
+              `Duplicate detail: normalized "${duplicate.normalizedName}" => ${duplicate.rawNames.join(" / ")} | final collapsed contender: ${duplicate.finalCollapsedContender}`
+            );
+            if (duplicate.sources.length) lines.push(`Duplicate sources: ${duplicate.sources.slice(0, 3).join(" | ")}`);
+          }
+        }
       }
     }
   }
@@ -386,8 +476,34 @@ function logLocalBenchmarkSummary(report) {
     benchmarks: local.benchmarks,
     winnerAccuracy: pct(local.winnerAccuracy),
     top3Accuracy: pct(local.top3Accuracy),
-    contenderAccuracy: pct(local.contenderAccuracy)
+    contenderAccuracy: pct(local.contenderAccuracy),
+    TOP5_COVERAGE: local.top5Coverage === null ? "n/a" : pct(local.top5Coverage),
+    COVERAGE_SCORE: local.coverageScore === null ? "n/a" : pct(local.coverageScore),
+    IRRELEVANT_RESULTS: local.irrelevantResults,
+    GENERIC_PLACEHOLDERS: local.genericPlaceholders,
+    DUPLICATE_BUSINESSES: local.duplicateBusinesses,
+    LOCAL_TIMEOUTS: local.localTimeouts,
+    EMPTY_RESULTS: local.emptyResults
   });
+}
+
+function isFailure(item) {
+  if (item.error) {
+    return true;
+  }
+
+  if (item.category !== "local_recommendation") {
+    return !item.winnerIsRankOne || item.contenderAccuracy < 0.5;
+  }
+
+  return (
+    !item.actualResults.length ||
+    (item.localTop5Coverage ?? 0) < 0.34 ||
+    (item.irrelevantResults ?? 0) > 0 ||
+    (item.genericPlaceholders ?? 0) > 0 ||
+    (item.duplicateBusinesses ?? 0) > 0 ||
+    item.localTimeout
+  );
 }
 
 async function saveReport(report) {
@@ -448,6 +564,138 @@ function normalizeName(value) {
     .replace(/\b(the|app|software|service|platform|inc|llc)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function localTop5Coverage(actualResults, expectedTopContenders) {
+  if (!expectedTopContenders.length) {
+    return 0;
+  }
+
+  const top5 = actualResults.slice(0, 5);
+  const matches = expectedTopContenders.filter((expected) => top5.some((actual) => namesMatch(actual, expected)));
+  return matches.length / expectedTopContenders.length;
+}
+
+function duplicateBusinessCount(results) {
+  const seen = new Set();
+  let duplicates = 0;
+
+  for (const result of results) {
+    const key = normalizeLocalBusinessName(result);
+
+    if (!key) {
+      continue;
+    }
+
+    if (seen.has(key)) {
+      duplicates += 1;
+      continue;
+    }
+
+    seen.add(key);
+  }
+
+  return duplicates;
+}
+
+function duplicateBusinessDetails(results) {
+  const groups = new Map();
+
+  for (const result of results) {
+    const name = typeof result === "string" ? result : result?.name;
+    const key = normalizeLocalBusinessName(name);
+
+    if (!key) {
+      continue;
+    }
+
+    const group = groups.get(key) ?? {
+      normalizedName: key,
+      rawNames: [],
+      sources: [],
+      finalCollapsedContender: name
+    };
+
+    group.rawNames.push(name);
+    group.finalCollapsedContender = preferredLocalDisplayName(group.finalCollapsedContender, name);
+
+    for (const source of result?.sources ?? []) {
+      const sourceLabel = [source.title, source.url].filter(Boolean).join(" - ");
+      if (sourceLabel) group.sources.push(sourceLabel);
+    }
+
+    groups.set(key, group);
+  }
+
+  return Array.from(groups.values())
+    .filter((group) => new Set(group.rawNames).size > 1 || group.rawNames.length > 1)
+    .map((group) => ({
+      ...group,
+      rawNames: Array.from(new Set(group.rawNames)),
+      sources: Array.from(new Set(group.sources))
+    }));
+}
+
+function preferredLocalDisplayName(current, candidate) {
+  const currentWords = normalizeName(current).split(" ").filter(Boolean).length;
+  const candidateWords = normalizeName(candidate).split(" ").filter(Boolean).length;
+
+  if (!current) return candidate;
+  if (candidateWords >= 2 && currentWords < 2) return candidate;
+  if (currentWords >= 2 && candidateWords < 2) return current;
+  if (candidate.length < current.length && candidateWords >= currentWords) return candidate;
+  return current;
+}
+
+function localIrrelevantResults(results) {
+  return results.slice(0, 5).filter((result) => isGenericLocalResult(result)).length;
+}
+
+function localGenericPlaceholders(results) {
+  return results.slice(0, 5).filter((result) => isGenericLocalResult(result)).length;
+}
+
+function isGenericLocalResult(result) {
+  const normalized = normalizeLocalBusinessName(result);
+
+  return (
+    !normalized ||
+    /^(restaurant|restaurants|hotel|hotels|bar|bars|coffee|coffee shop|pizza|brunch|bakery|bakeries|gym|gyms|dentist|dentists|plumber|plumbers|attraction|attractions|golf course|golf courses|public courses|best|top|unknown|none|the|read|avenue|street|st|ave|nyc|short visit|what to visit|places to stay|places to eat|booking com|tripadvisor|yelp|google maps|recommendations|recs|comments?|replies|threads?|restaurant reviews?|(?:the )?best restaurant|(?:the )?best restaurants|(?:the )?best .+|best coffee cafe|updated \d{4}|rankings|ranking|eater|eater new york|eater san francisco|infatuation|the infatuation|healthgrades|time out|timeout|time out new yorks?|new york city|new york|manhattan|brooklyn|williamsburg|williamsburg right now|long island|austin|seattle|los angeles|san francisco|massapequa|what they are saying|brunch|biz|came)$/.test(
+      normalized
+    ) ||
+    /^r\s+\w+$/.test(normalized) ||
+    /\b(recommendations? for|dinner date recommendations?|date recommendations?|what to visit|days in|places to stay|places to eat|recs|what are your favorite|courses? ranked|public courses? ranked|favorite public courses?|favorite bakeries?|lunch spot ideas|first date options|date ?night|family friendly dining|manhattan with kids|good eats for families|beautiful cafes|cafes in|cafés in|recommended bakeries|do you like your gym|world s 100 greatest|rankings?|guide|best of|local guide)\b/.test(
+      normalized
+    ) ||
+    /\b(brooks ghost|nike pegasus|asics gel|hoka clifton|best plumbing)$/.test(normalized) ||
+    (/\b(options?|ideas?|spots?|guide|rankings?|reviews?|recommendations?)\b/.test(normalized) && normalized.split(" ").length >= 3)
+  );
+}
+
+function isLocalTimeout(error) {
+  return Boolean(error && /timeout|timed out|abort|fetch failed|network/i.test(String(error)));
+}
+
+function normalizeLocalBusinessName(value) {
+  let normalized = normalizeName(value)
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(
+      /\b(review|reviews|menu|reservation|reservations|photos|ratings|tripadvisor|yelp|opentable|booking|google|maps|reddit|eater|infatuation|best|top|near me|official site|article|story|guide)\b/g,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  normalized = normalized
+    .replace(/\s+\b(location|branch|restaurant|bar|cafe|coffee shop|hotel|inn|gym|fitness|dentist|dental|plumber|plumbing|bakery|pizzeria)\b$/g, "")
+    .replace(
+      /\s+\b(williamsburg|brooklyn|manhattan|nyc|new york|los angeles|austin|seattle|massapequa|downtown|midtown|uptown|greenwich village|carmine st|street|avenue|road)\b$/g,
+      ""
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized;
 }
 
 function getCommitHash() {

@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { analyzeConsensus, buildDominantPlatformFallbackConsensus, buildNoReliableConsensus, buildProductFallbackConsensus } from "@/lib/server/analyze";
+import {
+  analyzeConsensus,
+  buildDominantPlatformFallbackConsensus,
+  buildLocalFallbackConsensus,
+  buildNoReliableConsensus,
+  buildProductFallbackConsensus
+} from "@/lib/server/analyze";
 import { cacheConsensus, getCachedConsensus, getCacheVersion } from "@/lib/server/cache";
 import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
-import { searchPublicWeb } from "@/lib/server/search";
+import { recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
 import { canonicalizeQuery, inferQueryEvidenceType, normalizeQuery } from "@/lib/utils";
 import type { ConsensusResponse } from "@/lib/types";
 import type { SearchPublicWebTimings } from "@/lib/server/search";
@@ -116,7 +122,7 @@ export async function POST(request: Request) {
   try {
     const tavilyStartedAt = Date.now();
     const sourceTimings: SearchPublicWebTimings = { tavilyMs: 0, filteringMs: 0 };
-    const sources = await searchPublicWeb(body.data.query, externalCallCounts, sourceTimings);
+    let sources = await searchPublicWeb(body.data.query, externalCallCounts, sourceTimings);
     const searchElapsedMs = Date.now() - tavilyStartedAt;
     const tavilyElapsedMs = sourceTimings.tavilyMs || searchElapsedMs;
     const filteringElapsedMs = sourceTimings.filteringMs;
@@ -161,6 +167,11 @@ export async function POST(request: Request) {
           sources,
           "Vera found product-review evidence, but live extraction timed out before all alternatives could be scored."
         ) ??
+        buildLocalFallbackConsensus(
+          body.data.query,
+          sources,
+          "Vera found local source evidence, but live extraction timed out before all businesses could be scored."
+        ) ??
         buildNoReliableConsensus(
           body.data.query,
           sources,
@@ -176,6 +187,51 @@ export async function POST(request: Request) {
           sources,
           "Vera found product-review evidence, but the extracted product signals were too thin to score directly."
         ) ?? consensus;
+    }
+    if (evidenceType === "local_recommendation" && consensus.results.length < 3) {
+      consensus =
+        buildLocalFallbackConsensus(
+          body.data.query,
+          sources,
+          "Vera found local source evidence, but the extracted business signals were too thin to score directly."
+        ) ?? consensus;
+    }
+    if (evidenceType === "local_recommendation" && validLocalResultCount(consensus) < 5) {
+      const recoveryStartedAt = Date.now();
+      const recoveredSources = await recoverLocalSparseSources(body.data.query, sources, externalCallCounts);
+
+      if (recoveredSources.length > sources.length) {
+        sources = recoveredSources;
+        externalCallCounts.openAiCalls += 1;
+        try {
+          consensus = await analyzeConsensus(body.data.query, sources);
+          console.log("[vera:search] local sparse recovery analysis returned", {
+            query: body.data.query,
+            resultCount: consensus.results.length,
+            elapsedMs: Date.now() - recoveryStartedAt,
+            storedSources: consensus.sources.length,
+            results: consensus.results.map((result) => result.name)
+          });
+        } catch (error) {
+          if (!isTimeoutError(error)) {
+            throw error;
+          }
+
+          console.log("OPENAI_EXTRACTION_TIMEOUT", {
+            evidenceType,
+            sourceCount: sources.length,
+            inputSourceCount: openAIInputSourceCount(evidenceType, sources.length),
+            fallbackReturned: true,
+            stage: "local_sparse_recovery"
+          });
+          consensus =
+            buildLocalFallbackConsensus(
+              body.data.query,
+              sources,
+              "Vera found additional local evidence, but sparse recovery extraction timed out before it could rescore every business."
+            ) ?? consensus;
+        }
+      }
     }
 
     logDominantPlatformTiming({
@@ -237,7 +293,15 @@ function isTimeoutError(error: unknown) {
 }
 
 function openAIInputSourceCount(evidenceType: ReturnType<typeof inferQueryEvidenceType>, sourceCount: number) {
+  if (evidenceType === "local_recommendation") {
+    return Math.min(sourceCount, 8);
+  }
+
   return Math.min(sourceCount, 8);
+}
+
+function validLocalResultCount(consensus: ConsensusResponse) {
+  return consensus.results.filter((result) => result.name && (result.consensusPercentage ?? 0) > 0).length;
 }
 
 function logDominantPlatformTiming({

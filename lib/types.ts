@@ -85,6 +85,25 @@ export type ContenderMetrics = {
   weightedPositiveScore: number;
   weightedNegativeScore: number;
   netWeightedScore: number;
+  averageRating?: number;
+  confidence?: "low" | "medium" | "high";
+  localRanking?: {
+    baseScore: number;
+    finalScore: number;
+    locationMatchScore: number;
+    categoryMatchScore: number;
+    sourceAuthorityScore: number;
+    sourceAgreementScore: number;
+    crossSourceAgreementCount: number;
+    mentionFrequencyScore: number;
+    extractionConfidence: number;
+    extractionConfidenceScore: number;
+    sourceSpecificConfidence: number;
+    reviewSourceSignal: number;
+    weakSingleSourcePenalty: number;
+    urlOnlyPenalty: number;
+    sourceDomains: string[];
+  };
   sourceTypes: VeraSourceType[];
   themeCounts: ThemeMetric[];
   sourceUrls: string[];
@@ -111,6 +130,8 @@ export type StructuredConsensus = {
       weightedPositiveScore: number;
       weightedNegativeScore: number;
       netWeightedScore: number;
+      averageRating?: number;
+      confidence?: "low" | "medium" | "high";
     }
   >;
   themeCounts: Record<string, ThemeMetric>;
@@ -118,6 +139,18 @@ export type StructuredConsensus = {
   confidenceReasoning: string;
   consensusClassification: ConsensusMode;
   signals: SourceSignal[];
+  localPlaceExtraction?: {
+    candidates: Array<{
+      name: string;
+      evidenceText: string;
+      sourceUrl: string;
+      sourceTitle: string;
+      extractionSource: "title" | "snippet" | "url" | "metadata";
+      confidence: number;
+      accepted: boolean;
+      rejectionReason?: string;
+    }>;
+  };
 };
 
 export type ConsensusResult = {
