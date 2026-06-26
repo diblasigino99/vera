@@ -62,6 +62,7 @@ type LocalPlaceCandidate = {
   evidenceText: string;
   sourceUrl: string;
   sourceTitle: string;
+  queryVariant?: string;
   extractionSource: "title" | "snippet" | "url" | "metadata";
   confidence: number;
 };
@@ -1315,6 +1316,7 @@ function titlePlaceCandidates(source: VeraSource): LocalPlaceCandidate[] {
     evidenceText: source.title,
     sourceUrl: source.url,
     sourceTitle: source.title,
+    queryVariant: source.queryVariant,
     extractionSource: "title" as const,
     confidence: round2(Math.max(0.52, 0.86 - index * 0.08 + sourceKind.confidenceBoost))
   }));
@@ -1331,6 +1333,7 @@ function snippetPlaceCandidates(source: VeraSource): LocalPlaceCandidate[] {
       evidenceText: snippet,
       sourceUrl: source.url,
       sourceTitle: source.title,
+      queryVariant: source.queryVariant,
       extractionSource: "snippet" as const,
       confidence: round2(0.56 + (localSourceAuthorityFromSource(source) === "high" ? 0.1 : 0))
     }));
@@ -1359,6 +1362,7 @@ function categoryKeywordPlaceCandidates(source: VeraSource): LocalPlaceCandidate
     evidenceText,
     sourceUrl: source.url,
     sourceTitle: source.title,
+    queryVariant: source.queryVariant,
     extractionSource: "snippet" as const,
     confidence: round2(0.6 + (localSourceAuthorityFromSource(source) === "high" ? 0.08 : 0))
   }));
@@ -1370,6 +1374,7 @@ function urlPlaceCandidates(source: VeraSource): LocalPlaceCandidate[] {
     evidenceText: source.url,
     sourceUrl: source.url,
     sourceTitle: source.title,
+    queryVariant: source.queryVariant,
     extractionSource: "url" as const,
     confidence: round2(0.64 + (localSourceAuthorityFromSource(source) === "high" ? 0.12 : 0))
   }));
@@ -1449,16 +1454,21 @@ function localRecoveryRejectionReason(query: string, candidate: string, placeCan
   if (words.length > 5 && !localCandidateHasCategorySignal(category, normalized)) return "article_title_fragment";
   if (placeCandidate && placeCandidate.confidence < 0.54) return "low_extraction_confidence";
   if (isGenericLocalContender(query, candidate)) return "generic_or_placeholder";
+  if (/^(?:austin|san antonio|seattle|brooklyn|manhattan|williamsburg|new york|los angeles|san francisco|massapequa),?\s*(?:tx|ny|wa|ca)?$/.test(normalized)) {
+    return "location_only";
+  }
   if (/\b(?:websitedirections|website directions|instagram|facebook|hours?|open now|happy hour|events?|tickets?|calendar)\b/.test(normalized)) {
     return "source_or_ui_fragment";
   }
-  if (/\b(?:new year'?s eve|celebrate|watch here|leading|for all you|perfect|favorite cafe|first coffee shop)\b/.test(normalized)) {
+  if (/\b(?:new year'?s eve|celebrate|watch here|leading|for all you|perfect|favorite cafe|first coffee shop|apps on google play|apple podcasts|podcast|local listings|write a|answer|image\s+\d|gym comparison|postcard\.?inc|north side)\b/.test(normalized)) {
     return "article_title_fragment";
   }
+  if (/\b(?=[a-z0-9]*\d)[a-z0-9]{8,}\b/i.test(candidate)) return "encoded_url_fragment";
+  if (/\bit'?s$/.test(normalized) && words.length >= 3) return "article_title_fragment";
   if (/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\b(?:\s+\d{4})?$/.test(normalized)) {
     return "date_or_article_fragment";
   }
-  if (/\b(?:golf digest|golfweek|google hotels|tripadvisor|yelp|booking|opentable|reddit|eater|infatuation)'?s?\b/.test(normalized)) {
+  if (/\b(?:golf digest|golfweek|google hotels|tripadvisor|yelp|booking|opentable|reddit|eater|infatuation|theinfatuation)'?s?\b/.test(normalized)) {
     return "source_website_name";
   }
   if (/^(?:blog|post|features?|hot spots?|watch|guides?|entity|category|newyork|google'?s|there'?s|it'?s|food near me|romantic restaurants bars)$/i.test(normalized)) {
@@ -1804,7 +1814,7 @@ function isGenericLocalContender(query: string, name: string) {
   }
 
   if (
-    /^(best|top|great|recommended|recommendations?|recs|unknown|none|the|read|last|course|courses|what s|gallery|landmark|dining|list|pasta|pizza|plumbing|fitness|travel tourism|travel and tourism|blog|post|features?|hot spots?|watch|entity|category|avenue|street|st|ave|nyc|restaurants?|bars?|bar events|hotels?|dentists?|dentistry|dental|pediatric dentists|places? to stay|places? to eat|food near me|coffee|coffee shops?|coffee in nyc|coffee espresso recs|espresso recs|booking com|tripadvisor|yelp|google maps|google hotels|googles?|opentable|resy|reddit|local guide|reviews?|comments?|replies|threads?|restaurant reviews?|hotel recommendation|dentist recommendation|romantic restaurants bars|cocktail bars chicago|club chicago|chicago by|the vendry|lakeview east chamber of commerce|(?:the )?\d+\s+best .+|(?:the )?best restaurant|(?:the )?best restaurants|(?:the )?best .+|best coffee cafe|updated \d{4}|short visit|what to visit|bakeries?|bakeries san francisco ca|golf courses?|public courses?|rankings?|forum|.+ forum|eater|eater new york|eater san francisco|the infatuation|infatuation|healthgrades|golf digest'?s?|golfweek'?s?|time out|timeout|time out new yorks?|new york city|new york|new yorks?|manhattan|brooklyn|williamsburg|williamsburg right now|long island|austin|seattle|los angeles|san francisco|san franciscos?|san francisco s|massapequa|chicago|texas|south side|hells kitchen|what they are saying|brunch|biz|came)$/.test(
+    /^(best|top|great|recommended|recommendations?|recs|unknown|none|the|read|last|course|courses|what s|gallery|landmark|dining|list|pasta|pizza|plumber|plumbers|plumbing|fitness|travel tourism|travel and tourism|blog|post|features?|hot spots?|watch|entity|category|avenue|street|st|ave|nyc|restaurants?|bars?|bar events|hotels?|dentists?|dentistry|dental|pediatric dentists|places? to stay|places? to eat|food near me|coffee|coffee shops?|coffee in nyc|coffee espresso recs|espresso recs|booking com|tripadvisor|yelp|google maps|google hotels|googles?|opentable|resy|reddit|local guide|reviews?|comments?|replies|threads?|restaurant reviews?|hotel recommendation|dentist recommendation|romantic restaurants bars|cocktail bars chicago|club chicago|chicago by|the vendry|lakeview east chamber of commerce|(?:the )?\d+\s+best .+|(?:the )?best restaurant|(?:the )?best restaurants|(?:the )?best .+|best coffee cafe|updated \d{4}|short visit|what to visit|bakeries?|bakery|bakeries san francisco ca|golf courses?|public courses?|rankings?|forum|.+ forum|eater|eater new york|eater san francisco|the infatuation|infatuation|theinfatuation|healthgrades|golf digest'?s?|golfweek'?s?|time out|timeout|time out new yorks?|new york city|new york|new yorks?|manhattan|brooklyn|brooklyn s|williamsburg|williamsburg right now|long island|austin|seattle|los angeles|san francisco|san franciscos?|san francisco s|massapequa|chicago|texas|south side|north side|hells kitchen|what they are saying|brunch|museum|top attractions|must see attractions|sightseeing|mobile park|local listings|answer|podcast|apple podcasts|postcard inc|gym comparison|athletic club|biz|came)$/.test(
       generic
     )
   ) {
@@ -1820,6 +1830,10 @@ function isGenericLocalContender(query: string, name: string) {
   }
 
   if (/^(sushi|ramen|pizza|coffee|espresso|cocktail|brunch)\s+(restaurants?|spots?|shops?|places?|bars?|guide|guides|list|lists)$/.test(generic)) {
+    return true;
+  }
+
+  if (/^(?:[a-z\s]+ )?(?:cafe|coffee shop|restaurant|bar|hotel|bakery|gym|dentist|plumber)$/.test(generic) && /\b(?:williamsburg|brooklyn|manhattan|nyc|new york|seattle|austin|san francisco|los angeles|massapequa)\b/.test(generic)) {
     return true;
   }
 

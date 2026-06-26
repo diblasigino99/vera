@@ -10,7 +10,9 @@ type TavilyResult = {
 
 const maxTavilyCallsPerRequest = 2;
 const maxLocalTavilyCallsPerRequest = 3;
+const maxLocalNamedDiscoveryCalls = 2;
 const maxLocalSparseRecoveryCalls = 2;
+const maxLocalTotalTavilyCallsPerRequest = 6;
 const tavilyTimeoutMs = 6000;
 const tavilyRetryDelayMs = 350;
 
@@ -77,14 +79,20 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
 
   const responses = settledResponses.flatMap((response) => (response.status === "fulfilled" ? [response.value] : []));
 
-  if (responses.length === 0 && failures.length > 0) {
+  if (responses.length === 0 && failures.length > 0 && evidenceType !== "local_recommendation") {
     const firstFailure = failures[0];
     throw firstFailure.status === "rejected" && firstFailure.reason instanceof Error ? firstFailure.reason : new Error("All Tavily retrieval lanes failed.");
   }
 
+  let namedDiscoveryResponses: VeraSource[][] = [];
+
+  if (evidenceType === "local_recommendation") {
+    namedDiscoveryResponses = await runLocalNamedCandidateDiscovery(query, key, callCounts);
+  }
+
   tavilyMs = Date.now() - startedAt;
   const filteringStartedAt = Date.now();
-  const rawSources = responses.flat();
+  const rawSources = [...responses.flat(), ...namedDiscoveryResponses.flat()];
   const dedupedSources = dedupeSources(rawSources);
   const filteredSources = filterSources(dedupedSources);
   const balancedSources = reduceDuplicateDomains(filteredSources).slice(0, evidenceType === "local_recommendation" ? 28 : 18);
@@ -124,7 +132,8 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
   }
 
   const context = localRecoveryContext(query);
-  const variants = buildLocalSparseRecoveryVariants(query, context).slice(0, maxLocalSparseRecoveryCalls);
+  const remainingLocalCalls = Math.max(0, maxLocalTotalTavilyCallsPerRequest - (callCounts?.tavilyCalls ?? 0));
+  const variants = buildLocalSparseRecoveryVariants(query, context).slice(0, Math.min(maxLocalSparseRecoveryCalls, remainingLocalCalls));
   console.log("LOCAL_SPARSE_RECOVERY_TRIGGERED", {
     query,
     existingSourceCount: existingSources.length,
@@ -132,6 +141,17 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
     location: context.location,
     recoveryQueries: variants.length
   });
+
+  if (!variants.length) {
+    console.log("LOCAL_SPARSE_RECOVERY_FINAL_COUNT", {
+      query,
+      recoveredRawSources: 0,
+      existingSourceCount: existingSources.length,
+      mergedSourceCount: existingSources.length,
+      skipped: "local_tavily_budget_exhausted"
+    });
+    return existingSources;
+  }
 
   for (const variant of variants) {
     console.log("LOCAL_SPARSE_RECOVERY_QUERY", variant);
@@ -159,6 +179,35 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
   });
 
   return merged;
+}
+
+async function runLocalNamedCandidateDiscovery(query: string, key: string, callCounts?: ExternalCallCounts): Promise<VeraSource[][]> {
+  const remainingLocalCalls = Math.max(0, maxLocalTotalTavilyCallsPerRequest - (callCounts?.tavilyCalls ?? 0));
+  const variants = buildLocalNamedCandidateVariants(query).slice(0, Math.min(maxLocalNamedDiscoveryCalls, remainingLocalCalls));
+
+  console.log("LOCAL_NAMED_CANDIDATE_DISCOVERY", {
+    query,
+    variants,
+    remainingLocalCalls
+  });
+
+  if (!variants.length) {
+    return [];
+  }
+
+  const settledResponses = await Promise.allSettled(variants.map((variant) => searchVariantWithRetry(variant, key, callCounts, { retry: false })));
+  const failures = settledResponses.filter((response) => response.status === "rejected");
+
+  if (failures.length) {
+    console.warn("[vera:sources] local named-candidate lane failures", {
+      query,
+      failedLanes: failures.length,
+      totalLanes: settledResponses.length,
+      errors: failures.map((failure) => (failure.status === "rejected" && failure.reason instanceof Error ? failure.reason.message : String(failure)))
+    });
+  }
+
+  return settledResponses.flatMap((response) => (response.status === "fulfilled" ? [response.value] : []));
 }
 
 async function searchVariantWithRetry(
@@ -298,14 +347,16 @@ function buildLocalSearchQuery(query: string) {
 }
 
 function buildLocalSearchVariants(query: string) {
-  const normalized = query.toLowerCase();
-  const category = localRetrievalCategory(normalized);
+  const context = localRetrievalContext(query);
+  const category = context.category;
+  const locationQuery = context.location ? `${context.categoryLabel} ${context.location}` : query;
   const lanes = localRetrievalLanes(category);
 
   console.log("LOCAL_RETRIEVAL_CATEGORY", category);
-  console.log("LOCAL_RETRIEVAL_VARIANTS", lanes.map((lane) => `${query} ${lane}`));
+  console.log("LOCAL_LOCATION_CONTEXT", context);
+  console.log("LOCAL_RETRIEVAL_VARIANTS", lanes.map((lane) => `${locationQuery} ${lane}`));
 
-  return lanes.map((lane) => `${query} ${lane}`);
+  return lanes.map((lane) => `${locationQuery} ${lane}`);
 }
 
 function localRetrievalCategory(normalized: string) {
@@ -410,19 +461,48 @@ function localRetrievalLanes(category: string) {
 }
 
 function localRecoveryContext(query: string) {
+  const context = localRetrievalContext(query);
+
+  return {
+    category: context.category,
+    categoryLabel: context.categoryLabel,
+    location: context.location
+  };
+}
+
+function localRetrievalContext(query: string) {
   const normalized = query.toLowerCase();
   const category = localRetrievalCategory(normalized);
-  const locationMatch = normalized.match(/\b(?:in|near|around)\s+(.+?)$/);
-  const location = locationMatch?.[1]
-    ?.replace(/\b(best|top|recommended|reviews?|reddit|yelp|tripadvisor|google maps)\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const location = expandLocalLocation(extractLocalLocation(normalized));
 
   return {
     category,
     categoryLabel: localRecoveryCategoryLabel(category, normalized),
     location: location || ""
   };
+}
+
+function extractLocalLocation(normalized: string) {
+  const locationMatch = normalized.match(/\b(?:in|near|around)\s+(.+?)$/);
+  return (
+    locationMatch?.[1]
+      ?.replace(/\b(best|top|recommended|reviews?|reddit|yelp|tripadvisor|google maps|eater|infatuation|booking|opentable|restaurants?|bars?|coffee shops?|hotels?)\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim() ?? ""
+  );
+}
+
+function expandLocalLocation(location: string) {
+  const normalized = location.toLowerCase().trim();
+
+  if (!normalized) return "";
+  if (/\bwilliamsburg\b/.test(normalized) && !/\b(virginia|va)\b/.test(normalized)) return "Williamsburg Brooklyn NY";
+  if (/\bmassapequa\b/.test(normalized) && !/\b(ny|new york|long island)\b/.test(normalized)) return "Massapequa NY Long Island";
+  if (/\blong island\b/.test(normalized) && !/\b(nassau|suffolk|ny|new york)\b/.test(normalized)) return "Long Island Nassau Suffolk NY";
+  if (/\bmanhattan\b/.test(normalized) && !/\bny|new york|nyc\b/.test(normalized)) return "Manhattan New York City";
+  if (/\bnyc\b/.test(normalized)) return normalized.replace(/\bnyc\b/g, "New York City");
+  if (/\bbrooklyn\b/.test(normalized) && !/\bny|new york|nyc\b/.test(normalized)) return `${location} NY`;
+  return location;
 }
 
 function localRecoveryCategoryLabel(category: string, normalizedQuery: string) {
@@ -496,6 +576,45 @@ function buildLocalSparseRecoveryVariants(query: string, context: ReturnType<typ
   return [`${query} best ${category} in ${location}`, `top ${category} ${location}`, `${base} Yelp`, `${base} Google reviews`, `${base} Reddit recommendations`];
 }
 
+function buildLocalNamedCandidateVariants(query: string) {
+  const context = localRetrievalContext(query);
+  const location = context.location;
+  const category = context.categoryLabel;
+  const base = location ? `${category} ${location}` : `${query} ${category}`;
+  const genericVariants = [
+    `best ${category} in ${location || query} names`,
+    `top ${category} in ${location || query} list`,
+    `where locals recommend ${category} ${location || query}`,
+    `${location || query} ${category} recommendations reddit`
+  ];
+  const sourceVariants: string[] = [];
+
+  if (["restaurant", "pizza", "brunch", "bakery", "bar"].includes(context.category)) {
+    sourceVariants.push(
+      `${base} Eater named restaurants`,
+      `${base} Infatuation named places`,
+      `${base} Time Out named places`,
+      `site:eater.com ${category} ${location || query}`,
+      `site:theinfatuation.com ${category} ${location || query}`,
+      `site:reddit.com ${category} ${location || query}`
+    );
+  } else if (context.category === "coffee") {
+    sourceVariants.push(`${base} Sprudge`, `${base} Eater`, `${base} Google Maps`, `site:reddit.com ${category} ${location || query}`);
+  } else if (context.category === "hotel") {
+    sourceVariants.push(`${base} TripAdvisor`, `${base} Booking`, `${base} Expedia`, `${base} Conde Nast Traveler`);
+  } else if (context.category === "dentist") {
+    sourceVariants.push(`${base} Healthgrades`, `${base} Zocdoc`, `${base} Google reviews`);
+  } else if (context.category === "plumber") {
+    sourceVariants.push(`${base} Angi`, `${base} Yelp`, `${base} local reviews`);
+  } else if (context.category === "attraction") {
+    sourceVariants.push(`${base} tourism`, `${base} TripAdvisor`, `${base} official`);
+  } else if (context.category === "golf_course") {
+    sourceVariants.push(`${base} Golf Digest`, `${base} Golfweek`, `${base} courses`);
+  }
+
+  return [...sourceVariants, ...genericVariants];
+}
+
 function normalizeProductSearchQuery(query: string) {
   const normalized = query.toLowerCase();
 
@@ -541,12 +660,18 @@ function filterSources(sources: VeraSource[]) {
     const snippet = source.snippet?.trim() ?? "";
     const domain = source.domain.toLowerCase();
     const title = source.title.toLowerCase();
+    const combined = `${title} ${snippet.toLowerCase()} ${source.url.toLowerCase()}`;
+    const queryVariant = (source.queryVariant ?? "").toLowerCase();
 
     if (!snippet || snippet.length < 80) {
       return false;
     }
 
     if (domain.includes("pinterest") || domain.includes("facebook") || domain.includes("instagram") || domain.includes("tiktok")) {
+      return false;
+    }
+
+    if (queryVariant.includes("williamsburg brooklyn") && /\b(williamsburg,\s*va|williamsburg va|virginia|23185)\b/.test(combined)) {
       return false;
     }
 

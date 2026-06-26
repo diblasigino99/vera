@@ -249,11 +249,23 @@ function scoreCase(benchmark, outcome) {
     actualWinner,
     actualResults,
     retrievedSourceTitles: benchmark.category === "local_recommendation" ? (outcome.result?.sources ?? []).map((source) => source.title).slice(0, 12) : [],
+    retrievedSourceLanes:
+      benchmark.category === "local_recommendation"
+        ? (outcome.result?.sources ?? [])
+            .map((source) => ({
+              title: source.title,
+              lane: source.queryVariant ?? null
+            }))
+            .slice(0, 12)
+        : [],
     extractedCandidates:
       benchmark.category === "local_recommendation"
         ? (outcome.result?.structuredConsensus?.localPlaceExtraction?.candidates ?? [])
             .filter((candidate) => candidate.accepted)
-            .map((candidate) => candidate.name)
+            .map((candidate) => ({
+              name: candidate.name,
+              lane: candidate.queryVariant ?? null
+            }))
             .slice(0, 20)
         : [],
     rejectedCandidates:
@@ -423,7 +435,22 @@ function printReport(report) {
       }
       if (failure.category === "local_recommendation") {
         if (failure.retrievedSourceTitles?.length) lines.push(`Retrieved source titles: ${failure.retrievedSourceTitles.slice(0, 6).join(" | ")}`);
-        if (failure.extractedCandidates?.length) lines.push(`Accepted candidates: ${failure.extractedCandidates.slice(0, 10).join(", ")}`);
+        if (failure.retrievedSourceLanes?.length) {
+          lines.push(
+            `Retrieved source lanes: ${failure.retrievedSourceLanes
+              .slice(0, 6)
+              .map((source) => `${source.title} <= ${source.lane ?? "unknown lane"}`)
+              .join(" | ")}`
+          );
+        }
+        if (failure.extractedCandidates?.length) {
+          lines.push(
+            `Accepted candidates: ${failure.extractedCandidates
+              .slice(0, 10)
+              .map((candidate) => `${candidate.name}${candidate.lane ? ` <= ${candidate.lane}` : ""}`)
+              .join(", ")}`
+          );
+        }
         if (failure.rejectedCandidates?.length) lines.push(`Rejected candidates: ${failure.rejectedCandidates.slice(0, 8).join(" | ")}`);
         if (failure.finalContenders?.length) lines.push(`Final contenders: ${failure.finalContenders.slice(0, 10).join(", ")}`);
         if (failure.localRankingDiagnostics?.length) {
