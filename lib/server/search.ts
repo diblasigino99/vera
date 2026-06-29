@@ -15,6 +15,9 @@ const maxLocalSparseRecoveryCalls = 2;
 const maxLocalTotalTavilyCallsPerRequest = 6;
 const tavilyTimeoutMs = 6000;
 const tavilyRetryDelayMs = 350;
+const maxLocalEnrichmentPages = 3;
+const localEnrichmentPageTimeoutMs = 2500;
+const maxLocalEnrichedTextChars = 2400;
 
 export type SearchPublicWebTimings = {
   tavilyMs: number;
@@ -96,6 +99,7 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
   const dedupedSources = dedupeSources(rawSources);
   const filteredSources = filterSources(dedupedSources);
   const balancedSources = reduceDuplicateDomains(filteredSources).slice(0, evidenceType === "local_recommendation" ? 28 : 18);
+  const finalSources = evidenceType === "local_recommendation" ? await enrichLocalAuthoritySources(query, balancedSources) : balancedSources;
   const filteringMs = Date.now() - filteringStartedAt;
 
   if (timings) {
@@ -110,14 +114,180 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
     afterUrlDedupe: dedupedSources.length,
     afterFiltering: filteredSources.length,
     afterDomainBalancing: balancedSources.length,
-    openAIInput: balancedSources.length,
+    afterEnrichment: finalSources.length,
+    openAIInput: finalSources.length,
     tavilyMs,
     filteringMs,
     elapsedMs: Date.now() - startedAt,
-    domains: domainCounts(balancedSources)
+    domains: domainCounts(finalSources)
   });
 
-  return balancedSources;
+  return finalSources;
+}
+
+async function enrichLocalAuthoritySources(query: string, sources: VeraSource[]) {
+  const candidates = sources
+    .filter(isHighAuthorityLocalPage)
+    .sort((a, b) => localEnrichmentSourceScore(b) - localEnrichmentSourceScore(a))
+    .slice(0, maxLocalEnrichmentPages);
+
+  console.log("LOCAL_CONTENT_ENRICHMENT_ATTEMPTED", {
+    query,
+    candidateCount: candidates.length,
+    urls: candidates.map((source) => source.url)
+  });
+
+  if (!candidates.length) {
+    console.log("LOCAL_ENRICHED_SOURCE_COUNT", { query, count: 0 });
+    return sources;
+  }
+
+  const enrichedByUrl = new Map<string, VeraSource>();
+  const settled = await Promise.allSettled(candidates.map((source) => enrichLocalSource(source)));
+
+  for (const response of settled) {
+    if (response.status === "fulfilled" && response.value) {
+      enrichedByUrl.set(response.value.url, response.value);
+    }
+  }
+
+  console.log("LOCAL_ENRICHED_SOURCE_COUNT", {
+    query,
+    count: enrichedByUrl.size
+  });
+
+  return sources.map((source) => enrichedByUrl.get(source.url) ?? source);
+}
+
+async function enrichLocalSource(source: VeraSource): Promise<VeraSource | null> {
+  try {
+    const response = await fetch(source.url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; VeraConsensusBot/1.0; +https://vera.app)",
+        Accept: "text/html,application/xhtml+xml"
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(localEnrichmentPageTimeoutMs)
+    });
+
+    if (!response.ok) {
+      console.log("LOCAL_CONTENT_ENRICHMENT_FAILED", {
+        url: source.url,
+        domain: source.domain,
+        status: response.status
+      });
+      return { ...source, enrichmentFailed: true };
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+
+    if (contentType && !/text\/html|application\/xhtml\+xml/i.test(contentType)) {
+      console.log("LOCAL_CONTENT_ENRICHMENT_FAILED", {
+        url: source.url,
+        domain: source.domain,
+        reason: "non_html",
+        contentType
+      });
+      return { ...source, enrichmentFailed: true };
+    }
+
+    const html = await response.text();
+    const enrichedText = extractLocalVisibleText(html).slice(0, maxLocalEnrichedTextChars).trim();
+
+    if (enrichedText.length < 160) {
+      console.log("LOCAL_CONTENT_ENRICHMENT_FAILED", {
+        url: source.url,
+        domain: source.domain,
+        reason: "too_little_text",
+        chars: enrichedText.length
+      });
+      return { ...source, enrichmentFailed: true };
+    }
+
+    console.log("LOCAL_CONTENT_ENRICHMENT_SUCCESS", {
+      url: source.url,
+      domain: source.domain,
+      title: source.title,
+      chars: enrichedText.length
+    });
+    console.log("LOCAL_ENRICHED_TEXT_CHARS", {
+      url: source.url,
+      chars: enrichedText.length
+    });
+
+    return {
+      ...source,
+      enriched: true,
+      enrichedText,
+      snippet: mergeSnippetWithEnrichedText(source.snippet, enrichedText)
+    };
+  } catch (error) {
+    console.log("LOCAL_CONTENT_ENRICHMENT_FAILED", {
+      url: source.url,
+      domain: source.domain,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return { ...source, enrichmentFailed: true };
+  }
+}
+
+function mergeSnippetWithEnrichedText(snippet: string | undefined, enrichedText: string) {
+  const existing = snippet?.trim();
+
+  if (!existing) return enrichedText;
+
+  return `${existing}\n\n${enrichedText}`.slice(0, maxLocalEnrichedTextChars + 520);
+}
+
+function extractLocalVisibleText(html: string) {
+  const withoutNoise = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
+    .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+    .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
+    .replace(/<aside[\s\S]*?<\/aside>/gi, " ")
+    .replace(/<header[\s\S]*?<\/header>/gi, " ")
+    .replace(/<(h[1-4]|li|p|title|article|section|div)\b[^>]*>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n");
+  const text = withoutNoise
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&rsquo;|&#8217;/gi, "'")
+    .replace(/&ldquo;|&rdquo;|&#8220;|&#8221;/gi, '"')
+    .replace(/&[a-z0-9#]+;/gi, " ")
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter((line) => line.length >= 2 && !/^(?:menu|search|subscribe|newsletter|advertisement|log in|sign in)$/i.test(line));
+
+  return Array.from(new Set(text)).join("\n");
+}
+
+function isHighAuthorityLocalPage(source: VeraSource) {
+  const value = `${source.domain} ${source.title} ${source.url}`.toLowerCase();
+
+  return /\b(eater|infatuation|thevendry|timeout|time.?out|tripadvisor|yelp|booking|opentable|resy|michelin|cntraveler|conde.?nast|travelandleisure|travel.?leisure|seattlemet|nymag|new.?york.?magazine|golfdigest|golfweek|healthgrades|zocdoc|angi|homeadvisor|tourism|visit)\b/.test(
+    value
+  );
+}
+
+function localEnrichmentSourceScore(source: VeraSource) {
+  const value = `${source.domain} ${source.title} ${source.url}`.toLowerCase();
+  const editorialBoost = /\b(eater|infatuation|thevendry|timeout|time.?out|michelin|cntraveler|conde.?nast|travelandleisure|travel.?leisure|seattlemet|nymag|new.?york.?magazine|golfdigest|golfweek)\b/.test(
+    value
+  )
+    ? 8
+    : 0;
+  const tourismBoost = /\b(tourism|visit|official)\b/.test(value) ? 5 : 0;
+  const reviewPlatformBoost = /\b(tripadvisor|booking|opentable|resy|healthgrades|zocdoc|angi|homeadvisor)\b/.test(value) ? 3 : 0;
+  const yelpPenalty = /\byelp\b/.test(value) ? 5 : 0;
+  const listPageBoost = /\b(best|top|guide|list|where to|right now|hit list|restaurants?|hotels?|attractions?|things to do)\b/.test(value) ? 2 : 0;
+
+  return editorialBoost + tourismBoost + reviewPlatformBoost + listPageBoost - yelpPenalty;
 }
 
 export async function recoverLocalSparseSources(query: string, existingSources: VeraSource[], callCounts?: ExternalCallCounts): Promise<VeraSource[]> {

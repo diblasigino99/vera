@@ -54,7 +54,7 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   }
 
   if (
-    /\b(restaurant|restaurants|pizza|pizzeria|brunch|bakery|bakeries|bar|bars|pub|cocktail|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|attraction|attractions|museum|spa|salon|place to eat|place to stay|near me)\b/.test(
+    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|attraction|attractions|museum|spa|salon|place to eat|place to stay|near me)\b/.test(
       normalized
     ) ||
     /\b\d{5}(?:-\d{4})?\b/.test(normalized)

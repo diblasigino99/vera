@@ -13,6 +13,9 @@ export type VeraSource = {
   url: string;
   domain: string;
   snippet?: string;
+  enrichedText?: string;
+  enriched?: boolean;
+  enrichmentFailed?: boolean;
   queryVariant?: string;
   canonicalUrl?: string;
   supportingContender?: string;
@@ -100,6 +103,7 @@ export type ContenderMetrics = {
     extractionConfidenceScore: number;
     sourceSpecificConfidence: number;
     reviewSourceSignal: number;
+    editorialMentionBoost?: number;
     weakSingleSourcePenalty: number;
     urlOnlyPenalty: number;
     sourceDomains: string[];
