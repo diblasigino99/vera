@@ -106,6 +106,8 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
           ) : null}
           <input
             ref={inputRef}
+            type="search"
+            enterKeyHint="search"
             autoFocus={autoFocus}
             value={query}
             onFocus={() => setIsFocused(true)}

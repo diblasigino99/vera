@@ -254,7 +254,6 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
               </span>
               <span>{sourceMixLine || "Based on public discussions, reviews, and expert sources."}</span>
             </div>
-            <SaveSearchButton initialSaved={savedState.savedSearch} searchId={result.id} />
           </div>
 
           {result.mode === "no_reliable_consensus" && result.results.length === 0 ? (
@@ -311,6 +310,7 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
                     </ul>
                   ) : null}
                 </div>
+                <SaveSearchButton initialSaved={savedState.savedSearch} searchId={result.id} />
               </section>
 
               <SourcesSection sources={result.sources} />
@@ -364,19 +364,34 @@ function buildEditorialVerdict(result: ConsensusResponse, winner?: ConsensusResp
 }
 
 function buildEditorialExplanation(result: ConsensusResponse, winner?: ConsensusResponse["results"][number] | null) {
+  const explanation = result.explanation || winner?.summary || "";
+
   if (result.mode === "no_reliable_consensus") {
-    return result.explanation || "The available sources were too thin, conflicting, or unspecific to name a reliable consensus.";
+    return conciseEditorialText(explanation || "The available sources were too thin, conflicting, or unspecific to name a reliable consensus.");
   }
 
   if (result.mode === "split_consensus") {
-    return result.explanation || "Several options received meaningful support, but no single choice clearly outperformed the rest.";
+    return conciseEditorialText(explanation || "Several options received meaningful support, but no single choice clearly outperformed the rest.");
   }
 
   if (!winner) {
-    return result.explanation;
+    return conciseEditorialText(explanation);
   }
 
-  return result.explanation || winner.summary;
+  return conciseEditorialText(explanation);
+}
+
+function conciseEditorialText(text: string) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  const sentences = normalized.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((sentence) => sentence.trim()).filter(Boolean) ?? [normalized];
+  const concise = sentences.slice(0, 3).join(" ");
+
+  return concise.length > 460 ? `${concise.slice(0, 457).trim()}...` : concise;
 }
 
 function NoConsensusPanel() {
@@ -401,7 +416,7 @@ function SourcesSection({ sources }: { sources: ConsensusResponse["sources"] }) 
   return (
     <section className="border-t border-[#ECECF0] pt-10">
       <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Sources</p>
-      <div className="mt-6 grid gap-8 sm:grid-cols-2">
+      <div className="mt-6 grid gap-10 sm:grid-cols-2">
         <SourceList title="Most Influential Sources" sources={mostInfluential} />
         {additional.length ? <SourceList title="Additional Supporting Sources" sources={additional} quiet /> : null}
       </div>
@@ -413,19 +428,19 @@ function SourceList({ quiet = false, sources, title }: { quiet?: boolean; source
   return (
     <div>
       <p className="text-lg font-semibold tracking-[-0.01em] text-[#111114]">{title}</p>
-      <div className="mt-4 grid gap-3">
+      <div className="mt-4 border-t border-[#EFEFF2]">
         {sources.map((source) => (
           <a
             className={cn(
-              "group block rounded-2xl border border-[#ECECF0] bg-white p-4 transition duration-300 hover:border-[#D8D9DE] hover:shadow-[0_14px_42px_rgba(17,17,20,0.045)]",
-              quiet ? "shadow-none" : "shadow-[0_10px_32px_rgba(17,17,20,0.035)]"
+              "group block border-b border-[#EFEFF2] py-4 transition duration-300 hover:border-[#D9DAE0]",
+              quiet ? "text-[#4B4B52]" : "text-[#202024]"
             )}
             href={source.url}
             key={`${source.url}-${source.title}`}
             rel="noreferrer"
             target="_blank"
           >
-            <p className="line-clamp-2 text-sm font-medium leading-6 text-[#202024] group-hover:text-[#111114]">{source.title}</p>
+            <p className="line-clamp-2 text-sm font-medium leading-6 group-hover:text-[#111114]">{source.title}</p>
             <p className="mt-1 text-xs text-[#8A8A92]">{source.domain}</p>
           </a>
         ))}
@@ -603,8 +618,8 @@ function ResultCard({
   return (
     <article
       className={cn(
-        "rounded-[1.75rem] border border-[#ECECF0] bg-white transition duration-300 hover:border-[#D8D9DE] hover:shadow-[0_22px_70px_rgba(17,17,20,0.055)]",
-        featured ? "p-8 shadow-[0_24px_80px_rgba(17,17,20,0.065)] sm:p-10" : "p-6 shadow-[0_10px_34px_rgba(17,17,20,0.03)] sm:p-7"
+        "rounded-[1.75rem] border border-[#EEEEF2] bg-white transition duration-300 hover:border-[#DCDDDF]",
+        featured ? "p-8 shadow-[0_18px_60px_rgba(17,17,20,0.045)] sm:p-10" : "p-6 shadow-[0_8px_28px_rgba(17,17,20,0.022)] sm:p-7"
       )}
     >
       {featured ? (
@@ -632,7 +647,7 @@ function ResultCard({
           onClick={() => storeResult(consensus)}
           onMouseDown={() => storeResult(consensus)}
           onTouchStart={() => storeResult(consensus)}
-          className="rounded-full bg-[#111114] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#2C2C30]"
+          className="rounded-full bg-[#111114] px-5 py-2.5 text-sm font-medium text-white shadow-[0_10px_26px_rgba(17,17,20,0.16)] transition hover:bg-[#2C2C30] hover:shadow-[0_12px_32px_rgba(17,17,20,0.2)]"
         >
           Learn Why
         </Link>
@@ -660,9 +675,9 @@ function SaveSearchButton({ initialSaved = false, searchId }: { initialSaved?: b
       type="button"
       disabled={status === "saving" || status === "saved"}
       onClick={() => saveSearch(searchId, setStatus)}
-      className="mt-7 inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition hover:bg-mist disabled:cursor-default disabled:opacity-70"
+      className="mt-7 inline-flex items-center gap-2 rounded-full px-0 py-1 text-sm font-medium text-[#7A7A82] transition hover:text-[#111114] disabled:cursor-default disabled:opacity-70"
     >
-      <Bookmark className="h-4 w-4" />
+      <Bookmark className="h-3.5 w-3.5" />
       {statusLabel(status, "Save search")}
     </button>
   );
@@ -688,9 +703,9 @@ function SaveResultButton({
       type="button"
       disabled={status === "saving" || status === "saved"}
       onClick={() => saveResult(searchId, resultId, setStatus)}
-      className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition hover:bg-mist disabled:cursor-default disabled:opacity-70"
+      className="inline-flex items-center gap-2 rounded-full border border-transparent px-3 py-2 text-sm font-medium text-[#73737C] transition hover:bg-[#F6F6F8] hover:text-[#111114] disabled:cursor-default disabled:opacity-70"
     >
-      <Bookmark className="h-4 w-4" />
+      <Bookmark className="h-3.5 w-3.5" />
       {statusLabel(status, "Save")}
     </button>
   );
