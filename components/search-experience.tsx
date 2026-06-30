@@ -89,7 +89,7 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
           disabled={isPending || isSubmittingSearch}
           onClick={onIconClick}
           className={cn(
-            "grid shrink-0 place-items-center rounded-full text-[#7A7A82] transition duration-300 hover:bg-[#F6F6F8] hover:text-[#111114] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D7DCE4] disabled:cursor-default disabled:opacity-70",
+            "search-icon-trigger relative grid shrink-0 place-items-center rounded-full text-[#7A7A82] transition duration-300 hover:bg-[#F6F6F8] hover:text-[#111114] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D7DCE4] disabled:cursor-default disabled:opacity-70",
             compact ? "h-8 w-8" : "h-8 w-8"
           )}
         >

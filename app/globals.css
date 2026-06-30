@@ -53,6 +53,7 @@ input {
     0 16px 46px rgba(17, 17, 20, 0.048),
     inset 0 1px 0 rgba(255, 255, 255, 0.92),
     inset 0 -1px 0 rgba(226, 222, 218, 0.26);
+  transition: box-shadow 260ms ease, transform 260ms ease;
 }
 
 .search-glow > * {
@@ -62,6 +63,10 @@ input {
 
 .search-glow:focus-within {
   border-color: transparent;
+  box-shadow:
+    0 20px 54px rgba(17, 17, 20, 0.074),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    inset 0 -1px 0 rgba(218, 214, 211, 0.34);
 }
 
 .search-glow::before {
@@ -135,6 +140,39 @@ input {
 .search-glow[data-loading="true"]::after {
   opacity: 0.54;
   padding: 1.9px;
+}
+
+.search-icon-trigger {
+  overflow: visible;
+}
+
+.search-icon-trigger::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 48% 50%, rgba(255, 255, 255, 0.94) 0%, rgba(246, 249, 253, 0.58) 34%, rgba(211, 222, 238, 0.2) 56%, rgba(255, 255, 255, 0) 74%);
+  opacity: 0;
+  transform: scale(0.86);
+  transition: opacity 260ms ease, transform 260ms ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.search-icon-trigger svg {
+  position: relative;
+  z-index: 1;
+  transition: color 260ms ease, stroke-width 260ms ease;
+}
+
+.search-glow:focus-within .search-icon-trigger {
+  color: #34343a;
+}
+
+.search-glow:focus-within .search-icon-trigger::before {
+  opacity: 1;
+  transform: scale(1);
 }
 
 @keyframes vera-border-light {
