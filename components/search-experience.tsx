@@ -38,7 +38,7 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
 
     const timer = window.setInterval(() => {
       setPlaceholderIndex((index) => (index + 1) % rotatingPlaceholders.length);
-    }, 3600);
+    }, 3900);
 
     return () => window.clearInterval(timer);
   }, [canRotatePlaceholder, isFocused, query, rotatingPlaceholders.length]);
@@ -75,10 +75,10 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
       <form
         onSubmit={onSubmit}
         className={cn(
-          "search-glow mx-auto flex w-full items-center gap-3 border border-[#E3E3E7] bg-white transition duration-300 hover:-translate-y-px hover:border-[#D8DAE0] hover:shadow-[0_14px_34px_rgba(0,0,0,0.055)] focus-within:border-[#D7DCE4]",
+          "search-glow mx-auto flex w-full items-center gap-3 border border-[#E6E6EA] bg-white transition duration-500 ease-out hover:-translate-y-[1px] hover:border-[#DCDDE2] hover:shadow-[0_14px_34px_rgba(17,17,20,0.05)] focus-within:border-transparent",
           compact
-            ? "max-w-[57.6rem] rounded-[1.8rem] px-5 py-3.5 shadow-[0_16px_48px_rgba(0,0,0,0.052)]"
-            : "max-w-[36.5rem] rounded-[1.5rem] px-4 py-3 shadow-none"
+            ? "max-w-[57.6rem] rounded-[1.65rem] px-5 py-3.5 shadow-[0_16px_48px_rgba(17,17,20,0.05)]"
+            : "max-w-[36.75rem] rounded-[1.55rem] px-[1.125rem] py-3 shadow-[0_12px_34px_rgba(17,17,20,0.035)]"
         )}
         data-active={Boolean(query.trim())}
         data-loading={isPending || isSubmittingSearch}
@@ -89,16 +89,16 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
           disabled={isPending || isSubmittingSearch}
           onClick={onIconClick}
           className={cn(
-            "grid shrink-0 place-items-center rounded-full text-[#7D7D85] transition duration-300 hover:bg-mist hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D7DCE4]",
+            "grid shrink-0 place-items-center rounded-full text-[#7A7A82] transition duration-300 hover:bg-[#F6F6F8] hover:text-[#111114] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D7DCE4] disabled:cursor-default disabled:opacity-70",
             compact ? "h-8 w-8" : "h-7 w-7"
           )}
         >
-          <Search className={cn(compact ? "h-[1.1rem] w-[1.1rem]" : "h-[1.05rem] w-[1.05rem]")} strokeWidth={1.7} />
+          <Search className={cn(compact ? "h-[1.08rem] w-[1.08rem]" : "h-[1rem] w-[1rem]")} strokeWidth={1.65} />
         </button>
-        <div className="relative ml-1 min-w-0 flex-1">
+        <div className="relative ml-1.5 min-w-0 flex-1">
           {showVisualPlaceholder ? (
             <span
-              className="pointer-events-none absolute inset-y-0 left-0 flex items-center truncate text-base font-normal tracking-[0.005em] text-[#9A9AA0] transition-opacity duration-500"
+              className="pointer-events-none absolute inset-y-0 left-0 flex items-center truncate text-base font-normal tracking-[0.002em] text-[#9D9DA4] transition-opacity duration-700"
               key={activePlaceholder}
             >
               <span className="animate-placeholder-fade truncate">{activePlaceholder}</span>
@@ -113,7 +113,7 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
             onChange={(event) => setQuery(event.target.value)}
             placeholder={showVisualPlaceholder ? "" : activePlaceholder}
             className={cn(
-              "w-full bg-transparent font-normal leading-none tracking-[0.005em] text-[#111111] outline-none transition duration-300 placeholder:font-normal placeholder:text-[#9A9AA0] placeholder:transition-colors focus:placeholder:text-[#C2C2C7]",
+              "w-full cursor-text bg-transparent font-normal leading-none tracking-[0.002em] text-[#111111] caret-[#111114] outline-none transition duration-300 placeholder:font-normal placeholder:text-[#9D9DA4] placeholder:transition-colors focus:placeholder:text-[#C4C4CA]",
               compact ? "h-8 text-xl" : "h-7 text-base"
             )}
           />
