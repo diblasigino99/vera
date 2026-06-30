@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { BadgeCheck, Bookmark, CheckCircle2, Split, TriangleAlert } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import type { ConsensusResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { VeraThinking } from "@/components/vera-thinking";
+import { SearchExperience } from "@/components/search-experience";
 import { buildResultSlug } from "@/lib/result-slug";
 import { getAnonymousId } from "@/lib/client/anonymous-id";
 
@@ -28,27 +29,22 @@ const emptySavedState: SavedState = {
 
 const modeCopy = {
   clear_consensus: {
-    icon: BadgeCheck,
     label: "Clear Consensus",
     description: "One winner is clearly supported by the sources."
   },
   strong_consensus: {
-    icon: CheckCircle2,
     label: "Strong Consensus",
     description: "One option leads, with credible alternatives below."
   },
   moderate_consensus: {
-    icon: CheckCircle2,
     label: "Moderate Consensus",
     description: "One option has a meaningful lead, but the field is not settled."
   },
   split_consensus: {
-    icon: Split,
     label: "Split Consensus",
     description: "Several options are strongly recommended. The best choice depends on what you value most."
   },
   no_reliable_consensus: {
-    icon: TriangleAlert,
     label: "No Reliable Consensus",
     description: "The sources do not support a reliable consensus."
   }
@@ -168,27 +164,12 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
   }, [result]);
 
   const mode = result ? modeCopy[result.mode] : null;
-  const ModeIcon = mode?.icon;
   const hasWinner =
     result?.mode === "clear_consensus" ||
     result?.mode === "strong_consensus" ||
     result?.mode === "moderate_consensus";
   const winner = hasWinner ? result?.results[0] : null;
   const alternatives = hasWinner ? result?.results.slice(1) ?? [] : result?.results ?? [];
-
-  const intentLine = useMemo(() => {
-    if (!result) {
-      return "";
-    }
-
-    const parts = [
-      result.intent.category,
-      result.intent.location,
-      ...result.intent.optimizeFor.slice(0, 3)
-    ].filter(Boolean);
-
-    return parts.join(" · ");
-  }, [result]);
 
   const rankingExplanation = useMemo(() => {
     return result ? buildRankingExplanation(result) : "";
@@ -205,144 +186,252 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
   const evidenceSummary = useMemo(() => {
     return result ? buildEvidenceSummary(result) : null;
   }, [result]);
+  const isThinking = Boolean(query && (requestLoading || minimumThinking));
 
   if (!query) {
-    return null;
+    return (
+      <section className="mx-auto flex min-h-[72vh] w-full max-w-4xl items-center justify-center">
+        <div className="w-full search-handoff-enter">
+          <SearchExperience compact />
+        </div>
+      </section>
+    );
   }
 
-  if (requestLoading || minimumThinking) {
-    return <VeraThinking className="mt-12" />;
+  if (isThinking) {
+    return (
+      <section className="mx-auto flex min-h-[76vh] w-full max-w-4xl items-center justify-center">
+        <div className="w-full search-handoff-enter">
+          <SearchExperience initialQuery={query} compact />
+          <VeraThinking className="mt-6" />
+        </div>
+      </section>
+    );
   }
 
   if (error) {
     return (
-      <div className="mx-auto mt-16 max-w-2xl rounded-2xl border border-line bg-white p-8 text-center shadow-[0_20px_70px_rgba(0,0,0,0.045)]">
-        <p className="text-lg font-medium text-ink">Vera could not complete this search.</p>
-        <p className="mt-3 leading-7 text-muted">{error}</p>
-      </div>
+      <>
+        <SearchResultsNav />
+        <section className="mx-auto mt-10 w-full max-w-4xl search-settle-enter">
+          <SearchExperience initialQuery={query} compact />
+          <div className="mx-auto mt-14 max-w-2xl rounded-2xl border border-line bg-white p-8 text-center shadow-[0_20px_70px_rgba(0,0,0,0.045)]">
+            <p className="text-lg font-medium text-ink">Vera could not complete this search.</p>
+            <p className="mt-3 leading-7 text-muted">{error}</p>
+          </div>
+        </section>
+      </>
     );
   }
 
-  if (!result || !mode || !ModeIcon) {
-    return null;
+  if (!result || !mode) {
+    return (
+      <section className="mx-auto flex min-h-[72vh] w-full max-w-4xl items-center justify-center">
+        <div className="w-full search-handoff-enter">
+          <SearchExperience initialQuery={query} compact />
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section className="mt-16 animate-result-enter">
-      <div className="border-b border-line pb-10">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
-          <span className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.035)]">
-            <ModeIcon className="h-4 w-4" />
-            {mode.label}
-          </span>
-          {result.cached ? <span>Instant cached result</span> : null}
-          {intentLine ? <span>{intentLine}</span> : null}
-        </div>
-        <h1 className="mt-7 max-w-3xl text-4xl font-semibold tracking-normal text-ink sm:text-5xl">
-          {result.headline}
-        </h1>
-        <p className="mt-5 max-w-3xl text-lg leading-8 text-graphite">{result.explanation}</p>
-        <SaveSearchButton initialSaved={savedState.savedSearch} searchId={result.id} />
-      </div>
-
-      <div className="mt-8 rounded-2xl border border-line bg-white p-6 shadow-[0_12px_44px_rgba(0,0,0,0.035)] sm:p-7">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Agreement Level</p>
-            <p className="mt-2 text-3xl font-semibold tracking-normal text-ink">{mode.label}</p>
-            <p className="mt-3 max-w-2xl leading-7 text-graphite">{mode.description}</p>
-            <p className="mt-3 text-sm leading-6 text-muted">Built from public discussions, reviews, and expert sources.</p>
-            {rankingExplanation ? (
-              <div className="mt-5 max-w-2xl border-t border-line pt-4">
-                <p className="text-sm font-medium text-ink">Why this ranking?</p>
-                <p className="mt-2 leading-7 text-graphite">{rankingExplanation}</p>
-                {sourceMixLine ? <p className="mt-2 text-sm leading-6 text-muted">{sourceMixLine}</p> : null}
-              </div>
-            ) : null}
-            {howVeraDecided.length ? (
-              <div className="mt-5 max-w-2xl border-t border-line pt-4">
-                <p className="text-sm font-medium text-ink">How Vera Decided</p>
-                <ul className="mt-3 grid gap-2 text-sm leading-6 text-graphite">
-                  {howVeraDecided.map((item) => (
-                    <li className="flex gap-2" key={item}>
-                      <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#C8CBD2]" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
+    <>
+      <SearchResultsNav />
+      <section className="mx-auto mt-10 w-full max-w-4xl search-settle-enter">
+        <SearchExperience initialQuery={query} compact />
+        <section className="mt-14 animate-result-enter">
+          <div className="border-b border-[#ECECF0] pb-12">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Results for</p>
+            <p className="mt-3 max-w-3xl text-lg leading-8 text-[#62626A]">{result.query}</p>
+            <h1 className="mt-8 max-w-4xl text-5xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-6xl">
+              {buildEditorialVerdict(result, winner)}
+            </h1>
+            <p className="mt-7 max-w-3xl text-xl leading-9 text-[#3B3B42]">{buildEditorialExplanation(result, winner)}</p>
+            <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-[#73737C]">
+              <span className="rounded-full border border-[#E8E8EC] bg-white px-3.5 py-2 font-medium text-[#111114] shadow-[0_6px_20px_rgba(17,17,20,0.035)]">
+                {mode.label}
+                {winner?.consensusPercentage ? ` · ${winner.consensusPercentage}%` : ""}
+              </span>
+              <span>{sourceMixLine || "Based on public discussions, reviews, and expert sources."}</span>
+            </div>
+            <SaveSearchButton initialSaved={savedState.savedSearch} searchId={result.id} />
           </div>
-          {winner?.consensusPercentage ? (
-            <div
-              className={cn(
-                "w-fit shrink-0 rounded-2xl border border-[#E1E3E8] bg-[#FAFAFB] px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]",
-                result.mode === "split_consensus" ? "opacity-75" : ""
-              )}
-            >
-              <div className="text-4xl font-semibold tracking-normal text-ink">{winner.consensusPercentage}%</div>
-              <div className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">Consensus Strength</div>
-            </div>
-          ) : null}
-        </div>
-      </div>
 
-      {result.mode === "no_reliable_consensus" && result.results.length === 0 ? (
-        <div className="mt-10 rounded-2xl border border-line bg-white p-8 shadow-[0_20px_70px_rgba(0,0,0,0.045)]">
-          <p className="text-2xl font-semibold tracking-normal text-ink">No reliable consensus.</p>
-          <p className="mt-4 max-w-2xl leading-7 text-muted">
-            The available sources are too thin, too divided, or not specific enough to support a confident answer.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-10 grid gap-8">
-          {evidenceSummary ? (
-            <div className="rounded-2xl border border-line bg-white p-6 shadow-[0_12px_44px_rgba(0,0,0,0.025)]">
-              <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Evidence Summary</p>
-              <p className="mt-3 leading-7 text-graphite">{evidenceSummary.primary}</p>
-              {evidenceSummary.secondary ? <p className="mt-2 text-sm leading-6 text-muted">{evidenceSummary.secondary}</p> : null}
-            </div>
-          ) : null}
-
-          {winner ? (
-            <div>
-              <p className="mb-3 text-sm font-medium uppercase tracking-[0.16em] text-muted">Consensus Winner</p>
-              <ResultCard
-                consensus={result}
-                initialSaved={Boolean(savedState.savedResults[winner.id])}
-                item={winner}
-                searchId={result.id}
-                featured
-              />
-            </div>
-          ) : null}
-
-          {alternatives.length ? (
-            <div>
-              <p className="mb-3 text-sm font-medium uppercase tracking-[0.16em] text-muted">
-                {hasWinner ? "Alternatives" : "Top Contenders"}
-              </p>
-              <div className="grid gap-6">
-                {alternatives.map((item) => (
+          {result.mode === "no_reliable_consensus" && result.results.length === 0 ? (
+            <NoConsensusPanel />
+          ) : (
+            <div className="mt-12 grid gap-14">
+              {winner ? (
+                <section>
                   <ResultCard
                     consensus={result}
-                    initialSaved={Boolean(savedState.savedResults[item.id])}
-                    item={item}
+                    initialSaved={Boolean(savedState.savedResults[winner.id])}
+                    item={winner}
                     searchId={result.id}
-                    key={item.id}
+                    featured
                   />
-                ))}
-              </div>
+                </section>
+              ) : null}
+
+              {alternatives.length ? (
+                <section>
+                  <p className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">
+                    {hasWinner ? "Other Strong Contenders" : "Strongest Contenders"}
+                  </p>
+                  <div className={cn("grid gap-4", !hasWinner ? "sm:grid-cols-2" : "")}>
+                    {alternatives.map((item) => (
+                      <ResultCard
+                        consensus={result}
+                        initialSaved={Boolean(savedState.savedResults[item.id])}
+                        item={item}
+                        searchId={result.id}
+                        key={item.id}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="border-t border-[#ECECF0] pt-10">
+                <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Why Vera Trusts This</p>
+                <div className="mt-5 grid gap-5 text-[15px] leading-7 text-[#4B4B52] sm:grid-cols-[1.15fr_0.85fr]">
+                  <div>
+                    {rankingExplanation ? <p>{rankingExplanation}</p> : null}
+                    {evidenceSummary ? <p className="mt-3">{evidenceSummary.primary}</p> : null}
+                    {evidenceSummary?.secondary ? <p className="mt-3 text-[#73737C]">{evidenceSummary.secondary}</p> : null}
+                  </div>
+                  {howVeraDecided.length ? (
+                    <ul className="grid gap-2.5 text-[#62626A]">
+                      {howVeraDecided.slice(0, 3).map((item) => (
+                        <li className="flex gap-2.5" key={item}>
+                          <span className="mt-[0.6rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#C8CBD2]" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              </section>
+
+              <SourcesSection sources={result.sources} />
             </div>
-          ) : null}
-        </div>
-      )}
-    </section>
+          )}
+        </section>
+      </section>
+    </>
+  );
+}
+
+function SearchResultsNav() {
+  return (
+    <nav className="mx-auto flex w-full max-w-5xl items-center justify-between search-nav-enter">
+      <Link href="/" className="font-serif text-3xl text-ink">
+        Vera
+      </Link>
+      <Link href="/profile" className="text-sm text-muted transition hover:text-ink">
+        Profile
+      </Link>
+    </nav>
   );
 }
 
 function resultStorageKey(searchId: string) {
   return `vera_result_${searchId}`;
+}
+
+function buildEditorialVerdict(result: ConsensusResponse, winner?: ConsensusResponse["results"][number] | null) {
+  if (result.mode === "split_consensus") {
+    return "The internet is divided.";
+  }
+
+  if (result.mode === "no_reliable_consensus") {
+    return "The internet doesn't agree.";
+  }
+
+  if (!winner) {
+    return result.headline;
+  }
+
+  if (result.mode === "clear_consensus") {
+    return `The internet overwhelmingly recommends ${winner.name}.`;
+  }
+
+  if (result.mode === "strong_consensus") {
+    return `The internet consistently recommends ${winner.name}.`;
+  }
+
+  return `${winner.name} leads the conversation.`;
+}
+
+function buildEditorialExplanation(result: ConsensusResponse, winner?: ConsensusResponse["results"][number] | null) {
+  if (result.mode === "no_reliable_consensus") {
+    return result.explanation || "The available sources were too thin, conflicting, or unspecific to name a reliable consensus.";
+  }
+
+  if (result.mode === "split_consensus") {
+    return result.explanation || "Several options received meaningful support, but no single choice clearly outperformed the rest.";
+  }
+
+  if (!winner) {
+    return result.explanation;
+  }
+
+  return result.explanation || winner.summary;
+}
+
+function NoConsensusPanel() {
+  return (
+    <section className="mt-12 rounded-[1.75rem] border border-[#ECECF0] bg-white p-8 shadow-[0_20px_70px_rgba(17,17,20,0.045)] sm:p-10">
+      <p className="text-2xl font-semibold tracking-[-0.01em] text-[#111114]">Try a more specific search.</p>
+      <p className="mt-4 max-w-2xl text-lg leading-8 text-[#62626A]">
+        Vera works best when the situation is clear. Add a location, budget, use case, audience, or constraint to help the internet&apos;s agreement come into focus.
+      </p>
+    </section>
+  );
+}
+
+function SourcesSection({ sources }: { sources: ConsensusResponse["sources"] }) {
+  if (!sources.length) {
+    return null;
+  }
+
+  const mostInfluential = sources.slice(0, 3);
+  const additional = sources.slice(3, 8);
+
+  return (
+    <section className="border-t border-[#ECECF0] pt-10">
+      <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Sources</p>
+      <div className="mt-6 grid gap-8 sm:grid-cols-2">
+        <SourceList title="Most Influential Sources" sources={mostInfluential} />
+        {additional.length ? <SourceList title="Additional Supporting Sources" sources={additional} quiet /> : null}
+      </div>
+    </section>
+  );
+}
+
+function SourceList({ quiet = false, sources, title }: { quiet?: boolean; sources: ConsensusResponse["sources"]; title: string }) {
+  return (
+    <div>
+      <p className="text-lg font-semibold tracking-[-0.01em] text-[#111114]">{title}</p>
+      <div className="mt-4 grid gap-3">
+        {sources.map((source) => (
+          <a
+            className={cn(
+              "group block rounded-2xl border border-[#ECECF0] bg-white p-4 transition duration-300 hover:border-[#D8D9DE] hover:shadow-[0_14px_42px_rgba(17,17,20,0.045)]",
+              quiet ? "shadow-none" : "shadow-[0_10px_32px_rgba(17,17,20,0.035)]"
+            )}
+            href={source.url}
+            key={`${source.url}-${source.title}`}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <p className="line-clamp-2 text-sm font-medium leading-6 text-[#202024] group-hover:text-[#111114]">{source.title}</p>
+            <p className="mt-1 text-xs text-[#8A8A92]">{source.domain}</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function buildRankingExplanation(result: ConsensusResponse) {
@@ -430,54 +519,6 @@ function buildSourceMixLine(result: ConsensusResponse) {
   return support ? `Sources include ${support}.` : "";
 }
 
-function buildResultTrustMetricItems(item: ConsensusResponse["results"][number]) {
-  const metrics = item.metrics;
-
-  if (!metrics) {
-    return [];
-  }
-
-  const parts = [
-    pluralize(metrics.positiveMentionCount, "positive mention"),
-    pluralize(metrics.sourceCount, "supporting source"),
-    pluralize(metrics.sourceTypes.length, "source type")
-  ];
-
-  if (metrics.editorialSupportCount > 0) {
-    parts.push(pluralize(metrics.editorialSupportCount, "editorial signal"));
-  }
-
-  if (metrics.communitySupportCount > 0) {
-    parts.push(pluralize(metrics.communitySupportCount, "community signal"));
-  }
-
-  if (metrics.negativeMentionCount > 0) {
-    parts.push(`${pluralize(metrics.negativeMentionCount, "concern")} found`);
-  }
-
-  return parts;
-}
-
-function supportStrengthLabel(consensus: ConsensusResponse, item: ConsensusResponse["results"][number]) {
-  if (consensus.mode === "split_consensus") {
-    const topScore = consensus.results[0]?.consensusPercentage ?? 0;
-    const score = item.consensusPercentage ?? 0;
-    const gap = topScore - score;
-
-    if (gap < 8) {
-      return "Very Close Support";
-    }
-
-    return score >= 75 ? "Strong Support" : "Moderate Support";
-  }
-
-  if ((item.consensusPercentage ?? 0) >= 75) {
-    return "Strong Support";
-  }
-
-  return "Moderate Support";
-}
-
 function sourceTypesFromResult(result: ConsensusResponse) {
   const breakdown = result.structuredConsensus?.sourceBreakdown;
 
@@ -554,8 +595,6 @@ function ResultCard({
   featured?: boolean;
 }) {
   const resultHref = `/result/${buildResultSlug(item.name, searchId, item.id)}` as Route;
-  const trustMetrics = buildResultTrustMetricItems(item);
-  const supportLabel = supportStrengthLabel(consensus, item);
 
   useEffect(() => {
     console.log("RESULT_CARD_RENDER_NO_FETCH", { searchId, resultId: item.id });
@@ -564,65 +603,36 @@ function ResultCard({
   return (
     <article
       className={cn(
-        "rounded-2xl border border-line bg-white p-7 transition duration-300 hover:border-[#D1D1D6] hover:shadow-[0_22px_70px_rgba(0,0,0,0.055)] sm:p-8",
-        featured ? "shadow-[0_24px_80px_rgba(0,0,0,0.07)]" : "shadow-[0_12px_44px_rgba(0,0,0,0.035)]"
+        "rounded-[1.75rem] border border-[#ECECF0] bg-white transition duration-300 hover:border-[#D8D9DE] hover:shadow-[0_22px_70px_rgba(17,17,20,0.055)]",
+        featured ? "p-8 shadow-[0_24px_80px_rgba(17,17,20,0.065)] sm:p-10" : "p-6 shadow-[0_10px_34px_rgba(17,17,20,0.03)] sm:p-7"
       )}
     >
-      <div className="flex flex-col gap-7 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-mist text-sm font-semibold text-ink">
-              {item.rank}
-            </span>
-            <h2 className={cn("font-semibold tracking-normal text-ink", featured ? "text-4xl" : "text-3xl")}>
-              {item.name}
-            </h2>
-          </div>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-graphite">{item.summary}</p>
-        </div>
-        {item.consensusPercentage ? (
-          <div
-            className={cn(
-              "w-fit shrink-0 rounded-2xl border border-[#E1E3E8] bg-[#FAFAFB] px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]",
-              consensus.mode === "split_consensus" ? "opacity-75" : ""
-            )}
-          >
-            <div className="text-3xl font-semibold tracking-normal text-ink">{item.consensusPercentage}%</div>
-            <div className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-muted">{supportLabel}</div>
-          </div>
-        ) : null}
+      {featured ? (
+        <p className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Primary Recommendation</p>
+      ) : null}
+      <div className="min-w-0">
+        <h2 className={cn("font-semibold tracking-[-0.02em] text-[#111114]", featured ? "text-4xl sm:text-5xl" : "text-2xl sm:text-3xl")}>
+          {item.name}
+        </h2>
+        <p className={cn("mt-4 max-w-2xl leading-8 text-[#4B4B52]", featured ? "text-lg" : "text-base")}>{item.summary}</p>
       </div>
 
-      {trustMetrics.length ? (
-        <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm leading-6 text-muted">
-          {trustMetrics.map((metric) => (
-            <span className="inline-flex items-center gap-1.5" key={metric}>
-              <span className="text-[#7A7D85]">✓</span>
-              {metric}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="mt-8">
-        <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Why people recommend it</p>
-        <div className="mt-3 flex flex-wrap gap-2.5">
-          {item.reasons.slice(0, 4).map((reason) => (
-            <span className="rounded-full bg-mist px-3.5 py-2 text-sm text-graphite" key={reason}>
+      <div className={cn("flex flex-wrap gap-2.5", featured ? "mt-7" : "mt-5")}>
+        {item.reasons.slice(0, featured ? 3 : 3).map((reason) => (
+          <span className="rounded-full bg-[#F6F6F8] px-3.5 py-2 text-sm text-[#4B4B52]" key={reason}>
               {reason}
             </span>
-          ))}
-        </div>
+        ))}
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-3">
+      <div className={cn("flex flex-wrap gap-3", featured ? "mt-8" : "mt-6")}>
         <Link
           href={resultHref}
           prefetch={false}
           onClick={() => storeResult(consensus)}
           onMouseDown={() => storeResult(consensus)}
           onTouchStart={() => storeResult(consensus)}
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white transition hover:bg-graphite"
+          className="rounded-full bg-[#111114] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#2C2C30]"
         >
           Learn Why
         </Link>

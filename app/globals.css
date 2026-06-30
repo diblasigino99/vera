@@ -211,6 +211,18 @@ input {
   animation: result-enter 420ms ease-out both;
 }
 
+.search-handoff-enter {
+  animation: search-handoff-enter 520ms ease-out both;
+}
+
+.search-settle-enter {
+  animation: search-settle-enter 560ms ease-out both;
+}
+
+.search-nav-enter {
+  animation: search-nav-enter 520ms ease-out both;
+}
+
 @keyframes vera-orb-turn {
   0% {
     --vera-light-angle: 35deg;
@@ -239,7 +251,43 @@ input {
 @keyframes result-enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes search-handoff-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes search-settle-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes search-nav-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
   }
 
   to {
@@ -257,7 +305,10 @@ input {
   .search-glow:focus-within::after,
   .search-glow[data-loading="true"]::after,
   .vera-orb,
-  .animate-result-enter {
+  .animate-result-enter,
+  .search-handoff-enter,
+  .search-settle-enter,
+  .search-nav-enter {
     animation: none;
   }
 }
