@@ -192,7 +192,9 @@ async function enrichLocalSource(source: VeraSource): Promise<VeraSource | null>
     }
 
     const html = await response.text();
-    const enrichedText = extractLocalVisibleText(html).slice(0, maxLocalEnrichedTextChars).trim();
+    const extracted = extractLocalArticleText(html);
+    const enrichedText = extracted.visibleText.slice(0, maxLocalEnrichedTextChars).trim();
+    const enrichedBodyText = extracted.bodyText.slice(0, maxLocalEnrichedTextChars).trim();
 
     if (enrichedText.length < 160) {
       console.log("LOCAL_CONTENT_ENRICHMENT_FAILED", {
@@ -219,6 +221,7 @@ async function enrichLocalSource(source: VeraSource): Promise<VeraSource | null>
       ...source,
       enriched: true,
       enrichedText,
+      enrichedBodyText: enrichedBodyText || enrichedText,
       snippet: mergeSnippetWithEnrichedText(source.snippet, enrichedText)
     };
   } catch (error) {
@@ -239,7 +242,7 @@ function mergeSnippetWithEnrichedText(snippet: string | undefined, enrichedText:
   return `${existing}\n\n${enrichedText}`.slice(0, maxLocalEnrichedTextChars + 520);
 }
 
-function extractLocalVisibleText(html: string) {
+function extractLocalArticleText(html: string) {
   const withoutNoise = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -251,7 +254,7 @@ function extractLocalVisibleText(html: string) {
     .replace(/<header[\s\S]*?<\/header>/gi, " ")
     .replace(/<(h[1-4]|li|p|title|article|section|div)\b[^>]*>/gi, "\n")
     .replace(/<br\s*\/?>/gi, "\n");
-  const text = withoutNoise
+  const lines = withoutNoise
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
@@ -264,7 +267,50 @@ function extractLocalVisibleText(html: string) {
     .map((line) => line.replace(/\s+/g, " ").trim())
     .filter((line) => line.length >= 2 && !/^(?:menu|search|subscribe|newsletter|advertisement|log in|sign in)$/i.test(line));
 
-  return Array.from(new Set(text)).join("\n");
+  const visibleLines = Array.from(new Set(lines));
+  const bodyLines = trimToEditorialBody(visibleLines);
+
+  console.log("LOCAL_BODY_MATCH", {
+    totalLines: visibleLines.length,
+    bodyLines: bodyLines.length,
+    bodyChars: bodyLines.join("\n").length
+  });
+
+  return {
+    visibleText: visibleLines.join("\n"),
+    bodyText: bodyLines.join("\n")
+  };
+}
+
+function trimToEditorialBody(lines: string[]) {
+  const startIndex = Math.max(
+    0,
+    lines.findIndex((line) =>
+      /\b(the\s+\d+\s+best|best\s+.+\s+in|where to|essential|restaurants?|hotels?|coffee|pizza|brunch|bars?|attractions?|things to do|our favorite|editors?'? picks?)\b/i.test(
+        line
+      )
+    )
+  );
+  const relatedIndex = lines.findIndex((line, index) => index > startIndex && isRelatedOrFooterLine(line));
+  const endIndex = relatedIndex > startIndex ? relatedIndex : lines.length;
+
+  if (relatedIndex > startIndex) {
+    console.log("LOCAL_RELATED_CONTENT_REJECTED", {
+      marker: lines[relatedIndex],
+      removedLines: lines.length - relatedIndex
+    });
+  }
+
+  return lines
+    .slice(startIndex, endIndex)
+    .filter((line) => !isRelatedOrFooterLine(line))
+    .slice(0, 140);
+}
+
+function isRelatedOrFooterLine(line: string) {
+  return /\b(related|more from|more in|read next|recommended stories|latest|newsletter|subscribe|sign up|advertisement|sponsored|partner content|footer|follow us|share this|comments?|most popular|nearby|you might also like|around the web)\b/i.test(
+    line
+  );
 }
 
 function isHighAuthorityLocalPage(source: VeraSource) {
