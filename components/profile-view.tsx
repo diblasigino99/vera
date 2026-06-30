@@ -15,13 +15,11 @@ const emptySnapshot: ProfileSnapshot = {
 
 export function ProfileView() {
   const [snapshot, setSnapshot] = useState<ProfileSnapshot>(emptySnapshot);
-  const [actorId, setActorId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const nextActorId = getAnonymousId();
-    setActorId(nextActorId);
 
     fetch(`/api/profile?actorId=${encodeURIComponent(nextActorId)}`)
       .then(async (response) => {
@@ -70,7 +68,7 @@ export function ProfileView() {
           )}
         </LibrarySection>
 
-        <LibrarySection title="Saved Results" description="Specific recommendations you saved from a consensus result.">
+        <LibrarySection title="Saved Recommendations" description="Specific recommendations you saved from a consensus result.">
           {snapshot.savedResults.length ? (
             <div className="border-t border-[#ECECF0]">
               {snapshot.savedResults.map((result) => (
@@ -78,17 +76,16 @@ export function ProfileView() {
               ))}
             </div>
           ) : (
-            <Empty message="No saved results yet." />
+            <Empty message="No saved recommendations yet." />
           )}
         </LibrarySection>
 
-        <LibrarySection title="Account" description="Vera beta is using a private local session for now.">
+        <LibrarySection title="Account" description="You're using Vera during the beta.">
           <div className="border-t border-[#ECECF0] py-5">
             <div className="grid gap-3 sm:grid-cols-[0.35fr_0.65fr]">
               <p className="font-medium text-[#111114]">Beta session</p>
               <div>
-                <p className="text-[#4B4B52]">Your saves are connected to this browser session.</p>
-                {actorId ? <p className="mt-2 text-sm text-[#8A8A92]">Session ID: {shortSessionId(actorId)}</p> : null}
+                <p className="text-[#4B4B52]">Your saved searches and recommendations are stored privately in this browser for now.</p>
               </div>
             </div>
           </div>
@@ -96,7 +93,7 @@ export function ProfileView() {
 
         <LibrarySection title="Support" description="A few quiet essentials for the beta.">
           <div className="border-t border-[#ECECF0]">
-            <SupportLink href="mailto:hello@nexraai.com?subject=Vera%20feedback" label="Feedback" />
+            <SupportLink href="mailto:hello@nexraai.com?subject=Vera%20feedback" label="Send Feedback" />
             <SupportLink href="/privacy" label="Privacy Policy" />
             <SupportLink href="/terms" label="Terms of Service" />
             <button
@@ -164,8 +161,4 @@ function SupportLink({ href, label }: { href: string; label: string }) {
 
 function Empty({ message }: { message: string }) {
   return <p className="border-t border-[#ECECF0] py-5 text-[#8A8A92]">{message}</p>;
-}
-
-function shortSessionId(actorId: string) {
-  return `${actorId.slice(0, 8)}...${actorId.slice(-6)}`;
 }
