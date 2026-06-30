@@ -272,23 +272,26 @@ export async function getConsensusById(searchId: string) {
 }
 
 export async function cacheConsensus(consensus: ConsensusResponse, callCounts?: ExternalCallCounts) {
-  const versionedConsensus = {
+  const canonicalQuery = consensus.canonicalQuery ?? canonicalizeQuery(consensus.query);
+  let versionedConsensus: ConsensusResponse = {
     ...consensus,
-    canonicalQuery: consensus.canonicalQuery ?? canonicalizeQuery(consensus.query),
+    canonicalQuery,
     cacheVersion: localCacheVersion,
     sources: annotateSources(consensus)
   };
 
-  memorySearches.set(versionedConsensus.normalizedQuery, versionedConsensus);
-  memorySearches.set(versionedConsensus.canonicalQuery, versionedConsensus);
-
   const supabase = getSupabaseAdmin();
   if (supabase) {
-    await writeSupabaseCacheEntry(versionedConsensus, callCounts);
-    return;
+    versionedConsensus = await writeSupabaseCacheEntry(versionedConsensus, callCounts);
+    memorySearches.set(versionedConsensus.normalizedQuery, versionedConsensus);
+    memorySearches.set(versionedConsensus.canonicalQuery ?? canonicalQuery, versionedConsensus);
+    return versionedConsensus;
   }
 
   await writeLocalCacheEntry(versionedConsensus);
+  memorySearches.set(versionedConsensus.normalizedQuery, versionedConsensus);
+  memorySearches.set(versionedConsensus.canonicalQuery ?? canonicalQuery, versionedConsensus);
+  return versionedConsensus;
 }
 
 function annotateSources(consensus: ConsensusResponse) {
@@ -418,62 +421,148 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
-    return;
+    return consensus;
   }
-
-  const payload = {
-    id: consensus.id,
-    query: consensus.query,
-    original_query: consensus.query,
-    normalized_query: consensus.normalizedQuery,
-    canonical_query: consensus.canonicalQuery ?? canonicalizeQuery(consensus.query),
-    result: consensus,
-    result_json: consensus,
-    sources_json: consensus.sources,
-    cache_version: localCacheVersion,
-    created_at: consensus.createdAt,
-    updated_at: new Date().toISOString()
-  };
 
   if (callCounts) {
     callCounts.supabaseWrites += 1;
   }
 
   const writeStartedAt = Date.now();
-  const { error } = await supabase.from("search_cache").upsert(payload, {
-    onConflict: "normalized_query"
+  const { data: existingRow, error: existingLookupError } = await supabase
+    .from("search_cache")
+    .select("id, created_at")
+    .eq("normalized_query", consensus.normalizedQuery)
+    .maybeSingle();
+
+  if (existingLookupError) {
+    console.log("[vera:cache] cache write preflight failed", {
+      normalizedQuery: consensus.normalizedQuery,
+      cacheVersion: localCacheVersion,
+      store: "supabase",
+      error: existingLookupError
+    });
+    console.log("CACHE_WRITE_RESULT", {
+      success: false,
+      rowId: consensus.id,
+      error: existingLookupError.message,
+      errorCode: existingLookupError.code ?? null,
+      errorDetails: existingLookupError.details ?? null,
+      errorHint: existingLookupError.hint ?? null,
+      durationMs: Date.now() - writeStartedAt
+    });
+    throw new Error(`Supabase cache write failed: ${existingLookupError.message}`);
+  }
+
+  const stableConsensus = {
+    ...consensus,
+    id: existingRow?.id ?? consensus.id,
+    createdAt: existingRow?.created_at ?? consensus.createdAt
+  };
+  const now = new Date().toISOString();
+
+  if (existingRow?.id) {
+    const { error } = await supabase
+      .from("search_cache")
+      .update({
+        query: stableConsensus.query,
+        original_query: stableConsensus.query,
+        normalized_query: stableConsensus.normalizedQuery,
+        canonical_query: stableConsensus.canonicalQuery ?? canonicalizeQuery(stableConsensus.query),
+        result: stableConsensus,
+        result_json: stableConsensus,
+        sources_json: stableConsensus.sources,
+        cache_version: localCacheVersion,
+        updated_at: now
+      })
+      .eq("id", existingRow.id);
+
+    if (error) {
+      console.log("[vera:cache] cache write failed", {
+        normalizedQuery: stableConsensus.normalizedQuery,
+        cacheVersion: localCacheVersion,
+        store: "supabase",
+        rowId: existingRow.id,
+        error
+      });
+      console.log("CACHE_WRITE_RESULT", {
+        success: false,
+        rowId: existingRow.id,
+        error: error.message,
+        errorCode: error.code ?? null,
+        errorDetails: error.details ?? null,
+        errorHint: error.hint ?? null,
+        durationMs: Date.now() - writeStartedAt
+      });
+      throw new Error(`Supabase cache write failed: ${error.message}`);
+    }
+
+    console.log("CACHE_WRITE_RESULT", {
+      success: true,
+      rowId: existingRow.id,
+      writeMode: "update",
+      error: null,
+      durationMs: Date.now() - writeStartedAt
+    });
+    console.log("[vera:cache] cache write success", {
+      normalizedQuery: stableConsensus.normalizedQuery,
+      cacheVersion: localCacheVersion,
+      store: "supabase",
+      searchId: existingRow.id,
+      writeMode: "update"
+    });
+    return stableConsensus;
+  }
+
+  const { error } = await supabase.from("search_cache").insert({
+    id: stableConsensus.id,
+    query: stableConsensus.query,
+    original_query: stableConsensus.query,
+    normalized_query: stableConsensus.normalizedQuery,
+    canonical_query: stableConsensus.canonicalQuery ?? canonicalizeQuery(stableConsensus.query),
+    result: stableConsensus,
+    result_json: stableConsensus,
+    sources_json: stableConsensus.sources,
+    cache_version: localCacheVersion,
+    created_at: stableConsensus.createdAt,
+    updated_at: now
   });
 
   if (!error) {
     console.log("CACHE_WRITE_RESULT", {
       success: true,
-      rowId: consensus.id,
+      rowId: stableConsensus.id,
+      writeMode: "insert",
       error: null,
       durationMs: Date.now() - writeStartedAt
     });
     console.log("[vera:cache] cache write success", {
-      normalizedQuery: consensus.normalizedQuery,
+      normalizedQuery: stableConsensus.normalizedQuery,
       cacheVersion: localCacheVersion,
       store: "supabase",
-      searchId: consensus.id
+      searchId: stableConsensus.id,
+      writeMode: "insert"
     });
-    return;
+    return stableConsensus;
   }
 
   console.log("[vera:cache] cache write failed", {
-    normalizedQuery: consensus.normalizedQuery,
+    normalizedQuery: stableConsensus.normalizedQuery,
     cacheVersion: localCacheVersion,
     store: "supabase",
-    error: error.message
+    rowId: stableConsensus.id,
+    error
   });
 
   console.log("CACHE_WRITE_RESULT", {
     success: false,
-    rowId: consensus.id,
+    rowId: stableConsensus.id,
     error: error.message,
+    errorCode: error.code ?? null,
+    errorDetails: error.details ?? null,
+    errorHint: error.hint ?? null,
     durationMs: Date.now() - writeStartedAt
   });
-
   throw new Error(`Supabase cache write failed: ${error.message}`);
 }
 

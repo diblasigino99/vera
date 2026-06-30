@@ -29,8 +29,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not save.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[vera:save] save failed", {
+      kind: body.data.kind,
+      searchId: body.data.searchId,
+      resultId: body.data.resultId ?? null,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : null
+    });
+    return NextResponse.json({ error: "Vera couldn't save this yet. Please try again." }, { status: 500 });
   }
 }
 

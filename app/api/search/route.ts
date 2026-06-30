@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     try {
       await cacheConsensus(fakeResult, externalCallCounts);
-    } catch (error) {
+  } catch (error) {
       console.log("[vera:search] cache test write failed", {
         normalizedQuery,
         error: error instanceof Error ? error.message : String(error)
@@ -107,13 +107,14 @@ export async function POST(request: Request) {
       console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
       return NextResponse.json(cached);
     }
-  } catch (error) {
-    console.log("[vera:search] cache lookup aborted live search", {
+    } catch (error) {
+    console.error("[vera:search] cache lookup aborted live search", {
       normalizedQuery,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : null
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Cache lookup failed." }, { status: 500 });
+    return NextResponse.json({ error: "Vera couldn't complete this search. Please try again." }, { status: 500 });
   }
 
   const setup = getLiveSearchSetup();
@@ -294,7 +295,7 @@ export async function POST(request: Request) {
       results: consensus.results.map((result) => result.name)
     });
     const cacheWriteStartedAt = Date.now();
-    await cacheConsensus(consensus, externalCallCounts);
+    consensus = await cacheConsensus(consensus, externalCallCounts);
     const cacheWriteElapsedMs = Date.now() - cacheWriteStartedAt;
     console.log("[vera:search] cache write completed", {
       normalizedQuery,
@@ -372,9 +373,13 @@ export async function POST(request: Request) {
       externalCallCounts,
       error: error instanceof Error ? error.message : String(error)
     });
+    console.error("[vera:search] request failed", {
+      normalizedQuery,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : null
+    });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
-    const message = error instanceof Error ? error.message : "Vera could not complete this search.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Vera couldn't complete this search. Please try again." }, { status: 500 });
   }
 }
 
