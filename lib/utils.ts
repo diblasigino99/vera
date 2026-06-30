@@ -67,7 +67,7 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   }
 
   if (
-    /\b(router|wi-fi|wifi|shoe|shoes|suitcase|luggage|headphones|earbuds|laptop|notebook|phone|smartphone|mattress|carry-on|carry on|keyboard|mouse|office chair|desk chair|espresso machine|coffee machine|robot vacuum|vacuum|camera|monitor|backpack|television|tv|external ssd|portable ssd|ssd|air purifier)\b/.test(
+    /\b(router|wi-fi|wifi|shoe|shoes|suitcase|luggage|headphones|earbuds|laptop|notebook|phone|smartphone|mattress|carry-on|carry on|keyboard|mouse|office chair|desk chair|espresso machine|coffee machine|robot vacuum|vacuum|camera|monitor|backpack|television|tv|external ssd|portable ssd|ssd|air purifier|board game|board games|tabletop game|tabletop games)\b/.test(
       normalized
     )
   ) {

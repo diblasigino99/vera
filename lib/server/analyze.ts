@@ -691,7 +691,19 @@ function normalizeSignals(payload: SignalPayload, sources: VeraSource[], evidenc
     const sourceWeight = sourceTypeWeight(sourceType, evidenceType);
     const sourceQuality = inferSourceQuality(source, sourceType);
     const sourceQualityWeight = sourceQualityWeightFor(sourceQuality);
+    const contenderName = cleanName(extraction.contender);
     const reason = extraction.reason.trim() || "Mentioned as a contender";
+
+    if (isRejectableContenderName(contenderName, evidenceType, source, reason)) {
+      console.log("CONTENDER_REJECTED", {
+        contender: contenderName,
+        evidenceType,
+        sourceTitle: source.title,
+        reason: "non_entity_or_page_title"
+      });
+      return [];
+    }
+
     const sentiment = extraction.sentiment;
 
     return [
@@ -704,7 +716,7 @@ function normalizeSignals(payload: SignalPayload, sources: VeraSource[], evidenc
         sourceQuality,
         sourceQualityWeight,
         queryVariant: source.queryVariant,
-        contenderName: cleanName(extraction.contender),
+        contenderName,
         sentiment,
         mentionStrength: inferMentionStrength(reason),
         positiveMention: sentiment === "positive" ? reason : undefined,
@@ -787,10 +799,14 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
       : evidenceSignals;
   const scoringSignals =
     queryEvidenceType === "product_recommendation"
-      ? dominantFilteredSignals.filter((signal) => !isGenericProductContender(query, signal.contenderName))
+      ? dominantFilteredSignals.filter(
+          (signal) => !isGenericProductContender(query, signal.contenderName) && !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
+        )
       : queryEvidenceType === "local_recommendation"
-        ? dominantFilteredSignals.filter((signal) => !isRejectableLocalSignalName(query, signal.contenderName))
-        : dominantFilteredSignals;
+        ? dominantFilteredSignals.filter(
+            (signal) => !isRejectableLocalSignalName(query, signal.contenderName) && !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
+          )
+        : dominantFilteredSignals.filter((signal) => !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason));
   const aggregationSignals = queryEvidenceType === "local_recommendation" ? mergeLocalBusinessSignalNames(scoringSignals) : scoringSignals;
   const byName = new Map<string, SourceSignal[]>();
 
@@ -817,7 +833,13 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
     )
     .sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount);
 
-  const { contenders, removed } = filterContendersByCategory(contendersBeforeFiltering, intendedCategory);
+  const qualityFilteredContenders =
+    queryEvidenceType === "local_recommendation"
+      ? contendersBeforeFiltering.filter((contender) => !isWeakLocalContender(contender))
+      : queryEvidenceType === "product_recommendation" && isBroadExploratoryQuery(query)
+        ? contendersBeforeFiltering.filter((contender) => !isWeakBroadProductContender(contender, query))
+        : contendersBeforeFiltering;
+  const { contenders, removed } = filterContendersByCategory(qualityFilteredContenders, intendedCategory);
   const contenderNames = new Set(contenders.map((contender) => contender.name));
   const filteredSignals = aggregationSignals.filter((signal) => contenderNames.has(signal.contenderName));
   console.log("INTENDED_CATEGORY", intendedCategory);
@@ -1871,7 +1893,7 @@ function localPriorSignal(
             : "weak",
     positiveMention: "Business name appears in retrieved local evidence",
     extractedReason: contextParts.join("; "),
-    themes: ["recovered local business evidence"]
+    themes: ["local source support"]
   };
 }
 
@@ -2207,6 +2229,9 @@ function localRecoveryRejectionReason(query: string, candidate: string, placeCan
   if (/\b(?:websitedirections|website directions|instagram|facebook|hours?|open now|happy hour|events?|tickets?|calendar)\b/.test(normalized)) {
     return "source_or_ui_fragment";
   }
+  if (/\b(?:email required|name required|leave a comment|from punch|from eater|from infatuation|sign up|newsletter|privacy policy|terms of service)\b/.test(normalized)) {
+    return "source_or_ui_fragment";
+  }
   if (/\b(?:new year'?s eve|celebrate|watch here|leading|for all you|perfect|favorite cafe|first coffee shop|apps on google play|apple podcasts|podcast|local listings|write a|answer|image\s+\d|gym comparison|postcard\.?inc|north side|google maps api|apple maps|restaurant rating|award winners|management solutions|marketing software|seo|ranking service)\b/.test(normalized)) {
     return "article_title_fragment";
   }
@@ -2253,7 +2278,7 @@ function localRecoveryRejectionReason(query: string, candidate: string, placeCan
 
 function isLocalSourceChromeOrArticleFragment(normalized: string) {
   if (
-    /^(?:the\s+)?(?:homepage|navigation drawer|maps|openings|closings|restaurant news|neighborhoods|newsletters|all coverage|things to do|city life|reservations required|travel|tweet|donuts|american|cantonese|japanese|italian|mexican|french|korean|chinese|spanish|thai|vietnamese|mediterranean|middle eastern|puerto rican|ice cream|burgers|rooms|red hook|east village|east williamsburg|bernal heights|embarcadero|sawtelle|logan square|lakeview|west town|south side|north side|harlem|highland|mission|dumbo|filter|save|learn more|unrated|the spots|pause|unmute|share|copy link|book now|book a table|reserve a table|table of contents|welcome to the five boroughs|neighborhoods to know|reservations to make in advance|follow the stars|close search form|search for|no thanks|enter email address|love the mag|awesome you re subscribed|partner content from|prices|tacos|bar club|view 1 more space|reserve a table|dining out in ny|dining out in la|dining out in austin|dining out in chicago|the museum of|accommodations|all posts|bookmarker|holidays|video|examples|status|eaterny|mapeater ny|more editor recommended hotels|more editor recommended restaurants|drinking great cocktails|new york contributor|food drink editor|readers choice awards|shutterstock|intel|more)$/.test(
+    /^(?:the\s+)?(?:homepage|navigation drawer|maps|openings|closings|restaurant news|neighborhoods|newsletters|all coverage|things to do|city life|reservations required|travel|tweet|donuts|american|cantonese|japanese|italian|mexican|french|korean|chinese|spanish|thai|vietnamese|mediterranean|middle eastern|puerto rican|ice cream|burgers|rooms|red hook|east village|east williamsburg|bernal heights|embarcadero|sawtelle|logan square|lakeview|west town|south side|north side|harlem|highland|mission|dumbo|filter|save|learn more|unrated|the spots|pause|unmute|share|copy link|book now|book a table|reserve a table|table of contents|welcome to the five boroughs|neighborhoods to know|reservations to make in advance|follow the stars|close search form|search for|no thanks|enter email address|email required|name required|love the mag|awesome you re subscribed|partner content from|prices|tacos|bar club|view 1 more space|reserve a table|dining out in ny|dining out in la|dining out in austin|dining out in chicago|the museum of|accommodations|all posts|bookmarker|holidays|video|examples|status|eaterny|mapeater ny|from punch|from eater|from infatuation|more editor recommended hotels|more editor recommended restaurants|drinking great cocktails|new york contributor|food drink editor|readers choice awards|shutterstock|intel|more)$/.test(
       normalized
     )
   ) {
@@ -2570,7 +2595,7 @@ function isLocalSentenceOrEditorialFragment(generic: string) {
   ) {
     return true;
   }
-  if (/\b(?:phone number|restaurant phone|verified hotel reviews|google hotel search|apps on google play|postcard inc|patch|nbc los angeles|fox 32 chicago|powered by marriott|espresso martini might be|but here s|but heres|coffee map)\b/.test(generic)) {
+  if (/\b(?:phone number|restaurant phone|verified hotel reviews|google hotel search|apps on google play|postcard inc|patch|nbc los angeles|fox 32 chicago|powered by marriott|espresso martini might be|but here s|but heres|coffee map|email required|name required|from punch|from eater|from infatuation)\b/.test(generic)) {
     return true;
   }
   if (/\b(?:patricia kelly yeo|nicolai mccrary|raphael brion|katie cerulle|caroline shin|kristen mendiola|morgan carter|amber sutherland namako|adrian kane|john ringor|nick allen|teddy wolff|bryan kim|sonal shah|arden shore)\b/.test(generic)) {
@@ -3136,12 +3161,16 @@ function productLeaderSignal(source: VeraSource, leader: ProductLeader, evidence
     mentionStrength: authority === "high" ? "moderate" : "weak",
     positiveMention: "Known product leader appears in the source set",
     extractedReason: "Known product leader appears in the source set",
-    themes: ["product leader support"]
+    themes: ["expert support"]
   };
 }
 
 function productCategoryForQuery(query: string): ProductCategoryPrior | null {
   const normalized = normalizeQuery(query);
+
+  if (/\b(board game|board games|tabletop game|tabletop games|family game|party game|strategy game)\b/.test(normalized)) {
+    return productCategory("board games", ["Catan", "Ticket to Ride", "Codenames", "Pandemic", "Azul", "Wingspan"]);
+  }
 
   if (/\b(budget headphones)\b/.test(normalized)) {
     return productCategory("budget headphones", ["Sony WH-CH720N", "Anker Soundcore Life Q30", "EarFun Air Pro"]);
@@ -3319,11 +3348,23 @@ function isGenericProductContender(query: string, name: string) {
   const normalized = normalizeQuery(name.replace(/([a-z])([A-Z])/g, "$1 $2"));
   const category = productCategoryForQuery(query)?.key ?? "";
 
+  if (isArticleOrGuideTitle(normalized)) {
+    return true;
+  }
+
   if (
-    /^(product|best product|headphones|wireless headphones|laptop|notebook|router|keyboard|mouse|office chair|chair|running shoes|shoes|espresso machine|robot vacuum|vacuum|camera|phone|smartphone|monitor|television|tv|backpack|brand|unknown|none|lost|house|the expanse)$/i.test(
+    /^(product|best product|headphones|wireless headphones|laptop|notebook|router|keyboard|mouse|office chair|chair|running shoes|shoes|espresso machine|robot vacuum|vacuum|camera|phone|smartphone|monitor|television|tv|backpack|brand|unknown|none|lost|house|the expanse|board games?|tabletop games?|games?|fun games?|party games?|family games?)$/i.test(
       normalized
     )
   ) {
+    return true;
+  }
+
+  if (category === "board games" && /\b(played so far|games played|board game arena|kickstarter|collection|shelf|rules?|expansion|thread|comment|recommendations?)\b/.test(normalized)) {
+    return true;
+  }
+
+  if (category === "running shoes" && /^(nike|brooks|asics|hoka|saucony|new balance|adidas)$/i.test(normalized)) {
     return true;
   }
 
@@ -3544,6 +3585,80 @@ function filterContendersByCategory(contenders: ContenderMetrics[], intendedCate
   };
 }
 
+function isRejectableContenderName(
+  name: string,
+  evidenceType: QueryEvidenceType,
+  source?: Pick<SourceSignal, "sourceTitle" | "domain"> | VeraSource,
+  reason = ""
+) {
+  const cleaned = cleanName(name);
+  const normalized = normalizeQuery(cleaned.replace(/([a-z])([A-Z])/g, "$1 $2"));
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const context = normalizeQuery(`${"sourceTitle" in (source ?? {}) ? (source as SourceSignal).sourceTitle : (source as VeraSource | undefined)?.title ?? ""} ${reason}`);
+
+  if (!normalized || normalized.length < 2) return true;
+  if (words.length > 8) return true;
+  if (isArticleOrGuideTitle(normalized)) return true;
+  if (/^(?:top picks?|editors? picks?|our picks?|recommendations?|guide|list|review|reviews|roundup|buyers? guide|comparison|ranking|rankings|homepage|article|story|thread|comments?)$/.test(normalized)) return true;
+  if (/^(?:best|top|good|great|fun|recommended)\s+(?:ones?|options?|picks?|choices?|places?|spots?|restaurants?|games?|products?|tools?|apps?)$/.test(normalized)) return true;
+  if (/\b(?:where to|things to do|guide to|how to|what to|new openings|openings|near me|in \d{4}|updated \d{4})\b/.test(normalized)) return true;
+  if (/\b(?:reddit|yelp|tripadvisor|opentable|booking|eater|infatuation|wirecutter|pcmag|techradar|tom s guide)\b/.test(normalized)) return true;
+  if (/\b(?:played so far are fun|games played so far|what people are saying|source says|article says)\b/.test(normalized)) return true;
+  if (/["“”]/.test(cleaned) && words.length >= 5) return true;
+  if (/,/.test(cleaned) && words.length >= 3) return true;
+  if (/[:|]/.test(cleaned) && words.length >= 4) return true;
+  if (evidenceType === "local_recommendation" && isLocalSourceChromeOrArticleFragment(normalized)) return true;
+  if (evidenceType === "local_recommendation" && /\b(?:restaurant openings|new restaurant openings|best restaurants|where to eat|guide)\b/.test(context)) {
+    const looksLikeBusiness = looksLikeNamedPlace(cleaned) && !isArticleOrGuideTitle(normalized);
+    if (!looksLikeBusiness || words.length > 5) return true;
+  }
+
+  return false;
+}
+
+function isArticleOrGuideTitle(normalized: string) {
+  return (
+    /^(?:the\s+)?\d{1,3}\s+(?:best|top|great|essential|favorite|favourite)\b/.test(normalized) ||
+    /^(?:best|top|where to|guide to|a guide to|things to do|what to|how to|new|nyc s new|new york s new)\b/.test(normalized) ||
+    /\b(?:best|top)\s+(?:restaurants?|hotels?|bars?|coffee shops?|board games?|games?|routers?|shoes?|products?|tools?|apps?)\s+(?:in|for|of|near)\b/.test(normalized) ||
+    /\b(?:restaurant openings|new openings|openings|guide|buyers guide|buying guide|roundup|listicle|things to do|where to eat|where to stay)\b/.test(normalized)
+  );
+}
+
+function isWeakLocalContender(contender: ContenderMetrics) {
+  const ranking = contender.localRanking;
+
+  if (!ranking) return false;
+  if (ranking.wrongCategoryPenalty && ranking.wrongCategoryPenalty >= 8) return true;
+  if (ranking.locationMatchScore <= -6) return true;
+  if (ranking.categoryMatchScore <= -6) return true;
+  if (contender.sourceCount <= 1 && ranking.candidateConfidenceScore !== undefined && ranking.candidateConfidenceScore < -1.5) return true;
+  if (contender.sourceCount <= 1 && ranking.contextQualityScore !== undefined && ranking.contextQualityScore < -4) return true;
+  return false;
+}
+
+function isBroadExploratoryQuery(query: string) {
+  const normalized = normalizeQuery(query);
+  const words = normalized.split(/\s+/).filter(Boolean);
+
+  return (
+    words.length <= 4 &&
+    /\b(fun|good|great|best|popular|recommended)\b/.test(normalized) &&
+    !/\b(for|under|budget|beginner|large house|small business|first date|kids?|families|two players|2 players)\b/.test(normalized)
+  );
+}
+
+function isWeakBroadProductContender(contender: ContenderMetrics, query: string) {
+  const category = productCategoryForQuery(query);
+  const isKnownLeader = Boolean(category?.leaders.some((leader) => contenderMatchesPlatform(contender.name, leader.aliases)));
+
+  if (isKnownLeader) return false;
+  if (contender.sourceCount <= 1) return true;
+  if (contender.positiveMentionCount < 2) return true;
+  if (contender.sourceQualityScore < 2.4 && contender.editorialSupportCount === 0) return true;
+  return false;
+}
+
 function inferIntendedCategory(query: string): VeraEntityCategory {
   const normalized = normalizeQuery(query);
 
@@ -3555,7 +3670,7 @@ function inferIntendedCategory(query: string): VeraEntityCategory {
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
   if (/\b(gym|gyms|fitness|dentist|dentists|dental|plumber|plumbers|plumbing|spa|salon)\b/.test(normalized)) return "service";
   if (/\b(crm|software|app|platform|tool|ai coding assistant|coding assistant)\b/.test(normalized)) return "software";
-  if (/\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress|product)\b/.test(normalized)) return "product";
+  if (/\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress|board game|board games|tabletop game|tabletop games|product)\b/.test(normalized)) return "product";
   if (/\b(service|contractor|agency|consultant)\b/.test(normalized)) return "service";
 
   return "other";
@@ -3597,7 +3712,7 @@ function categoryFromText(text: string): VeraEntityCategory | null {
     return "restaurant";
   }
   if (/\b(crm|software|saas|platform|app|ai coding assistant|coding assistant)\b/.test(text)) return "software";
-  if (/\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress)\b/.test(text)) return "product";
+  if (/\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress|board game|board games|tabletop game|tabletop games)\b/.test(text)) return "product";
   if (/\b(shop|store|retail|boutique|mall|pharmacy|hardware)\b/.test(text)) return "retail";
   if (/\b(museum|park|beach|theater|theatre|attraction|landmark)\b/.test(text)) return "attraction";
   if (/\b(service|agency|consultant|contractor)\b/.test(text)) return "service";
@@ -4283,11 +4398,35 @@ function productAliasCategories() {
 }
 
 function normalizeTheme(value: string) {
-  return value
+  const normalized = value
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/[^a-z0-9\s-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+
+  if (!normalized) return "";
+  if (/\b(product leader support|known product leader|category leader|broad category recognition)\b/.test(normalized)) return "expert support";
+  if (/\b(recovered local business evidence|local source support|appears in local source results)\b/.test(normalized)) return "local source support";
+  if (/\b(beginner|beginners|starter|entry level|entry-level|new users|new players)\b/.test(normalized)) return "popular with beginners";
+  if (/\b(easy to learn|simple rules|accessible|approachable|low learning curve|quick to learn)\b/.test(normalized)) return "easy to learn";
+  if (/\b(family|families|kids|children|all ages|family friendly)\b/.test(normalized)) return "great for families";
+  if (/\b(two players|two player|2 players|2 player|couples|duel)\b/.test(normalized)) return "good for two players";
+  if (/\b(strategy|strategic|depth|deep|tactical|replayability|replayable)\b/.test(normalized)) return "strong strategy depth";
+  if (/\b(party|group|groups|social|crowd|friends)\b/.test(normalized)) return "great for groups";
+  if (/\b(value|budget|affordable|price|inexpensive|cheap)\b/.test(normalized)) return "strong value";
+  if (/\b(reliable|performance|speed|coverage|consistent|stability|stable)\b/.test(normalized)) return "reliable performance";
+  if (/\b(atmosphere|ambiance|ambience|vibe|romantic|cozy|beautiful|setting|decor|energy)\b/.test(normalized)) return "good atmosphere";
+  if (/\b(conversation|quiet|noise|date|first date|talk)\b/.test(normalized)) return "good for conversation";
+  if (/\b(cocktail|drink|martini|bar program|beverage)\b/.test(normalized)) return "great drinks";
+  if (/\b(food|menu|dinner|brunch|pizza|sushi|ramen|taco|cuisine)\b/.test(normalized)) return "strong food";
+  if (/\b(popular|widely recommended|most recommended|frequently mentioned|often recommended|recurring)\b/.test(normalized)) return "frequently recommended";
+  if (/\b(expert|editorial|review|reviewer|guide|wirecutter|rtings|pcmag|eater|infatuation)\b/.test(normalized)) return "expert support";
+  if (/\b(community|reddit|forum|owners|users|locals)\b/.test(normalized)) return "community support";
+
+  if (normalized.split(/\s+/).length > 4) return "";
+  if (/\b(?:source|mentions?|says|according|article|reviewed|played so far|there are|it is|they are)\b/.test(normalized)) return "";
+
+  return normalized;
 }
 
 function humanizeTheme(value: string) {
