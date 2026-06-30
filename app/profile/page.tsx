@@ -8,6 +8,9 @@ export default function ProfilePage() {
         <Link href="/" className="font-serif text-3xl text-ink">
           Vera
         </Link>
+        <Link href="/" className="text-sm text-muted transition hover:text-ink">
+          Search
+        </Link>
       </nav>
       <ProfileView />
     </main>

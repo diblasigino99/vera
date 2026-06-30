@@ -51,7 +51,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
   const communities = Array.from(new Set(discussionSources.map((source) => source.domain))).slice(0, 4);
   const sourceTypes = sourceDiversity(sourceSet);
   const patternSummaries = buildPatternSummaries(result, sourceSet);
-  const evidenceSummaryItems = buildEvidenceSummaryItems(result, sourceSet, sourceTypes);
+  const trustFacts = buildTrustFacts(result, sourceSet, sourceTypes, discussionSources, communities);
 
   return (
     <main className="min-h-screen bg-white px-5 py-8 text-ink">
@@ -68,73 +68,48 @@ export default async function ResultPage({ params }: ResultPageProps) {
         </Link>
       </nav>
 
-      <article className="mx-auto mt-14 max-w-5xl">
-        <header className="max-w-4xl">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
-            <span className="rounded-full border border-line bg-white px-3.5 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.03)]">
-              {modeLabel[consensus.mode]}
-            </span>
-            {result.consensusPercentage ? (
-              <span className="rounded-full border border-line bg-[#FAFAFB] px-3.5 py-2 font-medium text-ink">
-                {result.consensusPercentage}% Consensus
-              </span>
-            ) : null}
-          </div>
-
-          <h1 className="mt-7 text-4xl font-semibold tracking-normal text-ink sm:text-5xl">
-            {buildAnswerTitle(consensus, result)}
+      <article className="mx-auto mt-14 max-w-4xl">
+        <header>
+          <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Backstage of the verdict</p>
+          <h1 className="mt-5 text-5xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-6xl">
+            Why Vera trusts {result.name}
           </h1>
-          <p className="mt-5 max-w-3xl text-xl leading-8 text-graphite">
-            {buildVerdict(consensus, result)}
+          <p className="mt-6 max-w-3xl text-xl leading-9 text-[#3B3B42]">
+            {buildContextParagraph(consensus, result)}
           </p>
+          <div className="mt-7 flex flex-wrap items-center gap-3 text-sm text-[#73737C]">
+            <span className="rounded-full border border-[#E8E8EC] bg-white px-3.5 py-2 font-medium text-[#111114] shadow-[0_6px_20px_rgba(17,17,20,0.035)]">
+              {modeLabel[consensus.mode]}
+              {result.consensusPercentage ? ` · ${result.consensusPercentage}%` : ""}
+            </span>
+            <span>{sourceTypes.length ? `Based on ${sourceTypes.join(", ").toLowerCase()}.` : "Based on the stored source set."}</span>
+          </div>
         </header>
 
-        <section className="mt-8 max-w-4xl border-t border-line pt-6">
-          <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Consensus Story</p>
-          <p className="mt-4 text-xl leading-9 text-graphite">
-            {buildConsensusStory(consensus, result, contenders, sourceTypes)}
-          </p>
-        </section>
+        <div className="mt-14 grid gap-14">
+          <DetailSection eyebrow="Why Vera believes this" title="The evidence behind the verdict">
+            <p className="max-w-3xl text-xl leading-9 text-[#3B3B42]">
+              {buildConsensusStory(consensus, result, contenders, sourceTypes)}
+            </p>
+          </DetailSection>
 
-        {evidenceSummaryItems.length ? (
-          <section className="mt-7 max-w-4xl rounded-3xl border border-line bg-white p-5 shadow-[0_18px_60px_rgba(0,0,0,0.025)] sm:p-6">
-            <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Evidence Summary</p>
-            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm leading-6 text-graphite">
-              {evidenceSummaryItems.map((item) => (
-                <span className="inline-flex items-center gap-1.5" key={item}>
-                  <span className="text-[#7A7D85]">✓</span>
-                  {item}
-                </span>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <ConsensusOverview
-          consensus={consensus}
-          result={result}
-          sourceCount={sourceSet.length}
-          discussionCount={discussionSources.length}
-        />
-
-        <div className="mt-9 grid gap-9">
           <DetailSection
-            eyebrow="Patterns across sources"
+            eyebrow="What keeps showing up"
             title="What keeps showing up"
-            intro="The same themes appear in different parts of the source set."
+            intro="These are the recurring patterns Vera found across the stored evidence."
           >
-            <div className="grid gap-3">
+            <div className="border-t border-[#ECECF0]">
               {patternSummaries.map((pattern) => (
-                <EvidencePoint key={pattern.title} pattern={pattern} />
+                <EvidenceRow key={pattern.title} pattern={pattern} />
               ))}
             </div>
           </DetailSection>
 
-          <DetailSection eyebrow="Tradeoffs" title="Common downsides">
+          <DetailSection eyebrow="The tradeoffs" title="Where the recommendation has limits">
             {result.downsides.length ? (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="border-t border-[#ECECF0]">
                 {result.downsides.map((downside) => (
-                  <p className="border-t border-line pt-4 leading-7 text-graphite" key={downside}>
+                  <p className="border-b border-[#ECECF0] py-4 leading-7 text-[#4B4B52]" key={downside}>
                     {downside}
                   </p>
                 ))}
@@ -151,61 +126,49 @@ export default async function ResultPage({ params }: ResultPageProps) {
           </DetailSection>
 
           <DetailSection
-            eyebrow="Decision Context"
+            eyebrow="How it compares"
             title="Compared with other contenders"
             intro="The useful part is the tradeoff: what each option is known for, and who it fits."
           >
-            <div className="grid gap-3">
+            <div className="border-t border-[#ECECF0]">
               {buildComparisons(result, contenders).map((comparison) => (
-                <div className="rounded-2xl border border-line bg-white p-5 shadow-[0_14px_44px_rgba(0,0,0,0.02)]" key={comparison.name}>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="text-xl font-semibold tracking-normal text-ink">{comparison.name}</h3>
-                      <p className="mt-2 leading-7 text-graphite">{comparison.knownFor}</p>
-                    </div>
-                    {comparison.score ? (
-                      <span className="w-fit rounded-full border border-line px-3 py-1.5 text-sm font-medium text-ink">
-                        {comparison.score}% Consensus
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-5 leading-7 text-graphite">{comparison.tradeoff}</p>
-                  <p className="mt-3 text-sm font-medium text-muted">{comparison.bestFor}</p>
-                </div>
+                <ComparisonRow comparison={comparison} key={comparison.name} />
               ))}
             </div>
           </DetailSection>
 
-          <DetailSection eyebrow="What people consistently agree on" title="Why Vera believes this">
-            <div className="grid gap-6 rounded-3xl border border-line bg-[#FAFAFB] p-5 sm:grid-cols-[0.9fr_1.1fr] sm:p-7">
-              <div className="grid gap-4">
-                <Metric label="Sources reviewed" value={String(sourceSet.length)} />
-                {result.metrics ? <Metric label="Positive recommendations" value={String(result.metrics.positiveMentionCount)} /> : null}
-                {result.metrics ? <Metric label="Negative mentions" value={String(result.metrics.negativeMentionCount)} /> : null}
-                {result.metrics ? <Metric label="Source diversity score" value={String(result.metrics.sourceDiversityScore)} /> : null}
-                {discussionSources.length ? <Metric label="Community discussions reviewed" value={String(discussionSources.length)} /> : null}
-                {communities.length ? <Metric label="Communities referenced" value={communities.join(", ")} /> : null}
-                {sourceTypes.length ? <Metric label="Source mix" value={sourceTypes.join(", ")} /> : null}
-              </div>
-              <div>
-                <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Recurring themes</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {result.reasons.slice(0, 5).map((reason) => (
-                    <span className="rounded-full border border-line bg-white px-3 py-1.5 text-sm text-graphite" key={reason}>
-                      {reason}
-                    </span>
+          <DetailSection eyebrow="Why Vera trusts this" title="How strong the evidence is">
+            <div className="grid gap-8 border-t border-[#ECECF0] pt-5 sm:grid-cols-[0.8fr_1.2fr]">
+              {trustFacts.length ? (
+                <div className="grid gap-4">
+                  {trustFacts.map((fact) => (
+                    <div key={fact.label}>
+                      <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#9B9BA3]">{fact.label}</p>
+                      <p className="mt-1 text-base font-medium leading-7 text-[#111114]">{fact.value}</p>
+                    </div>
                   ))}
                 </div>
-                <p className="mt-6 leading-8 text-graphite">{buildConfidenceExplanation(consensus, result, sourceSet.length)}</p>
+              ) : null}
+              <div>
+                <p className="leading-8 text-[#4B4B52]">{buildConfidenceExplanation(consensus, result, sourceSet.length)}</p>
+                {result.reasons.length ? (
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {result.reasons.slice(0, 5).map((reason) => (
+                      <span className="rounded-full bg-[#F6F6F8] px-3 py-1.5 text-sm text-[#4B4B52]" key={reason}>
+                        {reason}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </div>
           </DetailSection>
 
-          <DetailSection eyebrow="Source diversity" title="Sources behind the consensus">
+          <DetailSection eyebrow="Sources behind the consensus" title="Sources behind the consensus">
             {sourceTypes.length ? (
-              <p className="mb-5 leading-7 text-graphite">Sources include {sourceTypes.join(", ").toLowerCase()}.</p>
+              <p className="mb-5 leading-7 text-[#4B4B52]">Sources include {sourceTypes.join(", ").toLowerCase()}.</p>
             ) : null}
-            <div className="grid gap-6">
+            <div className="grid gap-10 sm:grid-cols-2">
               <SourceGroup title="Most Influential Sources" sources={influentialSources} />
               {supportingSources.length ? <SourceGroup title="Additional Supporting Sources" sources={supportingSources} /> : null}
             </div>
@@ -213,33 +176,6 @@ export default async function ResultPage({ params }: ResultPageProps) {
         </div>
       </article>
     </main>
-  );
-}
-
-function ConsensusOverview({
-  consensus,
-  result,
-  sourceCount,
-  discussionCount
-}: {
-  consensus: ConsensusResponse;
-  result: ConsensusResult;
-  sourceCount: number;
-  discussionCount: number;
-}) {
-  const confidence = confidenceLevel(consensus, result);
-
-  return (
-    <section className="mt-8 rounded-3xl border border-line bg-white p-5 shadow-[0_22px_70px_rgba(0,0,0,0.035)] sm:p-7">
-      <p className="text-sm font-medium uppercase tracking-[0.16em] text-muted">Consensus Overview</p>
-      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="Consensus Level" value={modeLabel[consensus.mode]} />
-        {result.consensusPercentage ? <Metric label="Consensus Strength" value={`${result.consensusPercentage}%`} /> : null}
-        <Metric label="Confidence Level" value={confidence} />
-        <Metric label="Sources Analyzed" value={String(sourceCount)} />
-        {discussionCount ? <Metric label="Community Discussions Reviewed" value={String(discussionCount)} /> : null}
-      </div>
-    </section>
   );
 }
 
@@ -268,49 +204,91 @@ function DetailSection({
   );
 }
 
-function EvidencePoint({ pattern }: { pattern: PatternSummary }) {
+function EvidenceRow({ pattern }: { pattern: PatternSummary }) {
   return (
-    <div className="rounded-2xl border border-line bg-white p-5 shadow-[0_12px_44px_rgba(0,0,0,0.02)]">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <h3 className="text-xl font-semibold tracking-normal text-ink">{pattern.title}</h3>
-        {pattern.frequency ? (
-          <span className="w-fit rounded-full border border-line bg-[#FAFAFB] px-3 py-1.5 text-sm font-medium text-muted">
-            {pattern.frequency}
-          </span>
-        ) : null}
+    <div className="border-b border-[#ECECF0] py-5">
+      <div className="grid gap-3 sm:grid-cols-[0.38fr_0.62fr]">
+        <div>
+          <h3 className="text-xl font-semibold tracking-normal text-ink">{pattern.title}</h3>
+          {pattern.sources.length ? <p className="mt-2 text-sm text-muted">Seen in {pattern.sources.join(", ")}</p> : null}
+        </div>
+        <div>
+          <p className="leading-7 text-graphite">{pattern.summary}</p>
+          {pattern.frequency ? <p className="mt-2 text-sm font-medium text-muted">{pattern.frequency}</p> : null}
+        </div>
       </div>
-      <p className="mt-4 leading-7 text-graphite">{pattern.summary}</p>
-      {pattern.sources.length ? (
-        <p className="mt-3 text-sm text-muted">Seen in {pattern.sources.join(", ")}</p>
-      ) : null}
     </div>
   );
 }
 
-function buildEvidenceSummaryItems(result: ConsensusResult, sources: VeraSource[], sourceTypes: string[]) {
-  const metrics = result.metrics;
-  const items = [
-    `Supported by ${pluralize(sources.length, "source")}`,
-    `Appeared across ${pluralize(sourceTypes.length, "source category")}`
+function ComparisonRow({
+  comparison
+}: {
+  comparison: {
+    name: string;
+    score?: number;
+    knownFor: string;
+    tradeoff: string;
+    bestFor: string;
+  };
+}) {
+  return (
+    <div className="border-b border-[#ECECF0] py-5">
+      <div className="grid gap-3 sm:grid-cols-[0.38fr_0.62fr]">
+        <div>
+          <h3 className="text-xl font-semibold tracking-normal text-ink">{comparison.name}</h3>
+          {comparison.score ? <p className="mt-2 text-sm font-medium text-muted">{comparison.score}% consensus</p> : null}
+        </div>
+        <div>
+          <p className="leading-7 text-graphite">{comparison.knownFor}</p>
+          <p className="mt-3 leading-7 text-graphite">{comparison.tradeoff}</p>
+          <p className="mt-3 text-sm font-medium text-muted">{comparison.bestFor}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function buildTrustFacts(
+  result: ConsensusResult,
+  sources: VeraSource[],
+  sourceTypes: string[],
+  discussionSources: VeraSource[],
+  communities: string[]
+) {
+  const facts = [
+    { label: "Sources reviewed", value: String(sources.length) },
+    { label: "Source mix", value: sourceTypes.length ? sourceTypes.join(", ") : "Available sources" }
   ];
 
-  if (metrics) {
-    items.push(`Mentioned positively ${pluralize(metrics.positiveMentionCount, "time")}`);
+  if (result.metrics) {
+    facts.splice(1, 0, { label: "Positive recommendations", value: String(result.metrics.positiveMentionCount) });
 
-    if (metrics.communitySupportCount > 0 && metrics.editorialSupportCount > 0) {
-      items.push("Community and editorial support detected");
-    } else if (metrics.communitySupportCount > 0) {
-      items.push("Community support detected");
-    } else if (metrics.editorialSupportCount > 0) {
-      items.push("Editorial support detected");
+    if (result.metrics.negativeMentionCount > 0) {
+      facts.push({ label: "Negative mentions", value: String(result.metrics.negativeMentionCount) });
     }
   }
 
-  return items;
+  if (discussionSources.length) {
+    facts.push({ label: "Community discussions", value: String(discussionSources.length) });
+  }
+
+  if (communities.length) {
+    facts.push({ label: "Communities referenced", value: communities.join(", ") });
+  }
+
+  return facts.slice(0, 6);
 }
 
-function pluralize(count: number, label: string) {
-  return `${count} ${label}${count === 1 ? "" : "s"}`;
+function buildContextParagraph(consensus: ConsensusResponse, result: ConsensusResult) {
+  const query = consensus.query.replace(/\?+$/g, "");
+  const reasons = naturalList(result.reasons.slice(0, 3).map((reason) => reason.toLowerCase()));
+
+  if (reasons) {
+    return `For "${query}," Vera is looking one layer deeper at ${result.name}: where the support came from, what kept repeating, and why ${reasons} shaped the verdict.`;
+  }
+
+  return `For "${query}," Vera is looking one layer deeper at ${result.name}: where the support came from, what repeated, and why it mattered.`;
 }
 
 function SourceGroup({ title, sources }: { title: string; sources: VeraSource[] }) {
@@ -338,51 +316,12 @@ function SourceGroup({ title, sources }: { title: string; sources: VeraSource[] 
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">{label}</p>
-      <p className="mt-2 text-lg font-semibold leading-7 tracking-normal text-ink">{value}</p>
-    </div>
-  );
-}
-
 type PatternSummary = {
   title: string;
   summary: string;
   frequency?: string;
   sources: string[];
 };
-
-function buildAnswerTitle(consensus: ConsensusResponse, result: ConsensusResult) {
-  const decision = decisionPhrase(consensus);
-
-  if (result.rank === 1 && consensus.mode !== "split_consensus") {
-    return `Why ${result.name} is one of the strongest picks for ${decision}`;
-  }
-
-  return `Why people recommend ${result.name} for ${decision}`;
-}
-
-function buildVerdict(consensus: ConsensusResponse, result: ConsensusResult) {
-  if (result.rank === 1 && consensus.mode === "clear_consensus") {
-    return `${result.name} is recommended far more consistently than the rest. The same reasons keep appearing across the source set.`;
-  }
-
-  if (result.rank === 1 && consensus.mode === "strong_consensus") {
-    return `${result.name} leads the conversation, with a stronger pattern of recommendations than the alternatives.`;
-  }
-
-  if (result.rank === 1 && consensus.mode === "moderate_consensus") {
-    return `${result.name} has the strongest overall case, though the internet is not fully settled.`;
-  }
-
-  if (consensus.mode === "split_consensus") {
-    return `${result.name} is a serious contender, but no single option dominates the conversation. The recommendation depends on which tradeoffs matter most.`;
-  }
-
-  return `${result.name} appears in the evidence, but Vera does not have enough reliable agreement to call it a consensus pick.`;
-}
 
 function buildConsensusStory(
   consensus: ConsensusResponse,
@@ -593,26 +532,6 @@ function confidenceLevel(consensus: ConsensusResponse, result: ConsensusResult) 
   }
 
   return "Low";
-}
-
-function decisionPhrase(consensus: ConsensusResponse) {
-  const query = consensus.query;
-  const location = consensus.intent.location;
-  const normalized = query.toLowerCase();
-
-  if (normalized.includes("first date") && location) {
-    return `first dates in ${location}`;
-  }
-
-  if (normalized.includes("first date")) {
-    return "first dates";
-  }
-
-  return query
-    .trim()
-    .replace(/^best\s+/i, "")
-    .replace(/\?+$/g, "")
-    .toLowerCase();
 }
 
 function uniqueSources(sources: VeraSource[]) {

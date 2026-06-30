@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import type { ReactNode } from "react";
 import type { ProfileSnapshot } from "@/lib/types";
 import { getAnonymousId } from "@/lib/client/anonymous-id";
 import { buildResultSlug } from "@/lib/result-slug";
@@ -16,13 +15,15 @@ const emptySnapshot: ProfileSnapshot = {
 
 export function ProfileView() {
   const [snapshot, setSnapshot] = useState<ProfileSnapshot>(emptySnapshot);
+  const [actorId, setActorId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const actorId = getAnonymousId();
+    const nextActorId = getAnonymousId();
+    setActorId(nextActorId);
 
-    fetch(`/api/profile?actorId=${encodeURIComponent(actorId)}`)
+    fetch(`/api/profile?actorId=${encodeURIComponent(nextActorId)}`)
       .then(async (response) => {
         const body = await response.json();
 
@@ -41,71 +42,130 @@ export function ProfileView() {
       .finally(() => setLoading(false));
   }, []);
 
+  function clearSession() {
+    window.localStorage.removeItem("vera_anonymous_id");
+    window.location.href = "/";
+  }
+
   return (
-    <section className="mx-auto mt-14 max-w-5xl">
-      <h1 className="text-4xl font-semibold tracking-normal text-ink">Profile</h1>
-      <p className="mt-3 text-muted">
-        {loading ? "Loading saved items..." : error ?? "Recent searches, saved searches, and saved results."}
-      </p>
+    <section className="mx-auto mt-14 max-w-4xl">
+      <header className="border-b border-[#ECECF0] pb-10">
+        <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Saved Library</p>
+        <h1 className="mt-5 text-5xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-6xl">Your saved Vera research.</h1>
+        <p className="mt-6 max-w-2xl text-xl leading-9 text-[#4B4B52]">
+          {loading ? "Loading your saved library..." : error ?? "Saved searches and results from this beta session live here."}
+        </p>
+      </header>
 
-      <div className="mt-10 grid gap-8 lg:grid-cols-3">
-        <Panel title="Recent searches">
-          {snapshot.recentSearches.length ? (
-            snapshot.recentSearches.map((search) => (
-              <Link className="block rounded-lg border border-line p-4 transition hover:bg-mist" href={`/search?q=${encodeURIComponent(search.query)}`} key={search.id}>
-                <p className="font-medium text-ink">{search.query}</p>
-                <p className="mt-2 text-sm text-muted">{search.headline}</p>
-              </Link>
-            ))
-          ) : (
-            <Empty />
-          )}
-        </Panel>
-
-        <Panel title="Saved searches">
+      <div className="mt-12 grid gap-14">
+        <LibrarySection title="Saved Searches" description="Questions you wanted to return to.">
           {snapshot.savedSearches.length ? (
-            snapshot.savedSearches.map((search) => (
-              <Link className="block rounded-lg border border-line p-4 transition hover:bg-mist" href={`/search?q=${encodeURIComponent(search.query)}`} key={search.id}>
-                <p className="font-medium text-ink">{search.query}</p>
-                <p className="mt-2 text-sm text-muted">{search.headline}</p>
-              </Link>
-            ))
+            <div className="border-t border-[#ECECF0]">
+              {snapshot.savedSearches.map((search) => (
+                <SavedSearchRow search={search} key={search.id} />
+              ))}
+            </div>
           ) : (
-            <Empty />
+            <Empty message="No saved searches yet." />
           )}
-        </Panel>
+        </LibrarySection>
 
-        <Panel title="Saved results">
+        <LibrarySection title="Saved Results" description="Specific recommendations you saved from a consensus result.">
           {snapshot.savedResults.length ? (
-            snapshot.savedResults.map((result) => (
-              <Link
-                className="block rounded-lg border border-line p-4 transition hover:bg-mist"
-                href={`/result/${buildResultSlug(result.name, result.searchId, result.resultId)}` as Route}
-                prefetch={false}
-                key={`${result.searchId}-${result.resultId}`}
-              >
-                <p className="font-medium text-ink">{result.name}</p>
-                <p className="mt-2 text-sm text-muted">{result.query}</p>
-              </Link>
-            ))
+            <div className="border-t border-[#ECECF0]">
+              {snapshot.savedResults.map((result) => (
+                <SavedResultRow result={result} key={`${result.searchId}-${result.resultId}`} />
+              ))}
+            </div>
           ) : (
-            <Empty />
+            <Empty message="No saved results yet." />
           )}
-        </Panel>
+        </LibrarySection>
+
+        <LibrarySection title="Account" description="Vera beta is using a private local session for now.">
+          <div className="border-t border-[#ECECF0] py-5">
+            <div className="grid gap-3 sm:grid-cols-[0.35fr_0.65fr]">
+              <p className="font-medium text-[#111114]">Beta session</p>
+              <div>
+                <p className="text-[#4B4B52]">Your saves are connected to this browser session.</p>
+                {actorId ? <p className="mt-2 text-sm text-[#8A8A92]">Session ID: {shortSessionId(actorId)}</p> : null}
+              </div>
+            </div>
+          </div>
+        </LibrarySection>
+
+        <LibrarySection title="Support" description="A few quiet essentials for the beta.">
+          <div className="border-t border-[#ECECF0]">
+            <SupportLink href="mailto:hello@nexraai.com?subject=Vera%20feedback" label="Feedback" />
+            <SupportLink href="/privacy" label="Privacy Policy" />
+            <SupportLink href="/terms" label="Terms of Service" />
+            <button
+              type="button"
+              onClick={clearSession}
+              className="flex w-full items-center justify-between border-b border-[#ECECF0] py-4 text-left text-sm font-medium text-[#73737C] transition hover:text-[#111114]"
+            >
+              Clear local session / Sign out
+              <span aria-hidden="true">Reset</span>
+            </button>
+          </div>
+        </LibrarySection>
       </div>
     </section>
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function LibrarySection({ children, description, title }: { children: React.ReactNode; description: string; title: string }) {
   return (
-    <div>
-      <h2 className="mb-4 text-xl font-medium text-ink">{title}</h2>
-      <div className="grid gap-3">{children}</div>
-    </div>
+    <section>
+      <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">{title}</p>
+      <p className="mt-3 max-w-2xl leading-7 text-[#73737C]">{description}</p>
+      <div className="mt-5">{children}</div>
+    </section>
   );
 }
 
-function Empty() {
-  return <p className="rounded-lg bg-mist p-4 text-sm text-muted">Nothing saved yet.</p>;
+function SavedSearchRow({ search }: { search: ProfileSnapshot["savedSearches"][number] }) {
+  return (
+    <Link
+      className="group block border-b border-[#ECECF0] py-5 transition hover:border-[#D8D9DE]"
+      href={`/search?q=${encodeURIComponent(search.query)}`}
+    >
+      <p className="text-xl font-semibold tracking-[-0.01em] text-[#111114] group-hover:text-black">{search.query}</p>
+      <p className="mt-2 line-clamp-2 leading-7 text-[#62626A]">{search.headline}</p>
+    </Link>
+  );
+}
+
+function SavedResultRow({ result }: { result: ProfileSnapshot["savedResults"][number] }) {
+  return (
+    <Link
+      className="group block border-b border-[#ECECF0] py-5 transition hover:border-[#D8D9DE]"
+      href={`/result/${buildResultSlug(result.name, result.searchId, result.resultId)}` as Route}
+      prefetch={false}
+    >
+      <p className="text-xl font-semibold tracking-[-0.01em] text-[#111114] group-hover:text-black">{result.name}</p>
+      <p className="mt-2 text-sm font-medium uppercase tracking-[0.14em] text-[#9B9BA3]">From search</p>
+      <p className="mt-1 leading-7 text-[#62626A]">{result.query}</p>
+    </Link>
+  );
+}
+
+function SupportLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      className="flex items-center justify-between border-b border-[#ECECF0] py-4 text-sm font-medium text-[#4B4B52] transition hover:text-[#111114]"
+      href={href}
+    >
+      {label}
+      <span aria-hidden="true">Open</span>
+    </a>
+  );
+}
+
+function Empty({ message }: { message: string }) {
+  return <p className="border-t border-[#ECECF0] py-5 text-[#8A8A92]">{message}</p>;
+}
+
+function shortSessionId(actorId: string) {
+  return `${actorId.slice(0, 8)}...${actorId.slice(-6)}`;
 }
