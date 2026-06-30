@@ -95,6 +95,15 @@ export async function POST(request: Request) {
         cached: true,
         totalElapsedMs: Date.now() - requestStartedAt
       });
+      logSearchCostAudit({
+        query: body.data.query,
+        normalizedQuery,
+        cached: true,
+        cacheHit: true,
+        cacheElapsedMs,
+        totalElapsedMs: Date.now() - requestStartedAt,
+        externalCallCounts
+      });
       console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
       return NextResponse.json(cached);
     }
@@ -109,6 +118,16 @@ export async function POST(request: Request) {
 
   const setup = getLiveSearchSetup();
   if (!setup.ready) {
+    logSearchCostAudit({
+      query: body.data.query,
+      normalizedQuery,
+      cached: false,
+      cacheHit: false,
+      cacheElapsedMs,
+      totalElapsedMs: Date.now() - requestStartedAt,
+      externalCallCounts,
+      abortedBeforeLiveSearch: true
+    });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     return NextResponse.json(
       {
@@ -135,13 +154,12 @@ export async function POST(request: Request) {
       urls: sources.map((source) => source.url)
     });
     const openAIStartedAt = Date.now();
-    externalCallCounts.openAiCalls += 1;
     let consensus: ConsensusResponse;
     let openAITimedOut = false;
     const evidenceType = inferQueryEvidenceType(body.data.query);
 
     try {
-      consensus = await analyzeConsensus(body.data.query, sources);
+      consensus = await analyzeConsensus(body.data.query, sources, externalCallCounts);
     } catch (error) {
       openAITimedOut = isTimeoutError(error);
 
@@ -212,9 +230,8 @@ export async function POST(request: Request) {
 
       if (recoveredSources.length > sources.length) {
         sources = recoveredSources;
-        externalCallCounts.openAiCalls += 1;
         try {
-          consensus = await analyzeConsensus(body.data.query, sources);
+          consensus = await analyzeConsensus(body.data.query, sources, externalCallCounts);
           console.log("[vera:search] local sparse recovery analysis returned", {
             query: body.data.query,
             resultCount: consensus.results.length,
@@ -301,6 +318,29 @@ export async function POST(request: Request) {
       storedSources: consensus.sources.length,
       totalElapsedMs: Date.now() - requestStartedAt
     });
+    console.log("TAVILY_CALL_COUNT", {
+      evidenceType,
+      phase: "request_total",
+      calls: externalCallCounts.tavilyCalls
+    });
+    console.log("OPENAI_CALL_COUNT", {
+      evidenceType,
+      phase: "request_total",
+      calls: externalCallCounts.openAiCalls
+    });
+    logSearchCostAudit({
+      query: body.data.query,
+      normalizedQuery,
+      cached: false,
+      cacheHit: false,
+      cacheElapsedMs,
+      tavilyElapsedMs,
+      filteringElapsedMs,
+      openAIElapsedMs,
+      cacheWriteElapsedMs,
+      totalElapsedMs: Date.now() - requestStartedAt,
+      externalCallCounts
+    });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     return NextResponse.json(consensus);
   } catch (error) {
@@ -322,6 +362,16 @@ export async function POST(request: Request) {
       }
     }
 
+    logSearchCostAudit({
+      query: body.data.query,
+      normalizedQuery,
+      cached: false,
+      cacheHit: false,
+      cacheElapsedMs,
+      totalElapsedMs: Date.now() - requestStartedAt,
+      externalCallCounts,
+      error: error instanceof Error ? error.message : String(error)
+    });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     const message = error instanceof Error ? error.message : "Vera could not complete this search.";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -489,5 +539,64 @@ function logSearchTimingSummary({
     slowestStage: slowest.stage,
     slowestElapsedMs: slowest.elapsedMs,
     totalElapsedMs
+  });
+}
+
+function logSearchCostAudit({
+  query,
+  normalizedQuery,
+  cached,
+  cacheHit,
+  cacheElapsedMs,
+  tavilyElapsedMs = 0,
+  filteringElapsedMs = 0,
+  openAIElapsedMs = 0,
+  cacheWriteElapsedMs = 0,
+  totalElapsedMs,
+  externalCallCounts,
+  abortedBeforeLiveSearch = false,
+  error
+}: {
+  query: string;
+  normalizedQuery: string;
+  cached: boolean;
+  cacheHit: boolean;
+  cacheElapsedMs: number;
+  tavilyElapsedMs?: number;
+  filteringElapsedMs?: number;
+  openAIElapsedMs?: number;
+  cacheWriteElapsedMs?: number;
+  totalElapsedMs: number;
+  externalCallCounts: ReturnType<typeof createExternalCallCounts>;
+  abortedBeforeLiveSearch?: boolean;
+  error?: string;
+}) {
+  const evidenceType = inferQueryEvidenceType(query);
+
+  console.log("SEARCH_COST_AUDIT", {
+    query,
+    normalizedQuery,
+    evidenceType,
+    cacheVersion: getCacheVersion(),
+    cached,
+    cacheHit,
+    abortedBeforeLiveSearch,
+    counts: {
+      supabaseReads: externalCallCounts.supabaseReads,
+      tavilyCalls: externalCallCounts.tavilyCalls,
+      openAiCalls: externalCallCounts.openAiCalls,
+      supabaseWrites: externalCallCounts.supabaseWrites
+    },
+    tavilyCallReasons: externalCallCounts.tavilyCallReasons,
+    openAiCallReasons: externalCallCounts.openAiCallReasons,
+    timings: {
+      cacheMs: cacheElapsedMs,
+      tavilyMs: tavilyElapsedMs,
+      filteringMs: filteringElapsedMs,
+      openAiMs: openAIElapsedMs,
+      cacheWriteMs: cacheWriteElapsedMs,
+      totalMs: totalElapsedMs
+    },
+    error: error ?? null
   });
 }

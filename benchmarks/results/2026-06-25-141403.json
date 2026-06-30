@@ -1,0 +1,893 @@
+{
+  "timestamp": "2026-06-25T14:14:03.471Z",
+  "commitHash": "aa006fb",
+  "baseUrl": "http://127.0.0.1:3117",
+  "benchmarkCount": 20,
+  "completedCount": 19,
+  "metrics": {
+    "winnerAccuracy": 0.45,
+    "top3Accuracy": 0.5,
+    "contenderAccuracy": 0.3387096774193548
+  },
+  "counts": {
+    "winnerHits": 9,
+    "top3Hits": 10,
+    "contenderHits": 21,
+    "contenderSlots": 62,
+    "errors": 1
+  },
+  "byCategory": {
+    "product_recommendation": {
+      "benchmarks": 20,
+      "winnerAccuracy": 0.45,
+      "top3Accuracy": 0.5,
+      "contenderAccuracy": 0.3387096774193548
+    }
+  },
+  "failures": [
+    {
+      "query": "best running shoes for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Brooks Ghost",
+      "expectedTopContenders": [
+        "Brooks Ghost",
+        "Nike Pegasus",
+        "Asics Gel-Nimbus",
+        "Hoka Clifton"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 6019,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best carry-on suitcase",
+      "category": "product_recommendation",
+      "expectedWinner": "Away Carry-On",
+      "expectedTopContenders": [
+        "Away Carry-On",
+        "Travelpro Platinum Elite",
+        "Monos Carry-On"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 14972,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso machine for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Breville Bambino Plus",
+      "expectedTopContenders": [
+        "Breville Bambino Plus",
+        "Breville Barista Express",
+        "De'Longhi Dedica"
+      ],
+      "actualWinner": "Gaggia Classic Pro",
+      "actualResults": [
+        "Gaggia Classic Pro",
+        "Breville Bambino"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11806,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Breville Bambino Plus"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best mechanical keyboard",
+      "category": "product_recommendation",
+      "expectedWinner": "Keychron Q1",
+      "expectedTopContenders": [
+        "Keychron Q1",
+        "Keychron K2",
+        "Logitech MX Mechanical"
+      ],
+      "actualWinner": "NuPhy Air75",
+      "actualResults": [
+        "NuPhy Air75",
+        "Wooting 80HE",
+        "Logitech MX Keys S",
+        "Keychron Q5 Max",
+        "Keychron Q6"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12952,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best office chair",
+      "category": "product_recommendation",
+      "expectedWinner": "Herman Miller Aeron",
+      "expectedTopContenders": [
+        "Herman Miller Aeron",
+        "Steelcase Gesture",
+        "Herman Miller Embody"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 16014,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget headphones",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony WH-CH720N",
+      "expectedTopContenders": [
+        "Sony WH-CH720N",
+        "Anker Soundcore Life Q30",
+        "EarFun Air Pro"
+      ],
+      "actualWinner": "Bose QuietComfort Ultra",
+      "actualResults": [
+        "Bose QuietComfort Ultra",
+        "Sennheiser Accentum or Accentum Plus",
+        "1More Sonoflow",
+        "Soundcore Q30s"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7164,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best laptop",
+      "category": "product_recommendation",
+      "expectedWinner": "MacBook Air",
+      "expectedTopContenders": [
+        "MacBook Air",
+        "MacBook Pro",
+        "Dell XPS",
+        "Lenovo ThinkPad"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 41643,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best router",
+      "category": "product_recommendation",
+      "expectedWinner": "Eero Pro 6E",
+      "expectedTopContenders": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "TP-Link Deco"
+      ],
+      "actualWinner": "Eero Pro 6E",
+      "actualResults": [
+        "Eero Pro 6E",
+        "MSI Roami BE Lite",
+        "TP-Link Archer AX10",
+        "TP-Link Archer AX11000 Tri-Band Wi-Fi 6 Router",
+        "Asus"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10331,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Eero Pro 6E"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best gaming monitor",
+      "category": "product_recommendation",
+      "expectedWinner": "Dell Alienware AW3423DWF",
+      "expectedTopContenders": [
+        "Dell Alienware AW3423DWF",
+        "LG UltraGear OLED",
+        "Gigabyte M27Q"
+      ],
+      "actualWinner": "ASUS Monitors",
+      "actualResults": [
+        "ASUS Monitors",
+        "LG UltraGear",
+        "AOC Q27G3XMN"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 6994,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "LG UltraGear OLED"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best external SSD",
+      "category": "product_recommendation",
+      "expectedWinner": "Samsung T7 Shield",
+      "expectedTopContenders": [
+        "Samsung T7 Shield",
+        "SanDisk Extreme Portable SSD",
+        "Crucial X9 Pro"
+      ],
+      "actualWinner": "Samsung T7 Shield",
+      "actualResults": [
+        "Samsung T7 Shield",
+        "Synology BeeDrive",
+        "SanDisk 2TB Extreme Portable SSD V2"
+      ],
+      "mode": "moderate_consensus",
+      "cached": false,
+      "elapsedMs": 14838,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Samsung T7 Shield"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best camera",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony A7 IV",
+      "expectedTopContenders": [
+        "Sony A7 IV",
+        "Canon EOS R6 Mark II",
+        "Fujifilm X-T5"
+      ],
+      "actualWinner": "Sony 18-105mm f/4 G OSS",
+      "actualResults": [
+        "Sony 18-105mm f/4 G OSS"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 6149,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best phone",
+      "category": "product_recommendation",
+      "expectedWinner": "iPhone 15",
+      "expectedTopContenders": [
+        "iPhone 15",
+        "Samsung Galaxy S24",
+        "Google Pixel 8"
+      ],
+      "actualWinner": "Google Pixel 10A",
+      "actualResults": [
+        "Google Pixel 10A",
+        "Samsung Galaxy S Series",
+        "Google Pixel",
+        "Google Pixel 10 Pro XL"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11068,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Google Pixel 8"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best television",
+      "category": "product_recommendation",
+      "expectedWinner": "LG C3 OLED",
+      "expectedTopContenders": [
+        "LG C3 OLED",
+        "Samsung S90C",
+        "Sony A95L"
+      ],
+      "actualWinner": "Lost",
+      "actualResults": [
+        "Lost",
+        "The Expanse",
+        "House",
+        "Samsung",
+        "Sony"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 15455,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Samsung S90C",
+        "Sony A95L"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best backpack",
+      "category": "product_recommendation",
+      "expectedWinner": "Osprey Farpoint",
+      "expectedTopContenders": [
+        "Osprey Farpoint",
+        "Aer Travel Pack",
+        "Peak Design Travel Backpack"
+      ],
+      "actualWinner": "Osprey",
+      "actualResults": [
+        "Osprey",
+        "Tom Bihn",
+        "Goruck",
+        "Osprey Fairview",
+        "Cotopaxi"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11758,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Osprey Farpoint"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    }
+  ],
+  "cases": [
+    {
+      "query": "best Wi-Fi router for a large house",
+      "category": "product_recommendation",
+      "expectedWinner": "Eero Pro 6E",
+      "expectedTopContenders": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "TP-Link Deco"
+      ],
+      "actualWinner": "Eero Pro 6E",
+      "actualResults": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "Ubiquiti",
+        "TP-Link Archer AX12",
+        "NETGEAR Nighthawk"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 14843,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Eero Pro 6E",
+        "Netgear Orbi"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best running shoes for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Brooks Ghost",
+      "expectedTopContenders": [
+        "Brooks Ghost",
+        "Nike Pegasus",
+        "Asics Gel-Nimbus",
+        "Hoka Clifton"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 6019,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best carry-on suitcase",
+      "category": "product_recommendation",
+      "expectedWinner": "Away Carry-On",
+      "expectedTopContenders": [
+        "Away Carry-On",
+        "Travelpro Platinum Elite",
+        "Monos Carry-On"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 14972,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best noise cancelling headphones",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony WH-1000XM5",
+      "expectedTopContenders": [
+        "Sony WH-1000XM5",
+        "Bose QuietComfort Ultra",
+        "Apple AirPods Max"
+      ],
+      "actualWinner": "Sony WH-1000XM5",
+      "actualResults": [
+        "Sony WH-1000XM5",
+        "Bose QuietComfort Ultra",
+        "Apple AirPods Max",
+        "Soundcore Q30",
+        "Soundcore Q20i"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13596,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Sony WH-1000XM5",
+        "Bose QuietComfort Ultra",
+        "Apple AirPods Max"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best espresso machine for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Breville Bambino Plus",
+      "expectedTopContenders": [
+        "Breville Bambino Plus",
+        "Breville Barista Express",
+        "De'Longhi Dedica"
+      ],
+      "actualWinner": "Gaggia Classic Pro",
+      "actualResults": [
+        "Gaggia Classic Pro",
+        "Breville Bambino"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11806,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Breville Bambino Plus"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best budget laptop",
+      "category": "product_recommendation",
+      "expectedWinner": "Acer Aspire",
+      "expectedTopContenders": [
+        "Acer Aspire",
+        "Lenovo IdeaPad",
+        "Asus Vivobook"
+      ],
+      "actualWinner": "Acer Aspire 14 AI",
+      "actualResults": [
+        "Acer Aspire 14 AI",
+        "ASUS Vivobook Go, HP 255",
+        "Lenovo Yoga 7 14 Gen 9",
+        "Lenovo, Dell, HP",
+        "HP ZBook, Lenovo ThinkPad, Dell business grade"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10989,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Acer Aspire",
+        "Asus Vivobook"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best mechanical keyboard",
+      "category": "product_recommendation",
+      "expectedWinner": "Keychron Q1",
+      "expectedTopContenders": [
+        "Keychron Q1",
+        "Keychron K2",
+        "Logitech MX Mechanical"
+      ],
+      "actualWinner": "NuPhy Air75",
+      "actualResults": [
+        "NuPhy Air75",
+        "Wooting 80HE",
+        "Logitech MX Keys S",
+        "Keychron Q5 Max",
+        "Keychron Q6"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12952,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best office chair",
+      "category": "product_recommendation",
+      "expectedWinner": "Herman Miller Aeron",
+      "expectedTopContenders": [
+        "Herman Miller Aeron",
+        "Steelcase Gesture",
+        "Herman Miller Embody"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 16014,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best robot vacuum",
+      "category": "product_recommendation",
+      "expectedWinner": "Roborock",
+      "expectedTopContenders": [
+        "Roborock",
+        "iRobot Roomba",
+        "Eufy"
+      ],
+      "actualWinner": "Roborock",
+      "actualResults": [
+        "Roborock",
+        "Dreame",
+        "Eufy",
+        "MOVA",
+        "ECOVACS"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 5439,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Roborock",
+        "Eufy"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best air purifier",
+      "category": "product_recommendation",
+      "expectedWinner": "Coway Airmega AP-1512HH",
+      "expectedTopContenders": [
+        "Coway Airmega AP-1512HH",
+        "Blueair Blue Pure",
+        "Levoit Core"
+      ],
+      "actualWinner": "Coway Airmega AP-1512HH",
+      "actualResults": [
+        "Coway Airmega AP-1512HH",
+        "Blueair Blue Pure",
+        "CleanAirKits",
+        "IQAir"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 9435,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Coway Airmega AP-1512HH",
+        "Blueair Blue Pure"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best budget headphones",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony WH-CH720N",
+      "expectedTopContenders": [
+        "Sony WH-CH720N",
+        "Anker Soundcore Life Q30",
+        "EarFun Air Pro"
+      ],
+      "actualWinner": "Bose QuietComfort Ultra",
+      "actualResults": [
+        "Bose QuietComfort Ultra",
+        "Sennheiser Accentum or Accentum Plus",
+        "1More Sonoflow",
+        "Soundcore Q30s"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7164,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best laptop",
+      "category": "product_recommendation",
+      "expectedWinner": "MacBook Air",
+      "expectedTopContenders": [
+        "MacBook Air",
+        "MacBook Pro",
+        "Dell XPS",
+        "Lenovo ThinkPad"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 41643,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best router",
+      "category": "product_recommendation",
+      "expectedWinner": "Eero Pro 6E",
+      "expectedTopContenders": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "TP-Link Deco"
+      ],
+      "actualWinner": "Eero Pro 6E",
+      "actualResults": [
+        "Eero Pro 6E",
+        "MSI Roami BE Lite",
+        "TP-Link Archer AX10",
+        "TP-Link Archer AX11000 Tri-Band Wi-Fi 6 Router",
+        "Asus"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10331,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Eero Pro 6E"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best gaming monitor",
+      "category": "product_recommendation",
+      "expectedWinner": "Dell Alienware AW3423DWF",
+      "expectedTopContenders": [
+        "Dell Alienware AW3423DWF",
+        "LG UltraGear OLED",
+        "Gigabyte M27Q"
+      ],
+      "actualWinner": "ASUS Monitors",
+      "actualResults": [
+        "ASUS Monitors",
+        "LG UltraGear",
+        "AOC Q27G3XMN"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 6994,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "LG UltraGear OLED"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best wireless mouse",
+      "category": "product_recommendation",
+      "expectedWinner": "Logitech MX Master 3S",
+      "expectedTopContenders": [
+        "Logitech MX Master 3S",
+        "Razer Basilisk V3",
+        "Logitech G Pro X Superlight"
+      ],
+      "actualWinner": "Logitech MX Master 3S",
+      "actualResults": [
+        "Logitech MX Master 3S",
+        "Logitech",
+        "JLab Epic Wireless Mouse",
+        "JLab GO Charge Wireless Mouse",
+        "basilisk Hyperspeed"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11751,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Logitech MX Master 3S",
+        "Logitech G Pro X Superlight"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best external SSD",
+      "category": "product_recommendation",
+      "expectedWinner": "Samsung T7 Shield",
+      "expectedTopContenders": [
+        "Samsung T7 Shield",
+        "SanDisk Extreme Portable SSD",
+        "Crucial X9 Pro"
+      ],
+      "actualWinner": "Samsung T7 Shield",
+      "actualResults": [
+        "Samsung T7 Shield",
+        "Synology BeeDrive",
+        "SanDisk 2TB Extreme Portable SSD V2"
+      ],
+      "mode": "moderate_consensus",
+      "cached": false,
+      "elapsedMs": 14838,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Samsung T7 Shield"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best camera",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony A7 IV",
+      "expectedTopContenders": [
+        "Sony A7 IV",
+        "Canon EOS R6 Mark II",
+        "Fujifilm X-T5"
+      ],
+      "actualWinner": "Sony 18-105mm f/4 G OSS",
+      "actualResults": [
+        "Sony 18-105mm f/4 G OSS"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 6149,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best phone",
+      "category": "product_recommendation",
+      "expectedWinner": "iPhone 15",
+      "expectedTopContenders": [
+        "iPhone 15",
+        "Samsung Galaxy S24",
+        "Google Pixel 8"
+      ],
+      "actualWinner": "Google Pixel 10A",
+      "actualResults": [
+        "Google Pixel 10A",
+        "Samsung Galaxy S Series",
+        "Google Pixel",
+        "Google Pixel 10 Pro XL"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11068,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Google Pixel 8"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best television",
+      "category": "product_recommendation",
+      "expectedWinner": "LG C3 OLED",
+      "expectedTopContenders": [
+        "LG C3 OLED",
+        "Samsung S90C",
+        "Sony A95L"
+      ],
+      "actualWinner": "Lost",
+      "actualResults": [
+        "Lost",
+        "The Expanse",
+        "House",
+        "Samsung",
+        "Sony"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 15455,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Samsung S90C",
+        "Sony A95L"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best backpack",
+      "category": "product_recommendation",
+      "expectedWinner": "Osprey Farpoint",
+      "expectedTopContenders": [
+        "Osprey Farpoint",
+        "Aer Travel Pack",
+        "Peak Design Travel Backpack"
+      ],
+      "actualWinner": "Osprey",
+      "actualResults": [
+        "Osprey",
+        "Tom Bihn",
+        "Goruck",
+        "Osprey Fairview",
+        "Cotopaxi"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11758,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Osprey Farpoint"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    }
+  ]
+}

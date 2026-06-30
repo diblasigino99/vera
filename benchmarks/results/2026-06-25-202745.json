@@ -1,0 +1,2964 @@
+{
+  "timestamp": "2026-06-25T20:27:45.348Z",
+  "commitHash": "133a486",
+  "baseUrl": "http://127.0.0.1:3117",
+  "benchmarkCount": 21,
+  "completedCount": 21,
+  "metrics": {
+    "winnerAccuracy": 0.14285714285714285,
+    "top3Accuracy": 0.23809523809523808,
+    "contenderAccuracy": 0.19696969696969696
+  },
+  "counts": {
+    "winnerHits": 3,
+    "top3Hits": 5,
+    "contenderHits": 13,
+    "contenderSlots": 66,
+    "errors": 0
+  },
+  "byCategory": {
+    "local_recommendation": {
+      "benchmarks": 21,
+      "winnerAccuracy": 0.14285714285714285,
+      "top3Accuracy": 0.23809523809523808,
+      "contenderAccuracy": 0.19696969696969696,
+      "top5Coverage": 0.19841269841269843,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 1,
+      "localTimeouts": 0,
+      "emptyResults": 0,
+      "coverageScore": 0.19841269841269843
+    }
+  },
+  "failures": [
+    {
+      "query": "best restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Lilia",
+      "expectedTopContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "actualWinner": "Williamsburg Forum",
+      "actualResults": [
+        "Williamsburg Forum",
+        "The Butcher’s Daughter",
+        "The Butcher's Daughter",
+        "Colonial Williamsburg Feeds a Historic Moment",
+        "Dining Out"
+      ],
+      "retrievedSourceTitles": [
+        "Colonial Williamsburg Feeds a Historic Moment - Eater",
+        "THE 10 BEST Restaurants in Williamsburg (Updated June 2026)",
+        "The 27 Best Restaurants In Williamsburg - New York - The Infatuation",
+        "13 Best Restaurants in Williamsburg, Brooklyn to Book Now - Time Out",
+        "Best restaurants near me in Williamsburg, New York City - OpenTable",
+        "The Best Food Near Me in Williamsburg, New York City - OpenTable",
+        "Must Try Restaurants in Williamsburg : r/FoodNYC - Reddit",
+        "Williamsburg restaurant recommendations? - Williamsburg Forum - Tripadvisor"
+      ],
+      "extractedCandidates": [
+        "Colonial Williamsburg Feeds a Historic Moment",
+        "Dining Out",
+        "Colonial Food Taverns Virginia America 250",
+        "At Christiana Campbell's Tavern",
+        "The 27 Best Restaurants In Williamsburg",
+        "Newyork",
+        "Nearby",
+        "The Butcher's Daughter",
+        "Food Near Me",
+        "The Butcher's Daughter",
+        "Must Try Restaurants in Williamsburg",
+        "Williamsburg Forum"
+      ],
+      "rejectedCandidates": [
+        "THE 10 BEST Restaurants in Williamsburg ( ): too_many_words",
+        "Guides: does_not_look_like_named_place",
+        "Best Restaurants: generic_or_placeholder",
+        "13 Best Restaurants in Williamsburg: generic_or_placeholder",
+        "Restaurants: generic_or_placeholder",
+        "Restaurant Guide: generic_or_placeholder",
+        "Best restaurants in Williamsburg: generic_or_placeholder",
+        "Restaurants Near Me: generic_or_placeholder",
+        "The Best Food in Williamsburg: generic_or_placeholder",
+        "r/FoodNYC: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "14zt3jv: numeric_slug",
+        "Williamsburg restaurant recommendations?: generic_or_placeholder",
+        "ShowTopic G58313 I102 K15262900 Restaurant Recommendations Virginia: too_many_words"
+      ],
+      "finalContenders": [
+        "Williamsburg Forum",
+        "The Butcher’s Daughter",
+        "The Butcher's Daughter",
+        "Colonial Williamsburg Feeds a Historic Moment",
+        "Dining Out",
+        "Colonial Food Taverns Virginia America 250",
+        "The 27 Best Restaurants In Williamsburg",
+        "Newyork",
+        "Nearby",
+        "Food Near Me"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12575,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 1,
+      "missingObviousContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best first date restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Maison Premiere",
+      "expectedTopContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "actualWinner": "Birds of a Feather",
+      "actualResults": [
+        "Birds of a Feather",
+        "La Bonne Soupe",
+        "Ammazzacaffè",
+        "Cochon on 2nd",
+        "DON CHIDO"
+      ],
+      "retrievedSourceTitles": [
+        "Where To Have A Date In Williamsburg - New York - The Infatuation",
+        "The 27 Best Restaurants In Williamsburg - New York - The Infatuation",
+        "Best First Date Spots near Williamsburg - South Side, Brooklyn, NY ...",
+        "The 10 Best Romantic Restaurants in Williamsburg Brooklyn",
+        "Diners' Choice: Romantic restaurants in Williamsburg - OpenTable",
+        "142 Best Date Night Restaurants in Colonial Williamsburg | OpenTable",
+        "The Best Restaurants in Williamsburg Right Now | Eater NY",
+        "Where to Have an Early-Game Date Night in NYC - Eater NY"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Birds of a Feather",
+        "La Bonne Soupe",
+        "Ammazzacaffè",
+        "Cochon on 2nd",
+        "DON CHIDO"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 17893,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "La Cabra",
+      "expectedTopContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "actualWinner": "Culture Espresso",
+      "actualResults": [
+        "Culture Espresso",
+        "Moshava Coffee",
+        "Irving Farm Coffee (Gramercy)",
+        "Sey Coffee",
+        "Might Oak Roasters"
+      ],
+      "retrievedSourceTitles": [
+        "TOP 10 BEST Coffee Cafe in New York, NY - Updated 2026 - Yelp",
+        "AESTHETIC NYC cafes you need to pin on your Google maps ☕️🍰",
+        "The Best Coffee Shops in New York City, According to Eater Editors",
+        "The Ten Best Third Wave Coffee Shops in New York City",
+        "The Best Coffee Shop Near Every Manhattan Subway Stop - New York City Forum - Tripadvisor",
+        "Where do you go for really good coffee in New York? - Reddit",
+        "Coffee in NYC? : r/JamesHoffmann - Reddit",
+        "Favorite coffee shops in Manhattan? : r/JamesHoffmann - Reddit"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Culture Espresso",
+        "Moshava Coffee",
+        "Irving Farm Coffee (Gramercy)",
+        "Sey Coffee",
+        "Might Oak Roasters"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9181,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Sey Coffee"
+      ],
+      "localTop5Coverage": 0.25,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "La Cabra",
+        "Devocion",
+        "Abraco"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best coffee shop to work from in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Devocion",
+      "expectedTopContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "actualWinner": "Before Coffee",
+      "actualResults": [
+        "Before Coffee",
+        "Aroma",
+        "Reunion",
+        "Places",
+        "Before Coffee XtNahGRcIZx"
+      ],
+      "retrievedSourceTitles": [
+        "Before Coffee - Coffee shop in Williamsburg, New York | Reviews, Photos & Information on Postcard",
+        "Best Coffee Work Space near Eastside, Las Vegas, NV - Yelp",
+        "Best Coffee Shops to Work From in New York City and Brooklyn",
+        "Cafés / Work Spaces : r/williamsburg - Reddit",
+        "Coffee/Espresso recs : r/williamsburg",
+        "Favorite cafe/coffee shop to work at? : r/williamsburg - Reddit",
+        "Coffee Shops in Williamsburg, VA",
+        "NYC Favorites: 13 Williamsburg Coffee Shops To Visit | Carly A. Hill"
+      ],
+      "extractedCandidates": [
+        "Before Coffee",
+        "Places",
+        "Before Coffee XtNahGRcIZx",
+        "TheInfatuation Before Coffee",
+        "Blog",
+        "Perk Kafe Ground Central Coffee",
+        "Cafe Jax Cafe Jax",
+        "Cafés / Work Spaces",
+        "CaféS Work Spaces",
+        "Favorite cafe/coffee shop to work at?",
+        "Favorite Cafecoffee Shop To Work At",
+        "There's",
+        "Dining",
+        "Category",
+        "Carly A. Hill",
+        "Coffee Shops To Visit 2"
+      ],
+      "rejectedCandidates": [
+        "Coffee shop in Williamsburg: generic_or_placeholder",
+        ", & Information on Postcard: does_not_look_like_named_place",
+        "Best Coffee Work Space near Eastside, Las Vegas, NV: too_many_words",
+        "Search: does_not_look_like_named_place",
+        "Best Coffee Work Space: generic_or_placeholder",
+        "Best Coffee Shops to Work From in New York City and Brooklyn: too_many_words",
+        "Coffee Shops: generic_or_placeholder",
+        "Google Maps Cafe Jax: source_website_name",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1i3hj43: numeric_slug",
+        "Coffee/Espresso recs: generic_or_placeholder",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "18ay1ec: numeric_slug",
+        "Coffeeespresso Recs: generic_or_placeholder",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "128mkmw: numeric_slug",
+        "Coffee Shops in Williamsburg, VA: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Before Coffee",
+        "Aroma",
+        "Reunion",
+        "Places",
+        "Before Coffee XtNahGRcIZx",
+        "TheInfatuation Before Coffee",
+        "Cafe Jax Cafe Jax",
+        "Cafés / Work Spaces",
+        "CaféS Work Spaces",
+        "Favorite cafe/coffee shop to work at?"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 15306,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "The Moore Hotel",
+      "expectedTopContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "actualWinner": "Belltown Inn",
+      "actualResults": [
+        "Belltown Inn",
+        "Warwick Seattle Hotel",
+        "Belltown Inn Cheap",
+        "University Inn",
+        "The Edgewater Hotel"
+      ],
+      "retrievedSourceTitles": [
+        "The Edgewater Hotel - Google hotels",
+        "Inn at the Market - Google hotels",
+        "Hotels near Port of Seattle, United States. - Booking.com",
+        "Reviews of Coast Seattle Downtown Hotel by APA - Booking.com",
+        "10 Best Seattle Hotels, United States (From $153) - Booking.com",
+        "The 10 best cheap hotels in Seattle, US | Booking.com",
+        "16 Best Hotels in Seattle. Hotels from $91/night - KAYAK",
+        "THE 10 BEST Cheap Hotels in Seattle (w/ 2026 Reviews) - Tripadvisor"
+      ],
+      "extractedCandidates": [
+        "The Edgewater Hotel",
+        "Google hotels",
+        "Entity",
+        "ChcI2YnB1cWV9fKwARoKL20vMDJ6NmcwchAB",
+        "Inn at the Market",
+        "Google hotels",
+        "Entity",
+        "ChgIw5P RtWqlrWnARoLL2cvMXRqN2RycTQQAQ",
+        "Pioneer Square Kimpton Hotel Vintage",
+        "Warwick Seattle Hotel",
+        "Belltown Inn Cheap",
+        "Hotels.7054.Hotel.Ksp",
+        "University Inn"
+      ],
+      "rejectedCandidates": [
+        "Hotels: generic_or_placeholder",
+        "Hotels: generic_or_placeholder",
+        "Hotels near Port of Seattle, United States.: too_many_words",
+        "of Coast Seattle Downtown Hotel by APA: too_many_words",
+        "10 Best Seattle Hotels, United States (From $153): too_many_words",
+        "The 10 best cheap hotels in Seattle, US: too_many_words",
+        "16 Best Hotels in Seattle. Hotels from $91/night: too_many_words",
+        "THE 10 BEST Cheap Hotels in Seattle (w/ 2026 ): too_many_words"
+      ],
+      "finalContenders": [
+        "Belltown Inn",
+        "Warwick Seattle Hotel",
+        "Belltown Inn Cheap",
+        "University Inn",
+        "The Edgewater Hotel",
+        "Hotels.7054.Hotel.Ksp",
+        "ChcI2YnB1cWV9fKwARoKL20vMDJ6NmcwchAB",
+        "Pioneer Square Kimpton Hotel Vintage",
+        "Four Points by Sheraton Downtown Seattle Center",
+        "Google hotels"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13225,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Belltown Inn"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "The Moore Hotel",
+        "Staypineapple"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Four Seasons Hotel Seattle",
+      "expectedTopContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "actualWinner": "Lotte Hotel Seattle",
+      "actualResults": [
+        "Lotte Hotel Seattle",
+        "Four Seasons Hotel Seattle",
+        "Populus Seattle",
+        "The Paramount Hotel",
+        "Kimpton Hotel Vintage Seattle"
+      ],
+      "retrievedSourceTitles": [
+        "Inn at the Market - Google hotels",
+        "The 10 best 5-star hotels in Seattle, US | Booking.com",
+        "10 Best Seattle Hotels, United States (From $153) - Booking.com",
+        "THE 10 BEST Cheap Hotels in Seattle (w/ 2026 Reviews) - Tripadvisor",
+        "Hotel Nexus Seattle - Google hotels",
+        "This 1907 Warehouse in Seattle Was Just Transformed Into a Luxury Hotel—and T+L Was the First to Stay",
+        "THE 10 BEST Hotels in Downtown Seattle 2026 - Tripadvisor",
+        "Top Luxury Hotels In Seattle Reddit Recommendations 1767647679 — KERUSSO"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Lotte Hotel Seattle",
+        "Four Seasons Hotel Seattle",
+        "Populus Seattle",
+        "The Paramount Hotel",
+        "Kimpton Hotel Vintage Seattle",
+        "Grand Hyatt Seattle"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 5733,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Four Seasons Hotel Seattle"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best pizza in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Lucali",
+      "expectedTopContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "actualWinner": "Juliana's",
+      "actualResults": [
+        "Juliana's",
+        "L'industrie Pizzeria",
+        "Grimaldi’s Pizzeria",
+        "Joe’s Pizza",
+        "Prince Street Pizza"
+      ],
+      "retrievedSourceTitles": [
+        "BROOKLYN PIZZERIA - Restaurant Reviews - Yelp",
+        "Best Pizza - Review - Williamsburg - New York - The Infatuation",
+        "Sottocasa Brooklyn: Best Pizza in Brooklyn, NY",
+        "Best Pizza Brooklyn, NY - Last Updated June 2026 - Yelp",
+        "Best NYC Pizza Guide + Google Maps List with 20+ Options",
+        "THE 10 BEST Pizza Places in Brooklyn (Updated 2026) - Tripadvisor",
+        "Best Pizza in Manhattan: An Analysis of 668 Pizza Places",
+        "The Best Pizzerias of New York City - Eater NY"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Juliana's",
+        "L'industrie Pizzeria",
+        "Grimaldi’s Pizzeria",
+        "Joe’s Pizza",
+        "Prince Street Pizza",
+        "Brooklyn Pizzeria",
+        "Sottocasa Brooklyn",
+        "Lucali"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 8805,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "L'Industrie"
+      ],
+      "localTop5Coverage": 0.25,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Lucali",
+        "Di Fara",
+        "Roberta's"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best sushi in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Sushi Nakazawa",
+      "expectedTopContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "actualWinner": "Sushi 35 west",
+      "actualResults": [
+        "Sushi 35 west",
+        "Rosella",
+        "Hatsuhana"
+      ],
+      "retrievedSourceTitles": [
+        "Affordable, Quality Sushi in Manhattan : r/FoodNYC - Reddit",
+        "Best affordable sushi Manhattan? : r/FoodNYC - Reddit",
+        "Best Sushi Restaurants in New York City, Manhattan | Eater NY",
+        "The Best Sushi in NYC—For Omakase, Handroll Counters, and ...",
+        "The Best Sushi In New York | Sushi Seven January 2026",
+        "The Best Sushi Spots to Splurge on This Fall - The Lo Times",
+        "The Best Sushi In NYC | Best In Town - YouTube",
+        "Wirecutter: New Product Reviews, Deals, and Buying Advice - ny times"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Sushi 35 west",
+        "Rosella",
+        "Hatsuhana"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 6881,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best kid-friendly restaurant in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Carmine's",
+      "expectedTopContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "actualWinner": "Parm 235",
+      "actualResults": [
+        "Parm 235",
+        "Maps",
+        "Right This Way",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan",
+        "Dinerschoice"
+      ],
+      "retrievedSourceTitles": [
+        "The Spots Of The Summer, NYC Edition - New York - The Infatuation",
+        "The Best Kid-Friendly Restaurants In NYC - New York - The Infatuation",
+        "The Resy Guide to Kid-Friendly Restaurants in New York — Resy | Right This Way",
+        "The Best Kid-Friendly Restaurants in NYC | Eater NY",
+        "THE 10 BEST Family Restaurants in New York City (UPDATED 2026)",
+        "Kid-friendly places to eat near the Empire State Building - New York City Forum - Tripadvisor",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan",
+        "A Guide To The “Super Cute Reasonably Priced Restaurant To Catch Up With A Few Friends” - New York - The Infatuation"
+      ],
+      "extractedCandidates": [
+        "Right This Way",
+        "Maps",
+        "New York City Forum",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan",
+        "Dinerschoice",
+        "Bar Ferdinando"
+      ],
+      "rejectedCandidates": [
+        "The Spots Of The Summer: generic_or_placeholder",
+        "Guides: does_not_look_like_named_place",
+        "The Best Kid-Friendly Restaurants In NYC: generic_or_placeholder",
+        "Guides: does_not_look_like_named_place",
+        "Best Kid Friendly Restaurants: generic_or_placeholder",
+        "The Guide to Kid-Friendly Restaurants in New York: too_many_words",
+        "Best Kid Friendly Restaurants: generic_or_placeholder",
+        "The Best Kid-Friendly Restaurants in NYC: generic_or_placeholder",
+        "Best Kid Friendly Restaurants: generic_or_placeholder",
+        "THE 10 BEST Family Restaurants in New York City ( ): too_many_words",
+        "Kid-friendly places to eat near the Empire State Building: too_many_words",
+        "S: empty_or_too_short",
+        "A Guide To The “Super Cute Reasonably Priced Restaurant To Catch Up With A Few Friends”: too_many_words",
+        "Guides: does_not_look_like_named_place",
+        "A Guide To The Super Cute Reasonably Priced Restaurant To Catch Up With A Few Friends: too_many_words"
+      ],
+      "finalContenders": [
+        "Parm 235",
+        "Maps",
+        "Right This Way",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan",
+        "Dinerschoice",
+        "New York City Forum",
+        "Black Tap"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 4085,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso martini in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "Dante",
+      "expectedTopContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "actualWinner": "Lindens Espresso Martini",
+      "actualResults": [
+        "Lindens Espresso Martini",
+        "Banter's espresso martini Dante",
+        "Dudley’s espresso martini",
+        "Hole in the Wall",
+        "Canto’s frozen espresso martini"
+      ],
+      "retrievedSourceTitles": [
+        "Announcing the best espresso martini (I could find) in NYC! - Medium",
+        "Where is the best espresso martini in NYC? - Reddit",
+        "I spent the last few months obsessively ranking espresso martinis ...",
+        "The 13 Best Espresso Martinis in NYC to Kick-Start Your Evening - PureWow",
+        "Best Espresso Martinis in NYC: Top Spots You Can't Miss",
+        "Best Espresso Martinis in NYC",
+        "Frozen Espresso Martini Reviews in NYC: A Sweet Indulgence",
+        "14 NYC Bars to Visit for a Top-Notch Espresso Martini This Winter | Eater"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Lindens Espresso Martini",
+        "Banter's espresso martini Dante",
+        "Dudley’s espresso martini",
+        "Hole in the Wall",
+        "Canto’s frozen espresso martini"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7021,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Dante"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best golf course on Long Island",
+      "category": "local_recommendation",
+      "expectedWinner": "Bethpage Black",
+      "expectedTopContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "actualWinner": "All You SHOULD Know Before ...",
+      "actualResults": [
+        "All You SHOULD Know Before ...",
+        "Royal Portrush Golf Club",
+        "Courses",
+        "Golf Digest",
+        "Metropolitan Golf Association"
+      ],
+      "retrievedSourceTitles": [
+        "Long Island National Golf Club - All You SHOULD Know Before ...",
+        "THE 15 BEST Long Island Golf Courses (2026) - Tripadvisor",
+        "Rankings | GolfCourseGurus",
+        "Long Island NY courses : r/golf - Reddit",
+        "The best golf courses on Long Island | Golf Courses | Golf Digest",
+        "Met Area Courses Well Represented in Golf Digest’s “Top 100” - Metropolitan Golf Association",
+        "Bethpage, Tallgrass, Montauk Downs stay on top of Golfweek’s Best Courses list – Golf on Long Island",
+        "Golfweek ranks Bethpage Black #1 in its annual Best Municipal Courses list – Golf on Long Island"
+      ],
+      "extractedCandidates": [
+        "All You SHOULD Know Before ...",
+        "Montauk Downs State Park Golf",
+        "Course",
+        "Golfdigesttop100",
+        "Royal Portrush Golf Club",
+        "Golf Digest's Top",
+        "Courses",
+        "Golf Digest",
+        "Metropolitan Golf Association",
+        "Met Area Course"
+      ],
+      "rejectedCandidates": [
+        "Long Island National Golf Club: generic_or_placeholder",
+        "THE 15 BEST Long Island Golf Courses (2026): too_many_words",
+        "Golf Courses: generic_or_placeholder",
+        "Rankings: generic_or_placeholder",
+        "Golf Course Gurus: generic_or_placeholder",
+        "Long Island NY courses: generic_or_placeholder",
+        "r/golf: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1j3do8e: numeric_slug",
+        "Long Island Courses: generic_or_placeholder",
+        "The best golf courses on Long Island: too_many_words",
+        "Golf Courses: generic_or_placeholder",
+        "Guides: does_not_look_like_named_place",
+        "The Best Golf Courses On Long Island Shinnecock Hills Bethpage Black: too_many_words",
+        "Met Area Courses Well Represented in Golf Digest’s “Top 100”: too_many_words",
+        "Met Area Courses Well Represented In Golf Digests Top 100: too_many_words",
+        "Bethpage, Tallgrass, Montauk Downs stay on top of Golfweek’s Best Courses list: too_many_words",
+        "Golf on Long Island: generic_or_placeholder",
+        "Bethpage Tallgrass Montauk Downs Stay On Top Of Golfweek S Best Courses List: too_many_words",
+        "Shoreham's Tallgrass Golf Course: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "All You SHOULD Know Before ...",
+        "Royal Portrush Golf Club",
+        "Courses",
+        "Golf Digest",
+        "Metropolitan Golf Association",
+        "Met Area Course",
+        "Course",
+        "Golfdigesttop100",
+        "Golf Digest's Top"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 1951,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best restaurant in Massapequa NY",
+      "category": "local_recommendation",
+      "expectedWinner": "Big Daddy's",
+      "expectedTopContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "actualWinner": "Maps",
+      "actualResults": [
+        "Maps",
+        "Snaps American Bistro",
+        "The Good Life",
+        "Google's",
+        "The 10 Best Restaurants in Massapequa"
+      ],
+      "retrievedSourceTitles": [
+        "Restaurants near me - Google Maps",
+        "TOP 10 BEST Restaurants near Massapequa, NY 11758 - Yelp",
+        "The 10 Best Restaurants Near Me in Massapequa | OpenTable",
+        "THE 10 BEST Restaurants in Massapequa (Updated June 2026)",
+        "TOP 10 BEST Restaurants near East Massapequa, NY - Yelp",
+        "Yelp's Top 10 Restaurants in Massapequa: Do You Agree? - Patch",
+        "How To Find Top Rated Places Using Reviews in Google Maps 2025",
+        "Best Restaurants in Hell’s Kitchen, According to Eater Editors | Eater NY"
+      ],
+      "extractedCandidates": [
+        "Maps",
+        "Google's",
+        "The 10 Best Restaurants in Massapequa",
+        "Nearby",
+        "Popei's Clam Bar",
+        "Brownstones Coffee Amityville",
+        "Snaps American Bistro",
+        "Watch",
+        "Maps",
+        "Chi Restaurant & Bar Over"
+      ],
+      "rejectedCandidates": [
+        "Restaurants: generic_or_placeholder",
+        "Google Maps: generic_or_placeholder",
+        "Search: does_not_look_like_named_place",
+        "Restaurants Near Me: generic_or_placeholder",
+        "TOP 10 BEST Restaurants near Massapequa, NY 11758: too_many_words",
+        "Search: does_not_look_like_named_place",
+        "Restaurants Near Me: generic_or_placeholder",
+        "THE 10 BEST Restaurants in Massapequa ( ): too_many_words",
+        "TOP 10 BEST Restaurants near East Massapequa, NY: too_many_words",
+        "Search: does_not_look_like_named_place",
+        "'s Top 10 Restaurants in Massapequa: Do You Agree?: too_many_words",
+        "Yelps Top 10 Restaurants In Do You Agree: too_many_words",
+        "How To Find Top Rated Places Using in Google Maps 2025: too_many_words",
+        "Best Restaurants in Hell’s Kitchen, According to Editors: too_many_words",
+        "Best Restaurants Hells Kitchen: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Maps",
+        "Snaps American Bistro",
+        "The Good Life",
+        "Google's",
+        "The 10 Best Restaurants in Massapequa",
+        "Nearby",
+        "Brownstones Coffee Amityville",
+        "Watch"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 2808,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best tacos in Austin",
+      "category": "local_recommendation",
+      "expectedWinner": "Veracruz All Natural",
+      "expectedTopContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "actualWinner": "Discada",
+      "actualResults": [
+        "Discada",
+        "Cuantos Tacos",
+        "Taqueria Chapala",
+        "Torchy’s Tacos",
+        "Comedor"
+      ],
+      "retrievedSourceTitles": [
+        "10 de 10 Taqueria makes a solid argument for best tacos in Austin",
+        "Here is an *actual* Q/A for the best *authentic* tacos in Austin. I'll go ...",
+        "Your Guide to the Best Tacos in Austin, TX | Austin Food Adventures",
+        "The Best Tacos in Austin, According to an Expert - City Cast Austin",
+        "The Austin Taco Guide: Ranking Best to Worst - Miles Less Traveled",
+        "23 Best Tacos in Austin - Female Foodie",
+        "The Best Tacos in Austin - MICHELIN Guide",
+        "8 Austin restaurants make Texas Monthly's '50 Best Tacos in Texas' list"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Discada",
+        "Cuantos Tacos",
+        "Taqueria Chapala",
+        "Torchy’s Tacos",
+        "Comedor",
+        "Taco Guerrero",
+        "Casa Moreno’s"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12532,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Cuantos Tacos"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Veracruz All Natural",
+        "Taco Joint"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best cocktail bar in Chicago",
+      "category": "local_recommendation",
+      "expectedWinner": "The Violet Hour",
+      "expectedTopContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "actualWinner": "Chicago",
+      "actualResults": [
+        "Chicago",
+        "Cocktail Bars Chicago",
+        "Chicago’s Best Cocktail Bars, Mapped",
+        "Maps",
+        "Chicago Bars, & Bar Events"
+      ],
+      "retrievedSourceTitles": [
+        "The 23 Best Cocktail Bars In Chicago - The Infatuation",
+        "Chicago’s Best Cocktail Bars, Mapped | Eater Chicago",
+        "Bars | Chicago Bars, Reviews & Bar Events | Time Out Chicago",
+        "King Of Cups · Craft Cocktail Lounge | Lincoln Park | Chicago",
+        "The Eater Chicago Cocktail Heatmap: Where to Drink Right Now, April 2018 – Lakeview East Chamber of Commerce",
+        "THE BEST 10 COCKTAIL BARS IN CHICAGO, IL - Yelp",
+        "MACHINE COCKTAIL BAR - Updated June 2026 - 187 Photos & 39 ...",
+        "The 24 Best Bars In Chicago - Chicago - The Infatuation"
+      ],
+      "extractedCandidates": [
+        "Chicago",
+        "Cocktail Bars Chicago",
+        "Chicago’s Best Cocktail Bars, Mapped",
+        "Maps",
+        "Chicago Bars, & Bar Events",
+        "Chicago",
+        "King Of Cups",
+        "Craft Cocktail Lounge",
+        "Lincoln Park",
+        "Chicago",
+        "Lakeview East Chamber of Commerce",
+        "Hotel Zachary Wrigleyville's",
+        "MACHINE COCKTAIL BAR",
+        "Machine Cocktail Bar Chicago",
+        "The 24 Best Bars In Chicago",
+        "Chicago"
+      ],
+      "rejectedCandidates": [
+        "The 23 Best Cocktail Bars In Chicago: too_many_words",
+        "Guides: does_not_look_like_named_place",
+        "Best Chicago Cocktail Bars: generic_or_placeholder",
+        "Bars: generic_or_placeholder",
+        "The Chicago Cocktail Heatmap: Where to Drink Right Now, April 2018: too_many_words",
+        "The Eater Chicago Cocktail Heatmap Where To Drink Right Now April 2018: too_many_words",
+        "THE BEST 10 COCKTAIL BARS IN CHICAGO, IL: too_many_words",
+        "Search: does_not_look_like_named_place",
+        "187 & 39 ...: generic_or_placeholder",
+        "Guides: does_not_look_like_named_place",
+        "Best Bars In Chicago: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Chicago",
+        "Cocktail Bars Chicago",
+        "Chicago’s Best Cocktail Bars, Mapped",
+        "Maps",
+        "Chicago Bars, & Bar Events",
+        "Lakeview East Chamber of Commerce",
+        "The Aviary",
+        "MACHINE COCKTAIL BAR",
+        "Machine Cocktail Bar Chicago",
+        "King Of Cups"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 2698,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best brunch in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Sunday in Brooklyn",
+      "expectedTopContenders": [
+        "Sunday in Brooklyn",
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "actualWinner": "SUNDAY IN BROOKLYN",
+      "actualResults": [
+        "SUNDAY IN BROOKLYN",
+        "Thai Diner Thai Diner",
+        "NOMO Kitchen",
+        "Maps",
+        "New American Restaurant in Williamsburg"
+      ],
+      "retrievedSourceTitles": [
+        "Sunday Brunch (Near Prospect Park) : r/Brooklyn - Reddit",
+        "Brunch! : r/Brooklyn - Reddit",
+        "The 21 best brunch spots in Brooklyn - Time Out",
+        "15 best breakfast and weekend brunch spots in Brooklyn, NY",
+        "THE BEST Brunch in Brooklyn (UPDATED 2026) - Tripadvisor",
+        "Diners' Choice: Great for brunch restaurants in Brooklyn",
+        "80 Best Brunch Restaurants in Downtown Brooklyn | OpenTable",
+        "Best Brunch in Brooklyn: Good Brunch Spots in Brooklyn Neighborhoods - Thrillist",
+        "Best Brunch Brooklyn, NY - Last Updated June 2026 - Yelp",
+        "Top 10 Best Breakfast & Brunch Near Brooklyn, New York - Yelp",
+        "Best Brunch Restaurants in New York City, According to Eater Editors | Eater NY",
+        "The Best Restaurants in Brooklyn Heights | Eater NY"
+      ],
+      "extractedCandidates": [
+        "Sunday Brunch (Near Prospect Park)",
+        "Sunday Brunch Near Prospect Park",
+        "Cheryl's and Tom's",
+        "Gertrude's",
+        "Patti Ann's",
+        "Green. Walter's",
+        "Newyork",
+        "Inga's Bar Brooklyn Heights",
+        "Blog",
+        "Dinerschoice",
+        "It's",
+        "Features",
+        "Cecconi's Dumbo",
+        "NOMO Kitchen",
+        "The Butcher's Daughter",
+        "Emma's Torch",
+        "Carroll Gardens Emma's Torch The",
+        "Last",
+        "Milk & Honey Cafe",
+        "Breakfast Brunch"
+      ],
+      "rejectedCandidates": [
+        "r/Brooklyn: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1k08kk3: numeric_slug",
+        "Brunch!: generic_or_placeholder",
+        "r/Brooklyn: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1q2lj7n: numeric_slug",
+        "The 21 best brunch spots in Brooklyn: too_many_words",
+        "Restaurants: generic_or_placeholder",
+        "Best Brunch In: generic_or_placeholder",
+        "15 best breakfast and weekend brunch spots in Brooklyn, NY: too_many_words",
+        "15 Best Breakfast And Weekend Brunch Spots In: too_many_words",
+        "THE BEST Brunch in Brooklyn ( ): too_many_words",
+        "Diners' Choice: Great for brunch restaurants in Brooklyn: too_many_words",
+        "S: empty_or_too_short",
+        "80 Best Brunch Restaurants in Downtown Brooklyn: too_many_words",
+        "Best Brunch Restaurants Downtown: generic_or_placeholder",
+        "Best Brunch in Brooklyn: Good Brunch Spots in Brooklyn Neighborhoods: too_many_words",
+        "Eat: does_not_look_like_named_place",
+        "Best Brunch In: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "SUNDAY IN BROOKLYN",
+        "Thai Diner Thai Diner",
+        "NOMO Kitchen",
+        "Maps",
+        "New American Restaurant in Williamsburg",
+        "Newyork",
+        "Emma's Torch",
+        "Carroll Gardens Emma's Torch The",
+        "Dinerschoice",
+        "It's"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9321,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Sunday in Brooklyn"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best bakery in San Francisco",
+      "category": "local_recommendation",
+      "expectedWinner": "Tartine Bakery",
+      "expectedTopContenders": [
+        "Tartine Bakery",
+        "B. Patisserie",
+        "Arsicault Bakery"
+      ],
+      "actualWinner": "B PATISSERIE",
+      "actualResults": [
+        "B PATISSERIE",
+        "Πριν συνεχίσετε στους Χάρτες Google",
+        "Jane The Bakery",
+        "Our Story",
+        "[PDF] Kings Bakery"
+      ],
+      "retrievedSourceTitles": [
+        "Best Bakery/Cafe recommendations? : r/AskSF - Reddit",
+        "Recommended bakeries? : r/AskSF - Reddit",
+        "The 18 Best Bakeries in San Francisco - Eater SF",
+        "The 16 Best Cakes in San Francisco | Eater SF",
+        "The 25 Best Bakeries In SF - San Francisco - The Infatuation",
+        "How to Spend a Big Fat Weekend Eating Pastries in San Francisco",
+        "THE BEST 10 Bakeries in SAN FRANCISCO, CA - Yelp",
+        "B PATISSERIE - Updated June 2026 - 8091 Photos & 3780 Reviews",
+        "Best Cake San Francisco, CA - Last Updated June 2026 - Yelp",
+        "What is your favorite bakery in San Francisco, and how did ... - Quora",
+        "Insider's Guide to the Best Bakeries in San Francisco",
+        "Jane The Bakery | Jane in San Francisco, CA"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "B PATISSERIE",
+        "Πριν συνεχίσετε στους Χάρτες Google",
+        "Jane The Bakery",
+        "Our Story",
+        "[PDF] Kings Bakery"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9349,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "B. Patisserie"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Tartine Bakery",
+        "Arsicault Bakery"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best attractions in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Space Needle",
+      "expectedTopContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "actualWinner": "Waterfall Garden",
+      "actualResults": [
+        "Waterfall Garden",
+        "Golden Gardens Park",
+        "Kerry Park",
+        "Seattle Aquarium",
+        "Gas Works Park"
+      ],
+      "retrievedSourceTitles": [
+        "The Most Reviewed Place On Google Maps For The 25 Largest US Cities hugequiz",
+        "Walk to Seattle downtown 3",
+        "THE 10 BEST Seattle Tours & Excursions (2026) - with Reviews",
+        "TOP 10 BEST Tourist Attractions in Seattle, WA - Updated 2026 - Yelp",
+        "Google Maps says we love these 50 Seattle-area places in the summer | The Seattle Times",
+        "THE 15 BEST Things to Do in Seattle (2026) - Must-See Attractions",
+        "25 Great Things To Do In Seattle If You’re Visiting For The First Time - Paper Planes and Caramel Waffles",
+        "THE 10 BEST Things to Do in Downtown (2026) - Tripadvisor"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Waterfall Garden",
+        "Golden Gardens Park",
+        "Kerry Park",
+        "Seattle Aquarium",
+        "Gas Works Park",
+        "Beneath The Streets Underground History Tour",
+        "Washington State Ferries",
+        "Seattle's Original Guided Harbor"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 18403,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best dentists in Austin TX",
+      "category": "local_recommendation",
+      "expectedWinner": "Swish Dental",
+      "expectedTopContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "actualWinner": "Dr. Matthew Heck, DDS",
+      "actualResults": [
+        "Dr. Matthew Heck, DDS",
+        "HIGH POINT DENTISTRY",
+        "NORTH AUSTIN DENTISTRY",
+        "38th Street Dental: Dentist Austin, TX",
+        "Austin Dentist Office"
+      ],
+      "retrievedSourceTitles": [
+        "10 Best Dentists in Austin Texas - TopRatedDentist.com",
+        "Dentists in Austin, TX | TexasDentalHub",
+        "Top 10 Best Dentists in Austin, TX - Celebrate Dental & Braces",
+        "20 Best Dentists Near Me in Austin, TX | Opencare.com",
+        "Austin Dentist | 5th Street | BLVD Dentistry & Orthodontics",
+        "38th Street Dental: Dentist Austin, TX",
+        "Austin Dentist Office - 38th Street Dental",
+        "Best Dentists In Austin, TX - Top Rated Dental Clinics",
+        "20 Best Dentists Near Austin, TX - Healthgrades",
+        "Dr. Matthew Heck, DDS - 33 Reviews - Austin, TX | Healthgrades",
+        "Hamilton Dental: Dentist in Austin, TX",
+        "The Best Dentists in Austin, According to Locals"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Dr. Matthew Heck, DDS",
+        "HIGH POINT DENTISTRY",
+        "NORTH AUSTIN DENTISTRY",
+        "38th Street Dental: Dentist Austin, TX",
+        "Austin Dentist Office"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9423,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best plumbers in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "O'Neill Plumbing",
+      "expectedTopContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "actualWinner": "O'Neill Plumbing",
+      "actualResults": [
+        "O'Neill Plumbing",
+        "Yahoo Local",
+        "Article",
+        "Mike's Plumbing & Drain Cleaning",
+        "Mike's"
+      ],
+      "retrievedSourceTitles": [
+        "Best plumbers in Seattle, Wash. - Yahoo Local",
+        "Seattle Plumbing Services, 24/7 Emergency Plumber",
+        "Best Plumbing Companies in Seattle, WA",
+        "Topic: Plumber recommendation - West Seattle Blog...",
+        "O'Neill Plumbing | Trusted West Seattle Plumbers Since 1917",
+        "Leave A Review | O'Neill Plumbing",
+        "How to Optimize Your Google Business Profile to Dominate Local Plumbing Searches and Get More Calls | Seattle Organic SEO",
+        "Best Plumbing: Seattle WA Plumbing, Sewer & Water Heater Company",
+        "The Truth About Google Map Rankings for Plumbers",
+        "Can anyone recommend a good plumber in King County who ...",
+        "I left a negative review, and the business owner removed it? What can I do?",
+        "Find The Best Plumbers In Seattle"
+      ],
+      "extractedCandidates": [
+        "Yahoo Local",
+        "Article",
+        "Mike's Plumbing & Drain Cleaning",
+        "Mike's",
+        "Seattle Plumbing Services, 24/7 Emergency Plumber",
+        "Bee's Plumbing & Heating",
+        "Area Membership Careers Bee's Plumbing",
+        "Membership Careers Bee's Plumbing and",
+        "Expert Plumbing Services",
+        "Plumbers",
+        "West Seattle Blog...",
+        "Forums 2",
+        "Topic",
+        "Plumber Recommendation",
+        "Rex Participant O'Neil Plumbing",
+        "Participant Joe the Plumber",
+        "O'Neill Plumbing",
+        "Trusted West Seattle Plumbers Since 1917",
+        "Homepage",
+        "O'Neill's"
+      ],
+      "rejectedCandidates": [
+        "Best plumbers in Seattle, Wash.: generic_or_placeholder",
+        "Best Plumbing Companies Washington 110000121: generic_or_placeholder",
+        "Best Plumbing Companies in Seattle, WA: generic_or_placeholder",
+        "Best Pick Certified Plumbing: generic_or_placeholder",
+        "Topic: Plumber recommendation: generic_or_placeholder",
+        "How to Optimize Your Google Business Profile to Dominate Local Plumbing Searches and Get More Calls: too_many_words",
+        "Best Plumbing: Seattle WA Plumbing, Sewer & Water Heater Company: too_many_words",
+        "Best Plumbing: generic_or_placeholder",
+        "The Truth About Google Map Rankings for Plumbers: too_many_words",
+        "Can anyone recommend a good plumber in King County who ...: too_many_words",
+        "Comments: generic_or_placeholder",
+        "1j3pbue: numeric_slug",
+        "Can Anyone Recommend A Good Plumber In King: too_many_words",
+        "I left a negative , and the business owner removed it? What can I do?: too_many_words",
+        "Thread: generic_or_placeholder",
+        "I Left A Negative Review And The Business Owner Removed It What Can I Do: too_many_words",
+        "10 Best Plumbers in Seattle, WA 2026: too_many_words",
+        "Cp: empty_or_too_short",
+        "TOP 10 BEST Plumbers in Seattle, WA: too_many_words",
+        "Search: does_not_look_like_named_place"
+      ],
+      "finalContenders": [
+        "O'Neill Plumbing",
+        "Yahoo Local",
+        "Article",
+        "Mike's Plumbing & Drain Cleaning",
+        "Mike's",
+        "Seattle Plumbing Services, 24/7 Emergency Plumber",
+        "Seattle Organic SEO",
+        "Seattle's Choice",
+        "Plumbing Services",
+        "Choose Seattle's Most Trusted"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9622,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "O'Neill Plumbing"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    }
+  ],
+  "cases": [
+    {
+      "query": "best restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Lilia",
+      "expectedTopContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "actualWinner": "Williamsburg Forum",
+      "actualResults": [
+        "Williamsburg Forum",
+        "The Butcher’s Daughter",
+        "The Butcher's Daughter",
+        "Colonial Williamsburg Feeds a Historic Moment",
+        "Dining Out"
+      ],
+      "retrievedSourceTitles": [
+        "Colonial Williamsburg Feeds a Historic Moment - Eater",
+        "THE 10 BEST Restaurants in Williamsburg (Updated June 2026)",
+        "The 27 Best Restaurants In Williamsburg - New York - The Infatuation",
+        "13 Best Restaurants in Williamsburg, Brooklyn to Book Now - Time Out",
+        "Best restaurants near me in Williamsburg, New York City - OpenTable",
+        "The Best Food Near Me in Williamsburg, New York City - OpenTable",
+        "Must Try Restaurants in Williamsburg : r/FoodNYC - Reddit",
+        "Williamsburg restaurant recommendations? - Williamsburg Forum - Tripadvisor"
+      ],
+      "extractedCandidates": [
+        "Colonial Williamsburg Feeds a Historic Moment",
+        "Dining Out",
+        "Colonial Food Taverns Virginia America 250",
+        "At Christiana Campbell's Tavern",
+        "The 27 Best Restaurants In Williamsburg",
+        "Newyork",
+        "Nearby",
+        "The Butcher's Daughter",
+        "Food Near Me",
+        "The Butcher's Daughter",
+        "Must Try Restaurants in Williamsburg",
+        "Williamsburg Forum"
+      ],
+      "rejectedCandidates": [
+        "THE 10 BEST Restaurants in Williamsburg ( ): too_many_words",
+        "Guides: does_not_look_like_named_place",
+        "Best Restaurants: generic_or_placeholder",
+        "13 Best Restaurants in Williamsburg: generic_or_placeholder",
+        "Restaurants: generic_or_placeholder",
+        "Restaurant Guide: generic_or_placeholder",
+        "Best restaurants in Williamsburg: generic_or_placeholder",
+        "Restaurants Near Me: generic_or_placeholder",
+        "The Best Food in Williamsburg: generic_or_placeholder",
+        "r/FoodNYC: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "14zt3jv: numeric_slug",
+        "Williamsburg restaurant recommendations?: generic_or_placeholder",
+        "ShowTopic G58313 I102 K15262900 Restaurant Recommendations Virginia: too_many_words"
+      ],
+      "finalContenders": [
+        "Williamsburg Forum",
+        "The Butcher’s Daughter",
+        "The Butcher's Daughter",
+        "Colonial Williamsburg Feeds a Historic Moment",
+        "Dining Out",
+        "Colonial Food Taverns Virginia America 250",
+        "The 27 Best Restaurants In Williamsburg",
+        "Newyork",
+        "Nearby",
+        "Food Near Me"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12575,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 1,
+      "missingObviousContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best first date restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Maison Premiere",
+      "expectedTopContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "actualWinner": "Birds of a Feather",
+      "actualResults": [
+        "Birds of a Feather",
+        "La Bonne Soupe",
+        "Ammazzacaffè",
+        "Cochon on 2nd",
+        "DON CHIDO"
+      ],
+      "retrievedSourceTitles": [
+        "Where To Have A Date In Williamsburg - New York - The Infatuation",
+        "The 27 Best Restaurants In Williamsburg - New York - The Infatuation",
+        "Best First Date Spots near Williamsburg - South Side, Brooklyn, NY ...",
+        "The 10 Best Romantic Restaurants in Williamsburg Brooklyn",
+        "Diners' Choice: Romantic restaurants in Williamsburg - OpenTable",
+        "142 Best Date Night Restaurants in Colonial Williamsburg | OpenTable",
+        "The Best Restaurants in Williamsburg Right Now | Eater NY",
+        "Where to Have an Early-Game Date Night in NYC - Eater NY"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Birds of a Feather",
+        "La Bonne Soupe",
+        "Ammazzacaffè",
+        "Cochon on 2nd",
+        "DON CHIDO"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 17893,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "La Cabra",
+      "expectedTopContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "actualWinner": "Culture Espresso",
+      "actualResults": [
+        "Culture Espresso",
+        "Moshava Coffee",
+        "Irving Farm Coffee (Gramercy)",
+        "Sey Coffee",
+        "Might Oak Roasters"
+      ],
+      "retrievedSourceTitles": [
+        "TOP 10 BEST Coffee Cafe in New York, NY - Updated 2026 - Yelp",
+        "AESTHETIC NYC cafes you need to pin on your Google maps ☕️🍰",
+        "The Best Coffee Shops in New York City, According to Eater Editors",
+        "The Ten Best Third Wave Coffee Shops in New York City",
+        "The Best Coffee Shop Near Every Manhattan Subway Stop - New York City Forum - Tripadvisor",
+        "Where do you go for really good coffee in New York? - Reddit",
+        "Coffee in NYC? : r/JamesHoffmann - Reddit",
+        "Favorite coffee shops in Manhattan? : r/JamesHoffmann - Reddit"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Culture Espresso",
+        "Moshava Coffee",
+        "Irving Farm Coffee (Gramercy)",
+        "Sey Coffee",
+        "Might Oak Roasters"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9181,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Sey Coffee"
+      ],
+      "localTop5Coverage": 0.25,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "La Cabra",
+        "Devocion",
+        "Abraco"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best coffee shop to work from in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Devocion",
+      "expectedTopContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "actualWinner": "Before Coffee",
+      "actualResults": [
+        "Before Coffee",
+        "Aroma",
+        "Reunion",
+        "Places",
+        "Before Coffee XtNahGRcIZx"
+      ],
+      "retrievedSourceTitles": [
+        "Before Coffee - Coffee shop in Williamsburg, New York | Reviews, Photos & Information on Postcard",
+        "Best Coffee Work Space near Eastside, Las Vegas, NV - Yelp",
+        "Best Coffee Shops to Work From in New York City and Brooklyn",
+        "Cafés / Work Spaces : r/williamsburg - Reddit",
+        "Coffee/Espresso recs : r/williamsburg",
+        "Favorite cafe/coffee shop to work at? : r/williamsburg - Reddit",
+        "Coffee Shops in Williamsburg, VA",
+        "NYC Favorites: 13 Williamsburg Coffee Shops To Visit | Carly A. Hill"
+      ],
+      "extractedCandidates": [
+        "Before Coffee",
+        "Places",
+        "Before Coffee XtNahGRcIZx",
+        "TheInfatuation Before Coffee",
+        "Blog",
+        "Perk Kafe Ground Central Coffee",
+        "Cafe Jax Cafe Jax",
+        "Cafés / Work Spaces",
+        "CaféS Work Spaces",
+        "Favorite cafe/coffee shop to work at?",
+        "Favorite Cafecoffee Shop To Work At",
+        "There's",
+        "Dining",
+        "Category",
+        "Carly A. Hill",
+        "Coffee Shops To Visit 2"
+      ],
+      "rejectedCandidates": [
+        "Coffee shop in Williamsburg: generic_or_placeholder",
+        ", & Information on Postcard: does_not_look_like_named_place",
+        "Best Coffee Work Space near Eastside, Las Vegas, NV: too_many_words",
+        "Search: does_not_look_like_named_place",
+        "Best Coffee Work Space: generic_or_placeholder",
+        "Best Coffee Shops to Work From in New York City and Brooklyn: too_many_words",
+        "Coffee Shops: generic_or_placeholder",
+        "Google Maps Cafe Jax: source_website_name",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1i3hj43: numeric_slug",
+        "Coffee/Espresso recs: generic_or_placeholder",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "18ay1ec: numeric_slug",
+        "Coffeeespresso Recs: generic_or_placeholder",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "128mkmw: numeric_slug",
+        "Coffee Shops in Williamsburg, VA: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Before Coffee",
+        "Aroma",
+        "Reunion",
+        "Places",
+        "Before Coffee XtNahGRcIZx",
+        "TheInfatuation Before Coffee",
+        "Cafe Jax Cafe Jax",
+        "Cafés / Work Spaces",
+        "CaféS Work Spaces",
+        "Favorite cafe/coffee shop to work at?"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 15306,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "The Moore Hotel",
+      "expectedTopContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "actualWinner": "Belltown Inn",
+      "actualResults": [
+        "Belltown Inn",
+        "Warwick Seattle Hotel",
+        "Belltown Inn Cheap",
+        "University Inn",
+        "The Edgewater Hotel"
+      ],
+      "retrievedSourceTitles": [
+        "The Edgewater Hotel - Google hotels",
+        "Inn at the Market - Google hotels",
+        "Hotels near Port of Seattle, United States. - Booking.com",
+        "Reviews of Coast Seattle Downtown Hotel by APA - Booking.com",
+        "10 Best Seattle Hotels, United States (From $153) - Booking.com",
+        "The 10 best cheap hotels in Seattle, US | Booking.com",
+        "16 Best Hotels in Seattle. Hotels from $91/night - KAYAK",
+        "THE 10 BEST Cheap Hotels in Seattle (w/ 2026 Reviews) - Tripadvisor"
+      ],
+      "extractedCandidates": [
+        "The Edgewater Hotel",
+        "Google hotels",
+        "Entity",
+        "ChcI2YnB1cWV9fKwARoKL20vMDJ6NmcwchAB",
+        "Inn at the Market",
+        "Google hotels",
+        "Entity",
+        "ChgIw5P RtWqlrWnARoLL2cvMXRqN2RycTQQAQ",
+        "Pioneer Square Kimpton Hotel Vintage",
+        "Warwick Seattle Hotel",
+        "Belltown Inn Cheap",
+        "Hotels.7054.Hotel.Ksp",
+        "University Inn"
+      ],
+      "rejectedCandidates": [
+        "Hotels: generic_or_placeholder",
+        "Hotels: generic_or_placeholder",
+        "Hotels near Port of Seattle, United States.: too_many_words",
+        "of Coast Seattle Downtown Hotel by APA: too_many_words",
+        "10 Best Seattle Hotels, United States (From $153): too_many_words",
+        "The 10 best cheap hotels in Seattle, US: too_many_words",
+        "16 Best Hotels in Seattle. Hotels from $91/night: too_many_words",
+        "THE 10 BEST Cheap Hotels in Seattle (w/ 2026 ): too_many_words"
+      ],
+      "finalContenders": [
+        "Belltown Inn",
+        "Warwick Seattle Hotel",
+        "Belltown Inn Cheap",
+        "University Inn",
+        "The Edgewater Hotel",
+        "Hotels.7054.Hotel.Ksp",
+        "ChcI2YnB1cWV9fKwARoKL20vMDJ6NmcwchAB",
+        "Pioneer Square Kimpton Hotel Vintage",
+        "Four Points by Sheraton Downtown Seattle Center",
+        "Google hotels"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13225,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Belltown Inn"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "The Moore Hotel",
+        "Staypineapple"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Four Seasons Hotel Seattle",
+      "expectedTopContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "actualWinner": "Lotte Hotel Seattle",
+      "actualResults": [
+        "Lotte Hotel Seattle",
+        "Four Seasons Hotel Seattle",
+        "Populus Seattle",
+        "The Paramount Hotel",
+        "Kimpton Hotel Vintage Seattle"
+      ],
+      "retrievedSourceTitles": [
+        "Inn at the Market - Google hotels",
+        "The 10 best 5-star hotels in Seattle, US | Booking.com",
+        "10 Best Seattle Hotels, United States (From $153) - Booking.com",
+        "THE 10 BEST Cheap Hotels in Seattle (w/ 2026 Reviews) - Tripadvisor",
+        "Hotel Nexus Seattle - Google hotels",
+        "This 1907 Warehouse in Seattle Was Just Transformed Into a Luxury Hotel—and T+L Was the First to Stay",
+        "THE 10 BEST Hotels in Downtown Seattle 2026 - Tripadvisor",
+        "Top Luxury Hotels In Seattle Reddit Recommendations 1767647679 — KERUSSO"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Lotte Hotel Seattle",
+        "Four Seasons Hotel Seattle",
+        "Populus Seattle",
+        "The Paramount Hotel",
+        "Kimpton Hotel Vintage Seattle",
+        "Grand Hyatt Seattle"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 5733,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Four Seasons Hotel Seattle"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best pizza in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Lucali",
+      "expectedTopContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "actualWinner": "Juliana's",
+      "actualResults": [
+        "Juliana's",
+        "L'industrie Pizzeria",
+        "Grimaldi’s Pizzeria",
+        "Joe’s Pizza",
+        "Prince Street Pizza"
+      ],
+      "retrievedSourceTitles": [
+        "BROOKLYN PIZZERIA - Restaurant Reviews - Yelp",
+        "Best Pizza - Review - Williamsburg - New York - The Infatuation",
+        "Sottocasa Brooklyn: Best Pizza in Brooklyn, NY",
+        "Best Pizza Brooklyn, NY - Last Updated June 2026 - Yelp",
+        "Best NYC Pizza Guide + Google Maps List with 20+ Options",
+        "THE 10 BEST Pizza Places in Brooklyn (Updated 2026) - Tripadvisor",
+        "Best Pizza in Manhattan: An Analysis of 668 Pizza Places",
+        "The Best Pizzerias of New York City - Eater NY"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Juliana's",
+        "L'industrie Pizzeria",
+        "Grimaldi’s Pizzeria",
+        "Joe’s Pizza",
+        "Prince Street Pizza",
+        "Brooklyn Pizzeria",
+        "Sottocasa Brooklyn",
+        "Lucali"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 8805,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "L'Industrie"
+      ],
+      "localTop5Coverage": 0.25,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Lucali",
+        "Di Fara",
+        "Roberta's"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best sushi in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Sushi Nakazawa",
+      "expectedTopContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "actualWinner": "Sushi 35 west",
+      "actualResults": [
+        "Sushi 35 west",
+        "Rosella",
+        "Hatsuhana"
+      ],
+      "retrievedSourceTitles": [
+        "Affordable, Quality Sushi in Manhattan : r/FoodNYC - Reddit",
+        "Best affordable sushi Manhattan? : r/FoodNYC - Reddit",
+        "Best Sushi Restaurants in New York City, Manhattan | Eater NY",
+        "The Best Sushi in NYC—For Omakase, Handroll Counters, and ...",
+        "The Best Sushi In New York | Sushi Seven January 2026",
+        "The Best Sushi Spots to Splurge on This Fall - The Lo Times",
+        "The Best Sushi In NYC | Best In Town - YouTube",
+        "Wirecutter: New Product Reviews, Deals, and Buying Advice - ny times"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Sushi 35 west",
+        "Rosella",
+        "Hatsuhana"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 6881,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best kid-friendly restaurant in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Carmine's",
+      "expectedTopContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "actualWinner": "Parm 235",
+      "actualResults": [
+        "Parm 235",
+        "Maps",
+        "Right This Way",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan",
+        "Dinerschoice"
+      ],
+      "retrievedSourceTitles": [
+        "The Spots Of The Summer, NYC Edition - New York - The Infatuation",
+        "The Best Kid-Friendly Restaurants In NYC - New York - The Infatuation",
+        "The Resy Guide to Kid-Friendly Restaurants in New York — Resy | Right This Way",
+        "The Best Kid-Friendly Restaurants in NYC | Eater NY",
+        "THE 10 BEST Family Restaurants in New York City (UPDATED 2026)",
+        "Kid-friendly places to eat near the Empire State Building - New York City Forum - Tripadvisor",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan",
+        "A Guide To The “Super Cute Reasonably Priced Restaurant To Catch Up With A Few Friends” - New York - The Infatuation"
+      ],
+      "extractedCandidates": [
+        "Right This Way",
+        "Maps",
+        "New York City Forum",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan",
+        "Dinerschoice",
+        "Bar Ferdinando"
+      ],
+      "rejectedCandidates": [
+        "The Spots Of The Summer: generic_or_placeholder",
+        "Guides: does_not_look_like_named_place",
+        "The Best Kid-Friendly Restaurants In NYC: generic_or_placeholder",
+        "Guides: does_not_look_like_named_place",
+        "Best Kid Friendly Restaurants: generic_or_placeholder",
+        "The Guide to Kid-Friendly Restaurants in New York: too_many_words",
+        "Best Kid Friendly Restaurants: generic_or_placeholder",
+        "The Best Kid-Friendly Restaurants in NYC: generic_or_placeholder",
+        "Best Kid Friendly Restaurants: generic_or_placeholder",
+        "THE 10 BEST Family Restaurants in New York City ( ): too_many_words",
+        "Kid-friendly places to eat near the Empire State Building: too_many_words",
+        "S: empty_or_too_short",
+        "A Guide To The “Super Cute Reasonably Priced Restaurant To Catch Up With A Few Friends”: too_many_words",
+        "Guides: does_not_look_like_named_place",
+        "A Guide To The Super Cute Reasonably Priced Restaurant To Catch Up With A Few Friends: too_many_words"
+      ],
+      "finalContenders": [
+        "Parm 235",
+        "Maps",
+        "Right This Way",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan",
+        "Dinerschoice",
+        "New York City Forum",
+        "Black Tap"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 4085,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso martini in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "Dante",
+      "expectedTopContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "actualWinner": "Lindens Espresso Martini",
+      "actualResults": [
+        "Lindens Espresso Martini",
+        "Banter's espresso martini Dante",
+        "Dudley’s espresso martini",
+        "Hole in the Wall",
+        "Canto’s frozen espresso martini"
+      ],
+      "retrievedSourceTitles": [
+        "Announcing the best espresso martini (I could find) in NYC! - Medium",
+        "Where is the best espresso martini in NYC? - Reddit",
+        "I spent the last few months obsessively ranking espresso martinis ...",
+        "The 13 Best Espresso Martinis in NYC to Kick-Start Your Evening - PureWow",
+        "Best Espresso Martinis in NYC: Top Spots You Can't Miss",
+        "Best Espresso Martinis in NYC",
+        "Frozen Espresso Martini Reviews in NYC: A Sweet Indulgence",
+        "14 NYC Bars to Visit for a Top-Notch Espresso Martini This Winter | Eater"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Lindens Espresso Martini",
+        "Banter's espresso martini Dante",
+        "Dudley’s espresso martini",
+        "Hole in the Wall",
+        "Canto’s frozen espresso martini"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7021,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Dante"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best golf course on Long Island",
+      "category": "local_recommendation",
+      "expectedWinner": "Bethpage Black",
+      "expectedTopContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "actualWinner": "All You SHOULD Know Before ...",
+      "actualResults": [
+        "All You SHOULD Know Before ...",
+        "Royal Portrush Golf Club",
+        "Courses",
+        "Golf Digest",
+        "Metropolitan Golf Association"
+      ],
+      "retrievedSourceTitles": [
+        "Long Island National Golf Club - All You SHOULD Know Before ...",
+        "THE 15 BEST Long Island Golf Courses (2026) - Tripadvisor",
+        "Rankings | GolfCourseGurus",
+        "Long Island NY courses : r/golf - Reddit",
+        "The best golf courses on Long Island | Golf Courses | Golf Digest",
+        "Met Area Courses Well Represented in Golf Digest’s “Top 100” - Metropolitan Golf Association",
+        "Bethpage, Tallgrass, Montauk Downs stay on top of Golfweek’s Best Courses list – Golf on Long Island",
+        "Golfweek ranks Bethpage Black #1 in its annual Best Municipal Courses list – Golf on Long Island"
+      ],
+      "extractedCandidates": [
+        "All You SHOULD Know Before ...",
+        "Montauk Downs State Park Golf",
+        "Course",
+        "Golfdigesttop100",
+        "Royal Portrush Golf Club",
+        "Golf Digest's Top",
+        "Courses",
+        "Golf Digest",
+        "Metropolitan Golf Association",
+        "Met Area Course"
+      ],
+      "rejectedCandidates": [
+        "Long Island National Golf Club: generic_or_placeholder",
+        "THE 15 BEST Long Island Golf Courses (2026): too_many_words",
+        "Golf Courses: generic_or_placeholder",
+        "Rankings: generic_or_placeholder",
+        "Golf Course Gurus: generic_or_placeholder",
+        "Long Island NY courses: generic_or_placeholder",
+        "r/golf: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1j3do8e: numeric_slug",
+        "Long Island Courses: generic_or_placeholder",
+        "The best golf courses on Long Island: too_many_words",
+        "Golf Courses: generic_or_placeholder",
+        "Guides: does_not_look_like_named_place",
+        "The Best Golf Courses On Long Island Shinnecock Hills Bethpage Black: too_many_words",
+        "Met Area Courses Well Represented in Golf Digest’s “Top 100”: too_many_words",
+        "Met Area Courses Well Represented In Golf Digests Top 100: too_many_words",
+        "Bethpage, Tallgrass, Montauk Downs stay on top of Golfweek’s Best Courses list: too_many_words",
+        "Golf on Long Island: generic_or_placeholder",
+        "Bethpage Tallgrass Montauk Downs Stay On Top Of Golfweek S Best Courses List: too_many_words",
+        "Shoreham's Tallgrass Golf Course: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "All You SHOULD Know Before ...",
+        "Royal Portrush Golf Club",
+        "Courses",
+        "Golf Digest",
+        "Metropolitan Golf Association",
+        "Met Area Course",
+        "Course",
+        "Golfdigesttop100",
+        "Golf Digest's Top"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 1951,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best restaurant in Massapequa NY",
+      "category": "local_recommendation",
+      "expectedWinner": "Big Daddy's",
+      "expectedTopContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "actualWinner": "Maps",
+      "actualResults": [
+        "Maps",
+        "Snaps American Bistro",
+        "The Good Life",
+        "Google's",
+        "The 10 Best Restaurants in Massapequa"
+      ],
+      "retrievedSourceTitles": [
+        "Restaurants near me - Google Maps",
+        "TOP 10 BEST Restaurants near Massapequa, NY 11758 - Yelp",
+        "The 10 Best Restaurants Near Me in Massapequa | OpenTable",
+        "THE 10 BEST Restaurants in Massapequa (Updated June 2026)",
+        "TOP 10 BEST Restaurants near East Massapequa, NY - Yelp",
+        "Yelp's Top 10 Restaurants in Massapequa: Do You Agree? - Patch",
+        "How To Find Top Rated Places Using Reviews in Google Maps 2025",
+        "Best Restaurants in Hell’s Kitchen, According to Eater Editors | Eater NY"
+      ],
+      "extractedCandidates": [
+        "Maps",
+        "Google's",
+        "The 10 Best Restaurants in Massapequa",
+        "Nearby",
+        "Popei's Clam Bar",
+        "Brownstones Coffee Amityville",
+        "Snaps American Bistro",
+        "Watch",
+        "Maps",
+        "Chi Restaurant & Bar Over"
+      ],
+      "rejectedCandidates": [
+        "Restaurants: generic_or_placeholder",
+        "Google Maps: generic_or_placeholder",
+        "Search: does_not_look_like_named_place",
+        "Restaurants Near Me: generic_or_placeholder",
+        "TOP 10 BEST Restaurants near Massapequa, NY 11758: too_many_words",
+        "Search: does_not_look_like_named_place",
+        "Restaurants Near Me: generic_or_placeholder",
+        "THE 10 BEST Restaurants in Massapequa ( ): too_many_words",
+        "TOP 10 BEST Restaurants near East Massapequa, NY: too_many_words",
+        "Search: does_not_look_like_named_place",
+        "'s Top 10 Restaurants in Massapequa: Do You Agree?: too_many_words",
+        "Yelps Top 10 Restaurants In Do You Agree: too_many_words",
+        "How To Find Top Rated Places Using in Google Maps 2025: too_many_words",
+        "Best Restaurants in Hell’s Kitchen, According to Editors: too_many_words",
+        "Best Restaurants Hells Kitchen: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Maps",
+        "Snaps American Bistro",
+        "The Good Life",
+        "Google's",
+        "The 10 Best Restaurants in Massapequa",
+        "Nearby",
+        "Brownstones Coffee Amityville",
+        "Watch"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 2808,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best ramen in Los Angeles",
+      "category": "local_recommendation",
+      "expectedWinner": "Tsujita LA Artisan Noodle",
+      "expectedTopContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "actualWinner": "Tsujita LA",
+      "actualResults": [
+        "Tsujita LA",
+        "Ippudo",
+        "Ramen Nagi",
+        "Tatsu Ramen",
+        "Daikokuya"
+      ],
+      "retrievedSourceTitles": [
+        "The 20 Best Ramen Spots In Los Angeles - Los Angeles - The Infatuation",
+        "TOP 10 BEST Ramen in Los Angeles, CA - Updated 2026 - Yelp",
+        "THE BEST Ramen in Los Angeles (Updated June 2026) - Tripadvisor",
+        "What is the best ramen shop in Los Angeles? - Quora",
+        "Best Ramen Shops In LA? - Reddit",
+        "BEST Ramen in LOS ANGELES? | Tsujita LA : r/FoodLosAngeles",
+        "THE BEST Ramen I've Had in all Los Angeles!",
+        "Best Ramen in Los Angeles: Tsujita LA v. Daikokuya - Travel Caffeine"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Tsujita LA",
+        "Ippudo",
+        "Ramen Nagi",
+        "Tatsu Ramen",
+        "Daikokuya",
+        "Josui Ramen",
+        "Saikai Ramen",
+        "Menya Tigre",
+        "Tsujita LA Artisan Noodle"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7339,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya"
+      ],
+      "localTop5Coverage": 0.6666666666666666,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Men Oh Tokushima"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best tacos in Austin",
+      "category": "local_recommendation",
+      "expectedWinner": "Veracruz All Natural",
+      "expectedTopContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "actualWinner": "Discada",
+      "actualResults": [
+        "Discada",
+        "Cuantos Tacos",
+        "Taqueria Chapala",
+        "Torchy’s Tacos",
+        "Comedor"
+      ],
+      "retrievedSourceTitles": [
+        "10 de 10 Taqueria makes a solid argument for best tacos in Austin",
+        "Here is an *actual* Q/A for the best *authentic* tacos in Austin. I'll go ...",
+        "Your Guide to the Best Tacos in Austin, TX | Austin Food Adventures",
+        "The Best Tacos in Austin, According to an Expert - City Cast Austin",
+        "The Austin Taco Guide: Ranking Best to Worst - Miles Less Traveled",
+        "23 Best Tacos in Austin - Female Foodie",
+        "The Best Tacos in Austin - MICHELIN Guide",
+        "8 Austin restaurants make Texas Monthly's '50 Best Tacos in Texas' list"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Discada",
+        "Cuantos Tacos",
+        "Taqueria Chapala",
+        "Torchy’s Tacos",
+        "Comedor",
+        "Taco Guerrero",
+        "Casa Moreno’s"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12532,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Cuantos Tacos"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Veracruz All Natural",
+        "Taco Joint"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best cocktail bar in Chicago",
+      "category": "local_recommendation",
+      "expectedWinner": "The Violet Hour",
+      "expectedTopContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "actualWinner": "Chicago",
+      "actualResults": [
+        "Chicago",
+        "Cocktail Bars Chicago",
+        "Chicago’s Best Cocktail Bars, Mapped",
+        "Maps",
+        "Chicago Bars, & Bar Events"
+      ],
+      "retrievedSourceTitles": [
+        "The 23 Best Cocktail Bars In Chicago - The Infatuation",
+        "Chicago’s Best Cocktail Bars, Mapped | Eater Chicago",
+        "Bars | Chicago Bars, Reviews & Bar Events | Time Out Chicago",
+        "King Of Cups · Craft Cocktail Lounge | Lincoln Park | Chicago",
+        "The Eater Chicago Cocktail Heatmap: Where to Drink Right Now, April 2018 – Lakeview East Chamber of Commerce",
+        "THE BEST 10 COCKTAIL BARS IN CHICAGO, IL - Yelp",
+        "MACHINE COCKTAIL BAR - Updated June 2026 - 187 Photos & 39 ...",
+        "The 24 Best Bars In Chicago - Chicago - The Infatuation"
+      ],
+      "extractedCandidates": [
+        "Chicago",
+        "Cocktail Bars Chicago",
+        "Chicago’s Best Cocktail Bars, Mapped",
+        "Maps",
+        "Chicago Bars, & Bar Events",
+        "Chicago",
+        "King Of Cups",
+        "Craft Cocktail Lounge",
+        "Lincoln Park",
+        "Chicago",
+        "Lakeview East Chamber of Commerce",
+        "Hotel Zachary Wrigleyville's",
+        "MACHINE COCKTAIL BAR",
+        "Machine Cocktail Bar Chicago",
+        "The 24 Best Bars In Chicago",
+        "Chicago"
+      ],
+      "rejectedCandidates": [
+        "The 23 Best Cocktail Bars In Chicago: too_many_words",
+        "Guides: does_not_look_like_named_place",
+        "Best Chicago Cocktail Bars: generic_or_placeholder",
+        "Bars: generic_or_placeholder",
+        "The Chicago Cocktail Heatmap: Where to Drink Right Now, April 2018: too_many_words",
+        "The Eater Chicago Cocktail Heatmap Where To Drink Right Now April 2018: too_many_words",
+        "THE BEST 10 COCKTAIL BARS IN CHICAGO, IL: too_many_words",
+        "Search: does_not_look_like_named_place",
+        "187 & 39 ...: generic_or_placeholder",
+        "Guides: does_not_look_like_named_place",
+        "Best Bars In Chicago: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Chicago",
+        "Cocktail Bars Chicago",
+        "Chicago’s Best Cocktail Bars, Mapped",
+        "Maps",
+        "Chicago Bars, & Bar Events",
+        "Lakeview East Chamber of Commerce",
+        "The Aviary",
+        "MACHINE COCKTAIL BAR",
+        "Machine Cocktail Bar Chicago",
+        "King Of Cups"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 2698,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best brunch in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Sunday in Brooklyn",
+      "expectedTopContenders": [
+        "Sunday in Brooklyn",
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "actualWinner": "SUNDAY IN BROOKLYN",
+      "actualResults": [
+        "SUNDAY IN BROOKLYN",
+        "Thai Diner Thai Diner",
+        "NOMO Kitchen",
+        "Maps",
+        "New American Restaurant in Williamsburg"
+      ],
+      "retrievedSourceTitles": [
+        "Sunday Brunch (Near Prospect Park) : r/Brooklyn - Reddit",
+        "Brunch! : r/Brooklyn - Reddit",
+        "The 21 best brunch spots in Brooklyn - Time Out",
+        "15 best breakfast and weekend brunch spots in Brooklyn, NY",
+        "THE BEST Brunch in Brooklyn (UPDATED 2026) - Tripadvisor",
+        "Diners' Choice: Great for brunch restaurants in Brooklyn",
+        "80 Best Brunch Restaurants in Downtown Brooklyn | OpenTable",
+        "Best Brunch in Brooklyn: Good Brunch Spots in Brooklyn Neighborhoods - Thrillist",
+        "Best Brunch Brooklyn, NY - Last Updated June 2026 - Yelp",
+        "Top 10 Best Breakfast & Brunch Near Brooklyn, New York - Yelp",
+        "Best Brunch Restaurants in New York City, According to Eater Editors | Eater NY",
+        "The Best Restaurants in Brooklyn Heights | Eater NY"
+      ],
+      "extractedCandidates": [
+        "Sunday Brunch (Near Prospect Park)",
+        "Sunday Brunch Near Prospect Park",
+        "Cheryl's and Tom's",
+        "Gertrude's",
+        "Patti Ann's",
+        "Green. Walter's",
+        "Newyork",
+        "Inga's Bar Brooklyn Heights",
+        "Blog",
+        "Dinerschoice",
+        "It's",
+        "Features",
+        "Cecconi's Dumbo",
+        "NOMO Kitchen",
+        "The Butcher's Daughter",
+        "Emma's Torch",
+        "Carroll Gardens Emma's Torch The",
+        "Last",
+        "Milk & Honey Cafe",
+        "Breakfast Brunch"
+      ],
+      "rejectedCandidates": [
+        "r/Brooklyn: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1k08kk3: numeric_slug",
+        "Brunch!: generic_or_placeholder",
+        "r/Brooklyn: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1q2lj7n: numeric_slug",
+        "The 21 best brunch spots in Brooklyn: too_many_words",
+        "Restaurants: generic_or_placeholder",
+        "Best Brunch In: generic_or_placeholder",
+        "15 best breakfast and weekend brunch spots in Brooklyn, NY: too_many_words",
+        "15 Best Breakfast And Weekend Brunch Spots In: too_many_words",
+        "THE BEST Brunch in Brooklyn ( ): too_many_words",
+        "Diners' Choice: Great for brunch restaurants in Brooklyn: too_many_words",
+        "S: empty_or_too_short",
+        "80 Best Brunch Restaurants in Downtown Brooklyn: too_many_words",
+        "Best Brunch Restaurants Downtown: generic_or_placeholder",
+        "Best Brunch in Brooklyn: Good Brunch Spots in Brooklyn Neighborhoods: too_many_words",
+        "Eat: does_not_look_like_named_place",
+        "Best Brunch In: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "SUNDAY IN BROOKLYN",
+        "Thai Diner Thai Diner",
+        "NOMO Kitchen",
+        "Maps",
+        "New American Restaurant in Williamsburg",
+        "Newyork",
+        "Emma's Torch",
+        "Carroll Gardens Emma's Torch The",
+        "Dinerschoice",
+        "It's"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9321,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Sunday in Brooklyn"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best bakery in San Francisco",
+      "category": "local_recommendation",
+      "expectedWinner": "Tartine Bakery",
+      "expectedTopContenders": [
+        "Tartine Bakery",
+        "B. Patisserie",
+        "Arsicault Bakery"
+      ],
+      "actualWinner": "B PATISSERIE",
+      "actualResults": [
+        "B PATISSERIE",
+        "Πριν συνεχίσετε στους Χάρτες Google",
+        "Jane The Bakery",
+        "Our Story",
+        "[PDF] Kings Bakery"
+      ],
+      "retrievedSourceTitles": [
+        "Best Bakery/Cafe recommendations? : r/AskSF - Reddit",
+        "Recommended bakeries? : r/AskSF - Reddit",
+        "The 18 Best Bakeries in San Francisco - Eater SF",
+        "The 16 Best Cakes in San Francisco | Eater SF",
+        "The 25 Best Bakeries In SF - San Francisco - The Infatuation",
+        "How to Spend a Big Fat Weekend Eating Pastries in San Francisco",
+        "THE BEST 10 Bakeries in SAN FRANCISCO, CA - Yelp",
+        "B PATISSERIE - Updated June 2026 - 8091 Photos & 3780 Reviews",
+        "Best Cake San Francisco, CA - Last Updated June 2026 - Yelp",
+        "What is your favorite bakery in San Francisco, and how did ... - Quora",
+        "Insider's Guide to the Best Bakeries in San Francisco",
+        "Jane The Bakery | Jane in San Francisco, CA"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "B PATISSERIE",
+        "Πριν συνεχίσετε στους Χάρτες Google",
+        "Jane The Bakery",
+        "Our Story",
+        "[PDF] Kings Bakery"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9349,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "B. Patisserie"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Tartine Bakery",
+        "Arsicault Bakery"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best attractions in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Space Needle",
+      "expectedTopContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "actualWinner": "Waterfall Garden",
+      "actualResults": [
+        "Waterfall Garden",
+        "Golden Gardens Park",
+        "Kerry Park",
+        "Seattle Aquarium",
+        "Gas Works Park"
+      ],
+      "retrievedSourceTitles": [
+        "The Most Reviewed Place On Google Maps For The 25 Largest US Cities hugequiz",
+        "Walk to Seattle downtown 3",
+        "THE 10 BEST Seattle Tours & Excursions (2026) - with Reviews",
+        "TOP 10 BEST Tourist Attractions in Seattle, WA - Updated 2026 - Yelp",
+        "Google Maps says we love these 50 Seattle-area places in the summer | The Seattle Times",
+        "THE 15 BEST Things to Do in Seattle (2026) - Must-See Attractions",
+        "25 Great Things To Do In Seattle If You’re Visiting For The First Time - Paper Planes and Caramel Waffles",
+        "THE 10 BEST Things to Do in Downtown (2026) - Tripadvisor"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Waterfall Garden",
+        "Golden Gardens Park",
+        "Kerry Park",
+        "Seattle Aquarium",
+        "Gas Works Park",
+        "Beneath The Streets Underground History Tour",
+        "Washington State Ferries",
+        "Seattle's Original Guided Harbor"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 18403,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best gyms in Williamsburg Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Equinox Williamsburg",
+      "expectedTopContenders": [
+        "Equinox Williamsburg",
+        "Grind House",
+        "Vital Brooklyn"
+      ],
+      "actualWinner": "VITAL Brooklyn",
+      "actualResults": [
+        "VITAL Brooklyn",
+        "Planet Fitness",
+        "Grind House",
+        "Williamsburg Fitness Club",
+        "Chalk"
+      ],
+      "retrievedSourceTitles": [
+        "Brooklyn Athletic Club - Gym in Williamsburg, New York | Reviews, Photos & Information on Postcard",
+        "Planet Fitness Williamsburg - North Side, Brooklyn, NY 11211 - Yelp",
+        "The best gyms and health clubs in New York - NYC - Time Out",
+        "Do you like your gym? : r/williamsburg - Reddit",
+        "best gyms in the area? : r/williamsburg - Reddit",
+        "Arlo Williamsburg - Google hotels",
+        "Beyond the Desk: Brooklyn's Top Gyms for the Modern Professional",
+        "Williamsburg Fitness Club"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "VITAL Brooklyn",
+        "Planet Fitness",
+        "Grind House",
+        "Williamsburg Fitness Club",
+        "Chalk",
+        "Brooklyn Athletic Club",
+        "Fitness Center at Mindspace Williamsburg"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7055,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Grind House",
+        "Vital Brooklyn"
+      ],
+      "localTop5Coverage": 0.6666666666666666,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Equinox Williamsburg"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best dentists in Austin TX",
+      "category": "local_recommendation",
+      "expectedWinner": "Swish Dental",
+      "expectedTopContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "actualWinner": "Dr. Matthew Heck, DDS",
+      "actualResults": [
+        "Dr. Matthew Heck, DDS",
+        "HIGH POINT DENTISTRY",
+        "NORTH AUSTIN DENTISTRY",
+        "38th Street Dental: Dentist Austin, TX",
+        "Austin Dentist Office"
+      ],
+      "retrievedSourceTitles": [
+        "10 Best Dentists in Austin Texas - TopRatedDentist.com",
+        "Dentists in Austin, TX | TexasDentalHub",
+        "Top 10 Best Dentists in Austin, TX - Celebrate Dental & Braces",
+        "20 Best Dentists Near Me in Austin, TX | Opencare.com",
+        "Austin Dentist | 5th Street | BLVD Dentistry & Orthodontics",
+        "38th Street Dental: Dentist Austin, TX",
+        "Austin Dentist Office - 38th Street Dental",
+        "Best Dentists In Austin, TX - Top Rated Dental Clinics",
+        "20 Best Dentists Near Austin, TX - Healthgrades",
+        "Dr. Matthew Heck, DDS - 33 Reviews - Austin, TX | Healthgrades",
+        "Hamilton Dental: Dentist in Austin, TX",
+        "The Best Dentists in Austin, According to Locals"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Dr. Matthew Heck, DDS",
+        "HIGH POINT DENTISTRY",
+        "NORTH AUSTIN DENTISTRY",
+        "38th Street Dental: Dentist Austin, TX",
+        "Austin Dentist Office"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9423,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best plumbers in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "O'Neill Plumbing",
+      "expectedTopContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "actualWinner": "O'Neill Plumbing",
+      "actualResults": [
+        "O'Neill Plumbing",
+        "Yahoo Local",
+        "Article",
+        "Mike's Plumbing & Drain Cleaning",
+        "Mike's"
+      ],
+      "retrievedSourceTitles": [
+        "Best plumbers in Seattle, Wash. - Yahoo Local",
+        "Seattle Plumbing Services, 24/7 Emergency Plumber",
+        "Best Plumbing Companies in Seattle, WA",
+        "Topic: Plumber recommendation - West Seattle Blog...",
+        "O'Neill Plumbing | Trusted West Seattle Plumbers Since 1917",
+        "Leave A Review | O'Neill Plumbing",
+        "How to Optimize Your Google Business Profile to Dominate Local Plumbing Searches and Get More Calls | Seattle Organic SEO",
+        "Best Plumbing: Seattle WA Plumbing, Sewer & Water Heater Company",
+        "The Truth About Google Map Rankings for Plumbers",
+        "Can anyone recommend a good plumber in King County who ...",
+        "I left a negative review, and the business owner removed it? What can I do?",
+        "Find The Best Plumbers In Seattle"
+      ],
+      "extractedCandidates": [
+        "Yahoo Local",
+        "Article",
+        "Mike's Plumbing & Drain Cleaning",
+        "Mike's",
+        "Seattle Plumbing Services, 24/7 Emergency Plumber",
+        "Bee's Plumbing & Heating",
+        "Area Membership Careers Bee's Plumbing",
+        "Membership Careers Bee's Plumbing and",
+        "Expert Plumbing Services",
+        "Plumbers",
+        "West Seattle Blog...",
+        "Forums 2",
+        "Topic",
+        "Plumber Recommendation",
+        "Rex Participant O'Neil Plumbing",
+        "Participant Joe the Plumber",
+        "O'Neill Plumbing",
+        "Trusted West Seattle Plumbers Since 1917",
+        "Homepage",
+        "O'Neill's"
+      ],
+      "rejectedCandidates": [
+        "Best plumbers in Seattle, Wash.: generic_or_placeholder",
+        "Best Plumbing Companies Washington 110000121: generic_or_placeholder",
+        "Best Plumbing Companies in Seattle, WA: generic_or_placeholder",
+        "Best Pick Certified Plumbing: generic_or_placeholder",
+        "Topic: Plumber recommendation: generic_or_placeholder",
+        "How to Optimize Your Google Business Profile to Dominate Local Plumbing Searches and Get More Calls: too_many_words",
+        "Best Plumbing: Seattle WA Plumbing, Sewer & Water Heater Company: too_many_words",
+        "Best Plumbing: generic_or_placeholder",
+        "The Truth About Google Map Rankings for Plumbers: too_many_words",
+        "Can anyone recommend a good plumber in King County who ...: too_many_words",
+        "Comments: generic_or_placeholder",
+        "1j3pbue: numeric_slug",
+        "Can Anyone Recommend A Good Plumber In King: too_many_words",
+        "I left a negative , and the business owner removed it? What can I do?: too_many_words",
+        "Thread: generic_or_placeholder",
+        "I Left A Negative Review And The Business Owner Removed It What Can I Do: too_many_words",
+        "10 Best Plumbers in Seattle, WA 2026: too_many_words",
+        "Cp: empty_or_too_short",
+        "TOP 10 BEST Plumbers in Seattle, WA: too_many_words",
+        "Search: does_not_look_like_named_place"
+      ],
+      "finalContenders": [
+        "O'Neill Plumbing",
+        "Yahoo Local",
+        "Article",
+        "Mike's Plumbing & Drain Cleaning",
+        "Mike's",
+        "Seattle Plumbing Services, 24/7 Emergency Plumber",
+        "Seattle Organic SEO",
+        "Seattle's Choice",
+        "Plumbing Services",
+        "Choose Seattle's Most Trusted"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9622,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "O'Neill Plumbing"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "missingObviousContenders": [
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    }
+  ]
+}

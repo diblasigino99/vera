@@ -75,10 +75,10 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
       <form
         onSubmit={onSubmit}
         className={cn(
-          "search-glow mx-auto flex w-full items-center gap-3 border border-[#E6E6EA] bg-white transition duration-500 ease-out hover:-translate-y-[1px] hover:border-[#DCDDE2] hover:shadow-[0_14px_34px_rgba(17,17,20,0.05)] focus-within:border-transparent",
+          "search-glow mx-auto flex w-full items-center gap-3 border border-[#E4E4E8] bg-white transition duration-500 ease-out hover:-translate-y-[1px] hover:border-[#D8D9DE] hover:shadow-[0_16px_38px_rgba(17,17,20,0.055)] focus-within:border-transparent focus-within:shadow-[0_18px_48px_rgba(17,17,20,0.075)]",
           compact
             ? "max-w-[57.6rem] rounded-[1.65rem] px-5 py-3.5 shadow-[0_16px_48px_rgba(17,17,20,0.05)]"
-            : "max-w-[36.75rem] rounded-[1.55rem] px-[1.125rem] py-3 shadow-[0_12px_34px_rgba(17,17,20,0.035)]"
+            : "max-w-[37rem] rounded-[1.58rem] px-[1.1875rem] py-[0.85rem] shadow-[0_13px_36px_rgba(17,17,20,0.04)]"
         )}
         data-active={Boolean(query.trim())}
         data-loading={isPending || isSubmittingSearch}
@@ -90,7 +90,7 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
           onClick={onIconClick}
           className={cn(
             "grid shrink-0 place-items-center rounded-full text-[#7A7A82] transition duration-300 hover:bg-[#F6F6F8] hover:text-[#111114] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D7DCE4] disabled:cursor-default disabled:opacity-70",
-            compact ? "h-8 w-8" : "h-7 w-7"
+            compact ? "h-8 w-8" : "h-[1.85rem] w-[1.85rem]"
           )}
         >
           <Search className={cn(compact ? "h-[1.08rem] w-[1.08rem]" : "h-[1rem] w-[1rem]")} strokeWidth={1.65} />
@@ -114,7 +114,7 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
             placeholder={showVisualPlaceholder ? "" : activePlaceholder}
             className={cn(
               "w-full cursor-text bg-transparent font-normal leading-none tracking-[0.002em] text-[#111111] caret-[#111114] outline-none transition duration-300 placeholder:font-normal placeholder:text-[#9D9DA4] placeholder:transition-colors focus:placeholder:text-[#C4C4CA]",
-              compact ? "h-8 text-xl" : "h-7 text-base"
+              compact ? "h-8 text-xl" : "h-[1.85rem] text-base"
             )}
           />
         </div>

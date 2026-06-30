@@ -1,0 +1,5681 @@
+{
+  "timestamp": "2026-06-26T15:53:14.037Z",
+  "commitHash": "8da93ec",
+  "baseUrl": "http://127.0.0.1:3117",
+  "benchmarkCount": 21,
+  "completedCount": 16,
+  "metrics": {
+    "winnerAccuracy": 0,
+    "top3Accuracy": 0.14285714285714285,
+    "contenderAccuracy": 0.13636363636363635
+  },
+  "counts": {
+    "winnerHits": 0,
+    "top3Hits": 3,
+    "contenderHits": 9,
+    "contenderSlots": 66,
+    "errors": 5
+  },
+  "byCategory": {
+    "local_recommendation": {
+      "benchmarks": 21,
+      "winnerAccuracy": 0,
+      "top3Accuracy": 0.14285714285714285,
+      "contenderAccuracy": 0.13636363636363635,
+      "top5Coverage": 0.1388888888888889,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "localTimeouts": 4,
+      "emptyResults": 6,
+      "coverageScore": 0.1388888888888889
+    }
+  },
+  "failures": [
+    {
+      "query": "best restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Lilia",
+      "expectedTopContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "actualWinner": "The Butcher's Daughter",
+      "actualResults": [
+        "The Butcher's Daughter",
+        "Captain George's Seafood",
+        "Balera",
+        "Seafood"
+      ],
+      "retrievedSourceTitles": [
+        "Colonial Williamsburg Feeds a Historic Moment - Eater",
+        "30 Restaurants That Define Williamsburg Right Now - NY Eater",
+        "The Best New Restaurants in Brooklyn, According to Eater Editors",
+        "CAPTAIN GEORGE’S SEAFOOD RESTAURANT - Updated February 2026 - 429 Photos & 757 Reviews - 5363 Richmond Rd, Williamsburg, Virginia - Seafood - Restaurant Reviews - Phone Number - Menu - Yelp",
+        "The 10 Best Restaurants Near Me in Williamsburg, New York City | OpenTable",
+        "The Best Food Near Me in Williamsburg, New York City - OpenTable",
+        "The 27 Best Restaurants In Williamsburg - New York - The Infatuation",
+        "THE 10 BEST Restaurants in Williamsburg (Updated June 2026)"
+      ],
+      "extractedCandidates": [
+        "At Christiana Campbell's Tavern",
+        "CAPTAIN GEORGE'S SEAFOOD",
+        "Captain Georges Seafood Restaurant 5",
+        "Seafood",
+        "Phone Number",
+        "The Butcher's Daughter",
+        "The Butcher's Daughter"
+      ],
+      "rejectedCandidates": [
+        "Colonial Williamsburg Feeds a Historic Moment: article_title_fragment",
+        "Colonial Food Taverns Virginia America 250: article_title_fragment",
+        "30 Restaurants That Define Williamsburg Right Now: too_many_words",
+        "NY: empty_or_too_short",
+        "30 Restaurants That Define Right Now Eater: too_many_words",
+        "The Best New Restaurants in Brooklyn, According to Editors: too_many_words",
+        "Best New Restaurants Heatmap: generic_or_placeholder",
+        "429 & 757: generic_or_placeholder",
+        "5363 Richmond Rd: generic_or_placeholder",
+        "The 10 Best Restaurants in Williamsburg: article_title_fragment",
+        "Restaurants Near Me: generic_or_placeholder",
+        "The Best Food in Williamsburg: generic_or_placeholder",
+        "Food Near Me: generic_or_placeholder",
+        "The 27 Best Restaurants In Williamsburg: article_title_fragment",
+        "New York: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Best Restaurants: generic_or_placeholder",
+        "THE 10 BEST Restaurants in Williamsburg ( ): too_many_words"
+      ],
+      "finalContenders": [
+        "The Butcher's Daughter",
+        "Captain George's Seafood",
+        "Balera",
+        "Seafood"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "The Butcher's Daughter",
+          "score": 24.5,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": 24.5,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 8.8,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 1.2,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Captain George's Seafood",
+          "score": 8.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 8.2,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": -12,
+          "sourceAuthorityScore": 6.6,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 2.5
+        },
+        {
+          "rank": 3,
+          "name": "Balera",
+          "score": 0,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "ny.eater.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 0,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Seafood",
+          "score": -2.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -2.2,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": -12,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": true,
+      "elapsedMs": 408,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best first date restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Maison Premiere",
+      "expectedTopContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "actualWinner": "Ammazzacaffè",
+      "actualResults": [
+        "Ammazzacaffè",
+        "Blackbird",
+        "Have & Meyer",
+        "DON CHIDO",
+        "Opus 9 Steakhouse"
+      ],
+      "retrievedSourceTitles": [
+        "Best First Date Spots near Williamsburg - South Side, Brooklyn, NY ...",
+        "The Best Food Near Me in Williamsburg, New York City - Reservations, Experiences, Takeout & Delivery | OpenTable",
+        "33 Best Restaurants that are Worth The Drive in Colonial Williamsburg | OpenTable",
+        "The 10 Best Romantic Restaurants in Williamsburg Brooklyn",
+        "13 Best Restaurants in Williamsburg, Brooklyn to Book Now",
+        "The Best First Date Spots In NYC - New York - The Infatuation",
+        "The 26 Best NYC Restaurants For Date Night - New York - The Infatuation",
+        "142 Best Date Night Restaurants in Colonial Williamsburg | OpenTable"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Ammazzacaffè",
+        "Blackbird",
+        "Have & Meyer",
+        "DON CHIDO",
+        "Opus 9 Steakhouse"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Ammazzacaffè",
+          "score": 9.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 9.1,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Blackbird",
+          "score": -2.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": -2.7,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Have & Meyer",
+          "score": -6.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -6.4,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "DON CHIDO",
+          "score": -12.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -12.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": -20,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Opus 9 Steakhouse",
+          "score": -14.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": -14.6,
+          "categoryMatchScore": 0,
+          "locationMatchScore": -20,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12148,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "La Cabra",
+      "expectedTopContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "actualWinner": "Coffee Fanatics",
+      "actualResults": [
+        "Coffee Fanatics",
+        "Joe the Art of Coffee",
+        "Grumpy's",
+        "Morning Star Cafe at",
+        "Amazing Single Roaster Shops"
+      ],
+      "retrievedSourceTitles": [
+        "What's the best coffee in nyc? : r/AskNYC - Reddit",
+        "r/pourover on Reddit: Amazing cafés and coffees to try in NYC",
+        "A Coffee Snob's Guide to the Best Cafes in NYC - Backseat Driver",
+        "Best coffee shops to work from in New York City and Brooklyn (with downloadable Google Map) — Branding + Web Design + Social Media | HIYO DESIGN",
+        "10 of the Best Coffee Shops to Visit in NYC - Kalee Fam",
+        "AESTHETIC NYC cafes you need to pin on your Google maps ☕️🍰",
+        "The Best NYC Coffee Shops With Wifi For Getting Work Done - New York - The Infatuation",
+        "Must-Visit Coffee Shops in New York City — Travel & Brew",
+        "Best Specialty Coffees in New York — Drips Of God",
+        "The Ten Best Third Wave Coffee Shops in New York City",
+        "The Best Coffee Shops in New York City, According to Eater Editors",
+        "The Best Coffee Shop Near Every Manhattan Subway Stop - New York City Forum - Tripadvisor"
+      ],
+      "extractedCandidates": [
+        "What's the best coffee in nyc?",
+        "Joe Coffee",
+        "Morning Star Cafe at",
+        "Blue Bottle Coffee and",
+        "Amazing Single Roaster Shops",
+        "Backseat Driver",
+        "Sey's",
+        "HIYO DESIGN",
+        "Kalee Fam",
+        "Bakery",
+        "Travel & Brew",
+        "Journal",
+        "Mustvisitcoffeeshopsinnewyorkcity",
+        "New York. It's",
+        "Drips Of God",
+        "Partners Coffee",
+        "Toby's Estate",
+        "Sey Coffee",
+        "Coffee Fanatics",
+        "Grumpy's"
+      ],
+      "rejectedCandidates": [
+        "r/AskNYC: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "164i68o: numeric_slug",
+        "r/pourover on: does_not_look_like_named_place",
+        "Comments: generic_or_placeholder",
+        "1q7gyps: numeric_slug",
+        "Amazing CaféS And Coffees To Try In: too_many_words",
+        "A Coffee Snob's Guide to the Best Cafes in NYC: too_many_words",
+        "Best coffee shops to work from in New York City and Brooklyn (with downloadable Google Map): too_many_words",
+        "Branding + Web Design + Social Media: too_many_words",
+        "Blog: generic_or_placeholder",
+        "Coffee Shops: generic_or_placeholder",
+        "10 of the Best Coffee Shops to Visit in NYC: too_many_words",
+        "Coffee: generic_or_placeholder",
+        "AESTHETIC NYC cafes you need to pin on your Google maps ☕️🍰: too_many_words",
+        "Watch: generic_or_placeholder",
+        "The Best NYC Coffee Shops With Wifi For Getting Work Done: too_many_words",
+        "New York: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Coffee Shops For Doing Work: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Coffee Fanatics",
+        "Joe the Art of Coffee",
+        "Grumpy's",
+        "Morning Star Cafe at",
+        "Amazing Single Roaster Shops",
+        "Double Skinny Macchiato",
+        "THE MOST BEAUTIFUL CAFÉS IN MANHATTAN",
+        "Sey Coffee",
+        "Bakery",
+        "Ten Thousand Coffee"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Coffee Fanatics",
+          "score": 12.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 12.1,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Joe the Art of Coffee",
+          "score": 12.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 12.1,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Grumpy's",
+          "score": 9.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 9.9,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Morning Star Cafe at",
+          "score": 5.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": 5.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Amazing Single Roaster Shops",
+          "score": 5.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": 5.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Double Skinny Macchiato",
+          "score": 4.2,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "doubleskinnymacchiato.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": 4.2,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 1.3,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 1.2,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "THE MOST BEAUTIFUL CAFÉS IN MANHATTAN",
+          "score": 2.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "coffeeandchampagne.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": 2.8,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 8,
+          "name": "Sey Coffee",
+          "score": 2.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "ny.eater.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 2.8,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 9,
+          "name": "Bakery",
+          "score": 0.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "theinfatuation.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 0.6,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 10,
+          "name": "Ten Thousand Coffee",
+          "score": 0.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 0.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 14965,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop to work from in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Devocion",
+      "expectedTopContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "actualWinner": "Mya & Brooklyn Coffee Bakery",
+      "actualResults": [
+        "Mya & Brooklyn Coffee Bakery",
+        "Cafe Jax",
+        "Aroma",
+        "Perk Kafe Ground Central Coffee",
+        "Visit Williamsburg"
+      ],
+      "retrievedSourceTitles": [
+        "Best Coffee Shops to Work From in New York City and Brooklyn",
+        "Work Spaces : r/williamsburg",
+        "Coffee Shops in Williamsburg, VA | Visit Williamsburg",
+        "Favorite Coffee Shops to work out of in the neighborhood? : r/williamsburg",
+        "Coffee shops with free wifi to work and study? : r/williamsburg - Reddit",
+        "Favorite cafe/coffee shop to work at? : r/williamsburg - Reddit",
+        "Where to do work at coffee shop : r/williamsburg - Reddit",
+        "NYC Favorites: 13 Williamsburg Coffee Shops To Visit | Carly A. Hill"
+      ],
+      "extractedCandidates": [
+        "Perk Kafe Ground Central Coffee",
+        "Cafe Jax",
+        "Visit Williamsburg",
+        "T6kz34",
+        "Ringolevio on Humboldt. Martha's Bakery",
+        "Mya & Brooklyn Coffee Bakery",
+        "Carly A. Hill",
+        "Coffee Shops To Visit 2"
+      ],
+      "rejectedCandidates": [
+        "Best Coffee Shops to Work From in New York City and Brooklyn: too_many_words",
+        "Blog: generic_or_placeholder",
+        "Coffee Shops: generic_or_placeholder",
+        "Work Spaces: generic_or_placeholder",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1i3hj43: numeric_slug",
+        "CaféS Work Spaces: generic_or_placeholder",
+        "Coffee Shops in Williamsburg, VA: generic_or_placeholder",
+        "Dining: generic_or_placeholder",
+        "Category: generic_or_placeholder",
+        "Coffee Shops: generic_or_placeholder",
+        "Favorite Coffee Shops to work out of in the neighborhood?: too_many_words",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "Favorite Coffee Shops To Work Out Of In The: too_many_words",
+        "Coffee shops with free wifi to work and study?: too_many_words",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1bnvtpa: numeric_slug"
+      ],
+      "finalContenders": [
+        "Mya & Brooklyn Coffee Bakery",
+        "Cafe Jax",
+        "Aroma",
+        "Perk Kafe Ground Central Coffee",
+        "Visit Williamsburg",
+        "Martha's Bakery",
+        "Carly A. Hill",
+        "Ringolevio on Humboldt. Martha's Bakery",
+        "Coffee Shops To Visit 2",
+        "T6kz34"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Mya & Brooklyn Coffee Bakery",
+          "score": 9.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": 9.7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 1.3,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Cafe Jax",
+          "score": 5.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "hiyodesign.com"
+          ],
+          "extractionConfidence": 0.75,
+          "localRelevanceScore": 5.9,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Aroma",
+          "score": 4.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.73,
+          "localRelevanceScore": 4.2,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Perk Kafe Ground Central Coffee",
+          "score": -6.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "hiyodesign.com"
+          ],
+          "extractionConfidence": 0.75,
+          "localRelevanceScore": -6.1,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Visit Williamsburg",
+          "score": -7.5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "visitwilliamsburg.com"
+          ],
+          "extractionConfidence": 0.85,
+          "localRelevanceScore": -7.5,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Martha's Bakery",
+          "score": -7.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.73,
+          "localRelevanceScore": -7.8,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "Carly A. Hill",
+          "score": -8.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "carlyahill.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": -8.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 8,
+          "name": "Ringolevio on Humboldt. Martha's Bakery",
+          "score": -8.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -8.6,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 9,
+          "name": "Coffee Shops To Visit 2",
+          "score": -17.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "carlyahill.com"
+          ],
+          "extractionConfidence": 0.61,
+          "localRelevanceScore": -17.7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 9.5,
+          "urlOnlyPenalty": 7
+        },
+        {
+          "rank": 10,
+          "name": "T6kz34",
+          "score": -19.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.61,
+          "localRelevanceScore": -19.4,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 9.5,
+          "urlOnlyPenalty": 7
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7096,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Four Seasons Hotel Seattle",
+      "expectedTopContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "actualWinner": "Kimpton Hotel Monaco Seattle",
+      "actualResults": [
+        "Kimpton Hotel Monaco Seattle",
+        "Hotel Theodore Seattle Downtown, Tapestry by Hilton",
+        "Mediterranean Inn",
+        "The Edgewater",
+        "Populus Seattle Luxury"
+      ],
+      "retrievedSourceTitles": [
+        "The Edgewater Hotel - Google",
+        "The 10 best 5-star hotels in Seattle, US | Booking.com",
+        "10 Best Seattle Hotels, United States (From $158) - Booking.com",
+        "17 Best Hotels in Seattle, Washington (2025) | Condé Nast Traveler",
+        "The 10 best 4-star hotels in Seattle, US | Booking.com",
+        "The 10 best family hotels in Seattle, US | Booking.com",
+        "The 10 best luxury hotels in Seattle, US | Booking.com",
+        "THE 10 BEST Hotels in Seattle, WA 2026 (from $85) - Tripadvisor"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Kimpton Hotel Monaco Seattle",
+        "Hotel Theodore Seattle Downtown, Tapestry by Hilton",
+        "Mediterranean Inn",
+        "The Edgewater",
+        "Populus Seattle Luxury"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Kimpton Hotel Monaco Seattle",
+          "score": 16.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "cntraveler.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 16.8,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Hotel Theodore Seattle Downtown, Tapestry by Hilton",
+          "score": 11.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "booking.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 11.3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Mediterranean Inn",
+          "score": 11.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 11.3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "The Edgewater",
+          "score": 5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "google.com.jm"
+          ],
+          "extractionConfidence": 0.73,
+          "localRelevanceScore": 5,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Populus Seattle Luxury",
+          "score": -5.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "booking.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": -5.2,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12123,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "The Edgewater"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Four Seasons Hotel Seattle",
+        "Thompson Seattle"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best pizza in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Lucali",
+      "expectedTopContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "actualWinner": "L'industrie Pizzeria",
+      "actualResults": [
+        "L'industrie Pizzeria",
+        "Juliana's",
+        "Brooklyn Pizzeria & Italian Food",
+        "Chrissy's Pizza",
+        "Mancini's"
+      ],
+      "retrievedSourceTitles": [
+        "BROOKLYN PIZZERIA & ITALIAN FOOD - Reseda, California - Yelp",
+        "Best Pizza - Review - Williamsburg - New York - The Infatuation",
+        "THE 10 BEST Pizza Places in Brooklyn (Updated 2026) - Tripadvisor",
+        "Best Pizza in Brooklyn, NY | Sottocasa Brooklyn",
+        "THE BEST 10 PIZZA PLACES IN BROOKLYN, NY - Yelp",
+        "BEST PIZZA - Updated June 2026 - 854 Photos & 832 Reviews - Yelp",
+        "Best Pizza Brooklyn, NY - Last Updated June 2026 - Yelp",
+        "Best Pizza in Brooklyn: A look at 477 Pizza Places"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "L'industrie Pizzeria",
+        "Juliana's",
+        "Brooklyn Pizzeria & Italian Food",
+        "Chrissy's Pizza",
+        "Mancini's",
+        "Sottocasa Brooklyn"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "L'industrie Pizzeria",
+          "score": 15,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 15,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Juliana's",
+          "score": 12.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 12.8,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Brooklyn Pizzeria & Italian Food",
+          "score": 12.5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 12.5,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Chrissy's Pizza",
+          "score": 11.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "m.yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 11.3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Mancini's",
+          "score": 9.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "m.yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 9.1,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Sottocasa Brooklyn",
+          "score": 2.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "brooklyn.sottocasanyc.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": 2.8,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12485,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "L'Industrie"
+      ],
+      "localTop5Coverage": 0.25,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Lucali",
+        "Di Fara",
+        "Roberta's"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best sushi in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Sushi Nakazawa",
+      "expectedTopContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "actualWinner": "Chicken Robatayaki",
+      "actualResults": [
+        "Chicken Robatayaki",
+        "Hatsuhana",
+        "Sushi Sho",
+        "Hatsuhana Sushi Restaurant",
+        "Sushi Ikumi"
+      ],
+      "retrievedSourceTitles": [
+        "Best Sushi Restaurants in New York City, Manhattan | Eater NY",
+        "The Best Sushi in NYC—For Omakase, Handroll Counters, and Lively Group Spots | Condé Nast Traveler",
+        "Zagat Rated Best Sushi New York, NY - Last Updated June 2026",
+        "THE BEST Sushi in New York City (Updated 2026) - Tripadvisor",
+        "Sushi Ikumi is as good as SoHo gets",
+        "The Best Sushi In New York | Sushi Seven January 2026",
+        "The 19 Best Sushi Spots In NYC - New York - The Infatuation",
+        "Sushi 35 West: Hole in the Wall Making NYC's BEST SUSHI!"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Chicken Robatayaki",
+        "Hatsuhana",
+        "Sushi Sho",
+        "Hatsuhana Sushi Restaurant",
+        "Sushi Ikumi",
+        "Blue Ribbon Sushi",
+        "Sushi 35 West"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Chicken Robatayaki",
+          "score": 6.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://ny.eater.com/maps/best-sushi-nyc-omakase-japanese-restaurants-manhattan"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 6.6,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 2,
+          "name": "Hatsuhana",
+          "score": 4.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.yelp.com/search?find_desc=Zagat+Rated+Best+Sushi&find_loc=New+York%2C+NY"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 4.2,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 3,
+          "name": "Sushi Sho",
+          "score": 4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.yelp.com/search?find_desc=Zagat+Rated+Best+Sushi&find_loc=New+York%2C+NY"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 4,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 4,
+          "name": "Hatsuhana Sushi Restaurant",
+          "score": 4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.tripadvisor.com/Restaurants-g60763-c38-New_York_City_New_York.html"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 4,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 5,
+          "name": "Sushi Ikumi",
+          "score": 2.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://thesushilegend.com/reviews/sushi-ikumi"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 2.2,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 6,
+          "name": "Blue Ribbon Sushi",
+          "score": 2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.tripadvisor.com/Restaurants-g60763-c38-New_York_City_New_York.html"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 2,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 7,
+          "name": "Sushi 35 West",
+          "score": 1.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.youtube.com/watch?v=RL-eHT9Pj2s"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 1.7,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12308,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best kid-friendly restaurant in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Carmine's",
+      "expectedTopContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "actualWinner": "Motto by Hilton New York City Chelsea",
+      "actualResults": [
+        "Motto by Hilton New York City Chelsea",
+        "Parm",
+        "Dinerschoice"
+      ],
+      "retrievedSourceTitles": [
+        "restaurant for kids - New York City Forum - Tripadvisor",
+        "New York Restaurants, Dentists, Bars, Beauty Salons, Doctors - Yelp",
+        "Authentic Italian Restaurant in New York | Pasta Eater",
+        "The Best Kid-Friendly Restaurants in NYC, According to Eater Editors",
+        "A Guide to Dining Out With Children in NYC | Eater NY",
+        "The Best Kid-Friendly Restaurants In NYC - New York - The Infatuation",
+        "A Guide To The “Super Cute Reasonably Priced Restaurant To Catch Up With A Few Friends” - New York - The Infatuation",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan"
+      ],
+      "extractedCandidates": [
+        "Bar Ferdinando",
+        "Dinerschoice"
+      ],
+      "rejectedCandidates": [
+        "restaurant for kids: generic_or_placeholder",
+        "New York City Forum: generic_or_placeholder",
+        "New York Restaurants, Dentists, Bars, Beauty Salons, Doctors: too_many_words",
+        "Authentic Italian Restaurant in New York: generic_or_placeholder",
+        "Pasta: generic_or_placeholder",
+        "The Best Kid-Friendly Restaurants in NYC, According to Editors: too_many_words",
+        "Best Kid Friendly Restaurants: generic_or_placeholder",
+        "A Guide to Dining Out With Children in NYC: too_many_words",
+        "Best Family Friendly Restaurants Kids: generic_or_placeholder",
+        "The Best Kid-Friendly Restaurants In NYC: article_title_fragment",
+        "New York: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Best Kid Friendly Restaurants: generic_or_placeholder",
+        "A Guide To The “Super Cute Reasonably Priced Restaurant To Catch Up With A Few Friends”: too_many_words",
+        "New York: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan: article_title_fragment",
+        "S: empty_or_too_short"
+      ],
+      "finalContenders": [
+        "Motto by Hilton New York City Chelsea",
+        "Parm",
+        "Dinerschoice"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Motto by Hilton New York City Chelsea",
+          "score": 2.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 2.9,
+          "categoryMatchScore": -4.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Parm",
+          "score": -3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "theinfatuation.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": -3,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Dinerschoice",
+          "score": -15.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -15.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 38281,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso martini in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "Dante",
+      "expectedTopContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [
+        "TOP 10 BEST Espresso Martini in New York, NY - Yelp",
+        "Looking for a great espresso martini : r/AskNYC - Reddit",
+        "Where is the best espresso martini in NYC? : r/NYCbitcheswithtaste",
+        "Announcing the best espresso martini (I could find) in NYC! - Medium",
+        "The Best Canned Espresso Martinis, According to Our Taste Test",
+        "The Best Espresso Martini in New York City - InsideHook",
+        "Canned Espresso Martinis, Ranked",
+        "Calling all espresso martini lovers.... - New York City Forum",
+        "The Best Home Espresso Machine",
+        "Ultimate Budget Espresso Machine Tier List!",
+        "Espresso Martinis : r/BarOwners - Reddit",
+        "CNN rated the top espresso machines - Reddit"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 17173,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best golf course on Long Island",
+      "category": "local_recommendation",
+      "expectedWinner": "Bethpage Black",
+      "expectedTopContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "actualWinner": "Merrick",
+      "actualResults": [
+        "Merrick",
+        "Shoreham's Tallgrass",
+        "Leatherstocking"
+      ],
+      "retrievedSourceTitles": [
+        "Merrick Golf Course - All You SHOULD Know Before Going 2026 (with Reviews)",
+        "THE 15 BEST Long Island Golf Courses (2026) - Tripadvisor",
+        "The best public golf courses on Long Island, ranked by Long Islanders | Golf Courses | Golf Digest",
+        "Long Island NY courses : r/golf - Reddit",
+        "Bethpage Black ranks #7 on Long Island-dominated Golf Digest course list – Golf on Long Island",
+        "Bethpage, Tallgrass, Montauk Downs stay on top of Golfweek’s Best Courses list – Golf on Long Island",
+        "The best golf courses on Long Island | Golf Courses | Golf Digest",
+        "Golfweek's best modern golf courses include 4 in New York"
+      ],
+      "extractedCandidates": [
+        "Merrick",
+        "Montauk Downs State Park Golf",
+        "Shoreham's Tallgrass",
+        "Leatherstocking"
+      ],
+      "rejectedCandidates": [
+        "All You SHOULD Know Before Going 2026 (with ): too_many_words",
+        "THE 15 BEST Long Island Golf Courses (2026): too_many_words",
+        "Golf Courses: generic_or_placeholder",
+        "Course: generic_or_placeholder",
+        "The best public golf courses on Long Island, ranked by Long Islanders: too_many_words",
+        "Golf Courses: generic_or_placeholder",
+        "Courses: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Long Island Best Public Golf Courses: generic_or_placeholder",
+        "Golf Digest: generic_or_placeholder",
+        "What's: generic_or_placeholder",
+        "Long Island NY courses: generic_or_placeholder",
+        "r/golf: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1j3do8e: numeric_slug",
+        "Long Island Courses: generic_or_placeholder",
+        "Bethpage Black ranks #7 on Long Island-dominated Golf Digest course list: too_many_words",
+        "Golf on Long Island: generic_or_placeholder",
+        "Bethpage, Tallgrass, Montauk Downs stay on top of Golfweek's Best Courses list: too_many_words",
+        "Golf on Long Island: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Merrick",
+        "Shoreham's Tallgrass",
+        "Leatherstocking"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Merrick",
+          "score": 11.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": 11.2,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Shoreham's Tallgrass",
+          "score": -0.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "golfonlongisland.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -0.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Leatherstocking",
+          "score": -0.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "golfonlongisland.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -0.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 24940,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best restaurant in Massapequa NY",
+      "category": "local_recommendation",
+      "expectedWinner": "Big Daddy's",
+      "expectedTopContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "actualWinner": "Mangia e Bevi",
+      "actualResults": [
+        "Mangia e Bevi",
+        "Mercato Kitchen & Cocktails",
+        "Big Daddy's",
+        "Pulcinella Neapolitan",
+        "Massapequa Local Questions & Answers"
+      ],
+      "retrievedSourceTitles": [
+        "Restaurants Near Massapequa Park Station | OpenTable",
+        "Mercato Kitchen & Cocktails, 4958 Merrick Rd, Massapequa Park, NY 11762, US - MapQuest",
+        "MANGIA E BEVI - Updated June 2026 - 177 Photos & 84 Reviews",
+        "Massapequa Local Questions & Answers - Yelp",
+        "THE 10  BEST Restaurants in Massapequa (Updated June 2026)",
+        "Yelp's Top 10 Restaurants in Massapequa: Do You Agree? | Massapequa, NY Patch",
+        "The 38 Best Restaurants in New York City - Eater NY",
+        "The 10 Best Restaurants Near Me in Massapequa | OpenTable"
+      ],
+      "extractedCandidates": [
+        "Big Daddy's",
+        "Mercato Kitchen Cocktails",
+        "MANGIA E BEVI",
+        "Mangia E Bevi Park",
+        "Massapequa Local Questions & Answers",
+        "Local Questions And Answers",
+        "Massapequa, NY Patch",
+        "Momofuku's",
+        "Pulcinella Neapolitan"
+      ],
+      "rejectedCandidates": [
+        "Restaurants Near Massapequa Park Station: generic_or_placeholder",
+        "Landmark: generic_or_placeholder",
+        "Restaurants Near Park Station: generic_or_placeholder",
+        "Mercato Kitchen & Cocktails, 4958 Merrick Rd: too_many_words",
+        "Us: empty_or_too_short",
+        "177 & 84: generic_or_placeholder",
+        "THE 10 BEST Restaurants in Massapequa ( ): too_many_words",
+        "'s Top 10 Restaurants in Massapequa: Do You Agree?: too_many_words",
+        "Yelps Top 10 Restaurants In Do You Agree: too_many_words",
+        "The 38 Best Restaurants in New York City: too_many_words",
+        "Best Restaurants 38 Map: generic_or_placeholder",
+        "The 10 Best Restaurants in Massapequa: article_title_fragment",
+        "Restaurants Near Me North: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Mangia e Bevi",
+        "Mercato Kitchen & Cocktails",
+        "Big Daddy's",
+        "Pulcinella Neapolitan",
+        "Massapequa Local Questions & Answers",
+        "Massapequa, NY Patch",
+        "Momofuku's"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Mangia e Bevi",
+          "score": 6.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 6.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 6.6,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 2.5
+        },
+        {
+          "rank": 2,
+          "name": "Mercato Kitchen & Cocktails",
+          "score": 5.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "mapquest.com"
+          ],
+          "extractionConfidence": 0.65,
+          "localRelevanceScore": 5.8,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 1.3,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 2.5
+        },
+        {
+          "rank": 3,
+          "name": "Big Daddy's",
+          "score": 2.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.77,
+          "localRelevanceScore": 2.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Pulcinella Neapolitan",
+          "score": 2.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.77,
+          "localRelevanceScore": 2.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Massapequa Local Questions & Answers",
+          "score": 0.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 0.7,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 2.5
+        },
+        {
+          "rank": 6,
+          "name": "Massapequa, NY Patch",
+          "score": -4.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "patch.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -4.3,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "Momofuku's",
+          "score": -8.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "ny.eater.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -8.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": -4.6,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 24172,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Big Daddy's"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best ramen in Los Angeles",
+      "category": "local_recommendation",
+      "expectedWinner": "Tsujita LA Artisan Noodle",
+      "expectedTopContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 12388,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best tacos in Austin",
+      "category": "local_recommendation",
+      "expectedWinner": "Veracruz All Natural",
+      "expectedTopContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "actualWinner": "El Buen Taquero",
+      "actualResults": [
+        "El Buen Taquero",
+        "Discada",
+        "Taqueria Chapala",
+        "Torchy’s Tacos",
+        "Taco Guerrero"
+      ],
+      "retrievedSourceTitles": [
+        "10 de 10 Taqueria makes a solid argument for best tacos in Austin",
+        "Here is an *actual* Q/A for the best *authentic* tacos in Austin. I'll go ...",
+        "The 21 Best Tacos In Austin - Austin - The Infatuation",
+        "Your Guide to the Best Tacos in Austin, TX | Austin Food Adventures",
+        "Where to Find the Best Tacos in Austin - Bon Appétit | Bon Appétit",
+        "The Austin Taco Guide: Ranking Best to Worst",
+        "23 Best Tacos in Austin - Female Foodie",
+        "The Best Tacos in Austin - The MICHELIN Guide"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "El Buen Taquero",
+        "Discada",
+        "Taqueria Chapala",
+        "Torchy’s Tacos",
+        "Taco Guerrero",
+        "Casa Moreno’s"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "El Buen Taquero",
+          "score": 6.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.theinfatuation.com/austin/guides/best-austin-tacos"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 6.6,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 2,
+          "name": "Discada",
+          "score": 4.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.austinfoodadventures.com/blog/your-guide-to-the-best-tacos-in-austin-tx"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 4.6,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 3,
+          "name": "Taqueria Chapala",
+          "score": 2.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.reddit.com/r/austinfood/comments/1nr1d3f/10_de_10_taqueria_makes_a_solid_argument_for_best"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 2.6,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 4,
+          "name": "Torchy’s Tacos",
+          "score": 2.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://mileslesstraveled.com/austin-taco-ranking"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 2.6,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 5,
+          "name": "Taco Guerrero",
+          "score": 2.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.reddit.com/r/Austin/comments/odv2me/here_is_an_actual_qa_for_the_best_authentic_tacos"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 2.1,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 6,
+          "name": "Casa Moreno’s",
+          "score": 1.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.femalefoodie.com/restaurant-reviews/best-tacos-in-austin"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 1.7,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12240,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best cocktail bar in Chicago",
+      "category": "local_recommendation",
+      "expectedWinner": "The Violet Hour",
+      "expectedTopContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 12396,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best brunch in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Sunday in Brooklyn",
+      "expectedTopContenders": [
+        "Sunday in Brooklyn",
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "actualWinner": "Terrace Restaurant and Bakery",
+      "actualResults": [
+        "Terrace Restaurant and Bakery",
+        "Kong Sihk Tong",
+        "Sunday in Brooklyn",
+        "Rana Fifteen",
+        "Moody's Co"
+      ],
+      "retrievedSourceTitles": [
+        "The 21 best brunch spots in Brooklyn - Time Out",
+        "The Best Breakfasts in NYC — Resy | Right This Way",
+        "Diners' Choice: Great for brunch restaurants in Brooklyn",
+        "THE BEST Brunch in Brooklyn (UPDATED 2026) - Tripadvisor",
+        "Book Your Sunday in Brooklyn Reservation Now on Resy",
+        "The Best Brunch Spots In NYC - New York - The Infatuation",
+        "Best Brunch Brooklyn, NY - Last Updated June 2026 - Yelp",
+        "TOP 10 BEST Brunch Park Slope in Brooklyn, NY - Yelp"
+      ],
+      "extractedCandidates": [
+        "Breakfast",
+        "Dinerschoice",
+        "Venues",
+        "Sunday In",
+        "SET Lounge Bar & Billiards",
+        "Moody's Co",
+        "Terrace Restaurant and Bakery",
+        "Stone Park Cafe"
+      ],
+      "rejectedCandidates": [
+        "The 21 best brunch spots in Brooklyn: too_many_words",
+        "Newyork: source_or_ui_fragment",
+        "Restaurants: generic_or_placeholder",
+        "Best Brunch In: generic_or_placeholder",
+        "The Best Breakfasts in NYC: generic_or_placeholder",
+        "Diners' Choice: Great for brunch restaurants in Brooklyn: too_many_words",
+        "S: empty_or_too_short",
+        "THE BEST Brunch in Brooklyn ( ): too_many_words",
+        "Book Your Sunday in Brooklyn Now on: too_many_words",
+        "The Best Brunch Spots In NYC: article_title_fragment",
+        "New York: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Best Brunch Restaurants: generic_or_placeholder",
+        "Best Brunch Brooklyn, NY: generic_or_placeholder",
+        "Last: generic_or_placeholder",
+        "TOP 10 BEST Brunch Park Slope in Brooklyn, NY: too_many_words"
+      ],
+      "finalContenders": [
+        "Terrace Restaurant and Bakery",
+        "Kong Sihk Tong",
+        "Sunday in Brooklyn",
+        "Rana Fifteen",
+        "Moody's Co",
+        "Breakfast",
+        "Dinerschoice",
+        "Venues"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Terrace Restaurant and Bakery",
+          "score": 12.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 12.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Kong Sihk Tong",
+          "score": 5.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "blog.resy.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 5.6,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Sunday in Brooklyn",
+          "score": 2.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "resy.com"
+          ],
+          "extractionConfidence": 0.76,
+          "localRelevanceScore": 2.6,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 2.5
+        },
+        {
+          "rank": 4,
+          "name": "Rana Fifteen",
+          "score": -4.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "timeout.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -4.8,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Moody's Co",
+          "score": -5.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "m.yelp.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -5.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Breakfast",
+          "score": -15.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "blog.resy.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -15.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        },
+        {
+          "rank": 7,
+          "name": "Dinerschoice",
+          "score": -15.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -15.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        },
+        {
+          "rank": 8,
+          "name": "Venues",
+          "score": -15.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "resy.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -15.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 16297,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Sunday in Brooklyn"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best attractions in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Space Needle",
+      "expectedTopContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "actualWinner": "Seattle's Original Guided Harbor",
+      "actualResults": [
+        "Seattle's Original Guided Harbor",
+        "Beneath The Streets Underground History Tour",
+        "The Seattle Times",
+        "Must-See Attractions",
+        "Paper Planes and Caramel Waffles"
+      ],
+      "retrievedSourceTitles": [
+        "The Most Reviewed Place On Google Maps For The 25 Largest US Cities hugequiz",
+        "THE 10 BEST Seattle Tours & Excursions (2026) - with Reviews",
+        "Google Maps says we love these 50 Seattle-area places in the summer | The Seattle Times",
+        "THE 15 BEST Things to Do in Seattle (2026) - Must-See Attractions",
+        "THE 10 BEST Seattle Sights & Historical Landmarks to Visit (2026)",
+        "25 Great Things To Do In Seattle If You’re Visiting For The First Time - Paper Planes and Caramel Waffles",
+        "THE 10 BEST Free Things to Do in Seattle (2026) - Tripadvisor",
+        "Seattle, WA: All You Must Know Before You Go (2026) - Tripadvisor"
+      ],
+      "extractedCandidates": [
+        "Seattle's Original Guided Harbor",
+        "The Seattle Times",
+        "Entertainment",
+        "Must-See Attractions",
+        "Paper Planes and Caramel Waffles"
+      ],
+      "rejectedCandidates": [
+        "The Most Reviewed Place On Google Maps For The 25 Largest US Cities hugequiz: too_many_words",
+        "The Most Reviewed Place On Google Maps For The 25 Largest Us Cities: too_many_words",
+        "THE 10 BEST Seattle Tours & Excursions (2026): too_many_words",
+        "with: does_not_look_like_named_place",
+        "Google Maps says we love these 50 Seattle-area places in the summer: too_many_words",
+        "Google Maps Says We Love These 50 Area Places In The Summer: too_many_words",
+        "THE 15 BEST Things to Do in Seattle (2026): too_many_words",
+        "THE 10 BEST Seattle Sights & Historical Landmarks to Visit (2026): too_many_words",
+        "25 Great Things To Do In Seattle If You're Visiting For The First Time: too_many_words",
+        "Things To Do In First Time Visitors: too_many_words",
+        "THE 10 BEST Free Things to Do in Seattle (2026): too_many_words",
+        "Seattle, WA: All You Must Know Before You Go (2026): too_many_words"
+      ],
+      "finalContenders": [
+        "Seattle's Original Guided Harbor",
+        "Beneath The Streets Underground History Tour",
+        "The Seattle Times",
+        "Must-See Attractions",
+        "Paper Planes and Caramel Waffles",
+        "Entertainment"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Seattle's Original Guided Harbor",
+          "score": 5.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.77,
+          "localRelevanceScore": 5.6,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Beneath The Streets Underground History Tour",
+          "score": 3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "The Seattle Times",
+          "score": -4.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "seattletimes.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -4.3,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Must-See Attractions",
+          "score": -4.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -4.3,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Paper Planes and Caramel Waffles",
+          "score": -11.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "paperplanesandcaramelwaffles.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": -11.8,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Entertainment",
+          "score": -15.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "seattletimes.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -15.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10599,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best gyms in Williamsburg Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Equinox Williamsburg",
+      "expectedTopContenders": [
+        "Equinox Williamsburg",
+        "Grind House",
+        "Vital Brooklyn"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 12390,
+      "error": "Connection error.",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Equinox Williamsburg",
+        "Grind House",
+        "Vital Brooklyn"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best dentists in Austin TX",
+      "category": "local_recommendation",
+      "expectedWinner": "Swish Dental",
+      "expectedTopContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 405,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best plumbers in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "O'Neill Plumbing",
+      "expectedTopContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 398,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    }
+  ],
+  "cases": [
+    {
+      "query": "best restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Lilia",
+      "expectedTopContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "actualWinner": "The Butcher's Daughter",
+      "actualResults": [
+        "The Butcher's Daughter",
+        "Captain George's Seafood",
+        "Balera",
+        "Seafood"
+      ],
+      "retrievedSourceTitles": [
+        "Colonial Williamsburg Feeds a Historic Moment - Eater",
+        "30 Restaurants That Define Williamsburg Right Now - NY Eater",
+        "The Best New Restaurants in Brooklyn, According to Eater Editors",
+        "CAPTAIN GEORGE’S SEAFOOD RESTAURANT - Updated February 2026 - 429 Photos & 757 Reviews - 5363 Richmond Rd, Williamsburg, Virginia - Seafood - Restaurant Reviews - Phone Number - Menu - Yelp",
+        "The 10 Best Restaurants Near Me in Williamsburg, New York City | OpenTable",
+        "The Best Food Near Me in Williamsburg, New York City - OpenTable",
+        "The 27 Best Restaurants In Williamsburg - New York - The Infatuation",
+        "THE 10 BEST Restaurants in Williamsburg (Updated June 2026)"
+      ],
+      "extractedCandidates": [
+        "At Christiana Campbell's Tavern",
+        "CAPTAIN GEORGE'S SEAFOOD",
+        "Captain Georges Seafood Restaurant 5",
+        "Seafood",
+        "Phone Number",
+        "The Butcher's Daughter",
+        "The Butcher's Daughter"
+      ],
+      "rejectedCandidates": [
+        "Colonial Williamsburg Feeds a Historic Moment: article_title_fragment",
+        "Colonial Food Taverns Virginia America 250: article_title_fragment",
+        "30 Restaurants That Define Williamsburg Right Now: too_many_words",
+        "NY: empty_or_too_short",
+        "30 Restaurants That Define Right Now Eater: too_many_words",
+        "The Best New Restaurants in Brooklyn, According to Editors: too_many_words",
+        "Best New Restaurants Heatmap: generic_or_placeholder",
+        "429 & 757: generic_or_placeholder",
+        "5363 Richmond Rd: generic_or_placeholder",
+        "The 10 Best Restaurants in Williamsburg: article_title_fragment",
+        "Restaurants Near Me: generic_or_placeholder",
+        "The Best Food in Williamsburg: generic_or_placeholder",
+        "Food Near Me: generic_or_placeholder",
+        "The 27 Best Restaurants In Williamsburg: article_title_fragment",
+        "New York: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Best Restaurants: generic_or_placeholder",
+        "THE 10 BEST Restaurants in Williamsburg ( ): too_many_words"
+      ],
+      "finalContenders": [
+        "The Butcher's Daughter",
+        "Captain George's Seafood",
+        "Balera",
+        "Seafood"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "The Butcher's Daughter",
+          "score": 24.5,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": 24.5,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 8.8,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 1.2,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Captain George's Seafood",
+          "score": 8.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 8.2,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": -12,
+          "sourceAuthorityScore": 6.6,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 2.5
+        },
+        {
+          "rank": 3,
+          "name": "Balera",
+          "score": 0,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "ny.eater.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 0,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Seafood",
+          "score": -2.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -2.2,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": -12,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": true,
+      "elapsedMs": 408,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best first date restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Maison Premiere",
+      "expectedTopContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "actualWinner": "Ammazzacaffè",
+      "actualResults": [
+        "Ammazzacaffè",
+        "Blackbird",
+        "Have & Meyer",
+        "DON CHIDO",
+        "Opus 9 Steakhouse"
+      ],
+      "retrievedSourceTitles": [
+        "Best First Date Spots near Williamsburg - South Side, Brooklyn, NY ...",
+        "The Best Food Near Me in Williamsburg, New York City - Reservations, Experiences, Takeout & Delivery | OpenTable",
+        "33 Best Restaurants that are Worth The Drive in Colonial Williamsburg | OpenTable",
+        "The 10 Best Romantic Restaurants in Williamsburg Brooklyn",
+        "13 Best Restaurants in Williamsburg, Brooklyn to Book Now",
+        "The Best First Date Spots In NYC - New York - The Infatuation",
+        "The 26 Best NYC Restaurants For Date Night - New York - The Infatuation",
+        "142 Best Date Night Restaurants in Colonial Williamsburg | OpenTable"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Ammazzacaffè",
+        "Blackbird",
+        "Have & Meyer",
+        "DON CHIDO",
+        "Opus 9 Steakhouse"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Ammazzacaffè",
+          "score": 9.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 9.1,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Blackbird",
+          "score": -2.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": -2.7,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Have & Meyer",
+          "score": -6.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -6.4,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "DON CHIDO",
+          "score": -12.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -12.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": -20,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Opus 9 Steakhouse",
+          "score": -14.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": -14.6,
+          "categoryMatchScore": 0,
+          "locationMatchScore": -20,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12148,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "La Cabra",
+      "expectedTopContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "actualWinner": "Coffee Fanatics",
+      "actualResults": [
+        "Coffee Fanatics",
+        "Joe the Art of Coffee",
+        "Grumpy's",
+        "Morning Star Cafe at",
+        "Amazing Single Roaster Shops"
+      ],
+      "retrievedSourceTitles": [
+        "What's the best coffee in nyc? : r/AskNYC - Reddit",
+        "r/pourover on Reddit: Amazing cafés and coffees to try in NYC",
+        "A Coffee Snob's Guide to the Best Cafes in NYC - Backseat Driver",
+        "Best coffee shops to work from in New York City and Brooklyn (with downloadable Google Map) — Branding + Web Design + Social Media | HIYO DESIGN",
+        "10 of the Best Coffee Shops to Visit in NYC - Kalee Fam",
+        "AESTHETIC NYC cafes you need to pin on your Google maps ☕️🍰",
+        "The Best NYC Coffee Shops With Wifi For Getting Work Done - New York - The Infatuation",
+        "Must-Visit Coffee Shops in New York City — Travel & Brew",
+        "Best Specialty Coffees in New York — Drips Of God",
+        "The Ten Best Third Wave Coffee Shops in New York City",
+        "The Best Coffee Shops in New York City, According to Eater Editors",
+        "The Best Coffee Shop Near Every Manhattan Subway Stop - New York City Forum - Tripadvisor"
+      ],
+      "extractedCandidates": [
+        "What's the best coffee in nyc?",
+        "Joe Coffee",
+        "Morning Star Cafe at",
+        "Blue Bottle Coffee and",
+        "Amazing Single Roaster Shops",
+        "Backseat Driver",
+        "Sey's",
+        "HIYO DESIGN",
+        "Kalee Fam",
+        "Bakery",
+        "Travel & Brew",
+        "Journal",
+        "Mustvisitcoffeeshopsinnewyorkcity",
+        "New York. It's",
+        "Drips Of God",
+        "Partners Coffee",
+        "Toby's Estate",
+        "Sey Coffee",
+        "Coffee Fanatics",
+        "Grumpy's"
+      ],
+      "rejectedCandidates": [
+        "r/AskNYC: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "164i68o: numeric_slug",
+        "r/pourover on: does_not_look_like_named_place",
+        "Comments: generic_or_placeholder",
+        "1q7gyps: numeric_slug",
+        "Amazing CaféS And Coffees To Try In: too_many_words",
+        "A Coffee Snob's Guide to the Best Cafes in NYC: too_many_words",
+        "Best coffee shops to work from in New York City and Brooklyn (with downloadable Google Map): too_many_words",
+        "Branding + Web Design + Social Media: too_many_words",
+        "Blog: generic_or_placeholder",
+        "Coffee Shops: generic_or_placeholder",
+        "10 of the Best Coffee Shops to Visit in NYC: too_many_words",
+        "Coffee: generic_or_placeholder",
+        "AESTHETIC NYC cafes you need to pin on your Google maps ☕️🍰: too_many_words",
+        "Watch: generic_or_placeholder",
+        "The Best NYC Coffee Shops With Wifi For Getting Work Done: too_many_words",
+        "New York: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Coffee Shops For Doing Work: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Coffee Fanatics",
+        "Joe the Art of Coffee",
+        "Grumpy's",
+        "Morning Star Cafe at",
+        "Amazing Single Roaster Shops",
+        "Double Skinny Macchiato",
+        "THE MOST BEAUTIFUL CAFÉS IN MANHATTAN",
+        "Sey Coffee",
+        "Bakery",
+        "Ten Thousand Coffee"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Coffee Fanatics",
+          "score": 12.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 12.1,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Joe the Art of Coffee",
+          "score": 12.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 12.1,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Grumpy's",
+          "score": 9.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 9.9,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Morning Star Cafe at",
+          "score": 5.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": 5.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Amazing Single Roaster Shops",
+          "score": 5.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": 5.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Double Skinny Macchiato",
+          "score": 4.2,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "doubleskinnymacchiato.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": 4.2,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 1.3,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 1.2,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "THE MOST BEAUTIFUL CAFÉS IN MANHATTAN",
+          "score": 2.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "coffeeandchampagne.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": 2.8,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 8,
+          "name": "Sey Coffee",
+          "score": 2.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "ny.eater.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 2.8,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 9,
+          "name": "Bakery",
+          "score": 0.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "theinfatuation.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 0.6,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 10,
+          "name": "Ten Thousand Coffee",
+          "score": 0.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 0.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 14965,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop to work from in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Devocion",
+      "expectedTopContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "actualWinner": "Mya & Brooklyn Coffee Bakery",
+      "actualResults": [
+        "Mya & Brooklyn Coffee Bakery",
+        "Cafe Jax",
+        "Aroma",
+        "Perk Kafe Ground Central Coffee",
+        "Visit Williamsburg"
+      ],
+      "retrievedSourceTitles": [
+        "Best Coffee Shops to Work From in New York City and Brooklyn",
+        "Work Spaces : r/williamsburg",
+        "Coffee Shops in Williamsburg, VA | Visit Williamsburg",
+        "Favorite Coffee Shops to work out of in the neighborhood? : r/williamsburg",
+        "Coffee shops with free wifi to work and study? : r/williamsburg - Reddit",
+        "Favorite cafe/coffee shop to work at? : r/williamsburg - Reddit",
+        "Where to do work at coffee shop : r/williamsburg - Reddit",
+        "NYC Favorites: 13 Williamsburg Coffee Shops To Visit | Carly A. Hill"
+      ],
+      "extractedCandidates": [
+        "Perk Kafe Ground Central Coffee",
+        "Cafe Jax",
+        "Visit Williamsburg",
+        "T6kz34",
+        "Ringolevio on Humboldt. Martha's Bakery",
+        "Mya & Brooklyn Coffee Bakery",
+        "Carly A. Hill",
+        "Coffee Shops To Visit 2"
+      ],
+      "rejectedCandidates": [
+        "Best Coffee Shops to Work From in New York City and Brooklyn: too_many_words",
+        "Blog: generic_or_placeholder",
+        "Coffee Shops: generic_or_placeholder",
+        "Work Spaces: generic_or_placeholder",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1i3hj43: numeric_slug",
+        "CaféS Work Spaces: generic_or_placeholder",
+        "Coffee Shops in Williamsburg, VA: generic_or_placeholder",
+        "Dining: generic_or_placeholder",
+        "Category: generic_or_placeholder",
+        "Coffee Shops: generic_or_placeholder",
+        "Favorite Coffee Shops to work out of in the neighborhood?: too_many_words",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "Favorite Coffee Shops To Work Out Of In The: too_many_words",
+        "Coffee shops with free wifi to work and study?: too_many_words",
+        "r/williamsburg: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1bnvtpa: numeric_slug"
+      ],
+      "finalContenders": [
+        "Mya & Brooklyn Coffee Bakery",
+        "Cafe Jax",
+        "Aroma",
+        "Perk Kafe Ground Central Coffee",
+        "Visit Williamsburg",
+        "Martha's Bakery",
+        "Carly A. Hill",
+        "Ringolevio on Humboldt. Martha's Bakery",
+        "Coffee Shops To Visit 2",
+        "T6kz34"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Mya & Brooklyn Coffee Bakery",
+          "score": 9.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": 9.7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 1.3,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Cafe Jax",
+          "score": 5.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "hiyodesign.com"
+          ],
+          "extractionConfidence": 0.75,
+          "localRelevanceScore": 5.9,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Aroma",
+          "score": 4.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.73,
+          "localRelevanceScore": 4.2,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Perk Kafe Ground Central Coffee",
+          "score": -6.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "hiyodesign.com"
+          ],
+          "extractionConfidence": 0.75,
+          "localRelevanceScore": -6.1,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Visit Williamsburg",
+          "score": -7.5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "visitwilliamsburg.com"
+          ],
+          "extractionConfidence": 0.85,
+          "localRelevanceScore": -7.5,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Martha's Bakery",
+          "score": -7.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.73,
+          "localRelevanceScore": -7.8,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "Carly A. Hill",
+          "score": -8.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "carlyahill.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": -8.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 8,
+          "name": "Ringolevio on Humboldt. Martha's Bakery",
+          "score": -8.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -8.6,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 9,
+          "name": "Coffee Shops To Visit 2",
+          "score": -17.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "carlyahill.com"
+          ],
+          "extractionConfidence": 0.61,
+          "localRelevanceScore": -17.7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 9.5,
+          "urlOnlyPenalty": 7
+        },
+        {
+          "rank": 10,
+          "name": "T6kz34",
+          "score": -19.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.61,
+          "localRelevanceScore": -19.4,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 9.5,
+          "urlOnlyPenalty": 7
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7096,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "The Moore Hotel",
+      "expectedTopContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "actualWinner": "Coast Seattle Downtown Hotel by APA",
+      "actualResults": [
+        "Coast Seattle Downtown Hotel by APA",
+        "University Inn",
+        "Staypineapple",
+        "Moore",
+        "The Edgewater"
+      ],
+      "retrievedSourceTitles": [
+        "The Edgewater Hotel - Google hotels",
+        "1112 Verified Hotel Reviews of Coast Seattle Downtown Hotel by APA | Booking.com",
+        "Reasonably priced hotel in downtown Seattle? - Seattle Forum - Tripadvisor",
+        "10 Best Seattle Hotels, United States (From £120)",
+        "THE 10 BEST Cheap Hotels in Seattle (w/ 2026 Reviews)",
+        "16 Best Hotels in Seattle. Hotels from $94/night - KAYAK",
+        "THE BEST cheap Seattle hotels from £115/night in 2026 | Skyscanner",
+        "The 10 best hotels near Port of Seattle in Seattle, United States"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Coast Seattle Downtown Hotel by APA",
+        "University Inn",
+        "Staypineapple",
+        "Moore",
+        "The Edgewater"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Coast Seattle Downtown Hotel by APA",
+          "score": 11.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "booking.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 11.3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "University Inn",
+          "score": 11.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 11.1,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Staypineapple",
+          "score": 8.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 8.9,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Moore",
+          "score": 8.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 8.9,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "The Edgewater",
+          "score": 5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "google.com.jm"
+          ],
+          "extractionConfidence": 0.73,
+          "localRelevanceScore": 5,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13628,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "The Moore Hotel",
+        "Staypineapple"
+      ],
+      "localTop5Coverage": 0.6666666666666666,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Belltown Inn"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Four Seasons Hotel Seattle",
+      "expectedTopContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "actualWinner": "Kimpton Hotel Monaco Seattle",
+      "actualResults": [
+        "Kimpton Hotel Monaco Seattle",
+        "Hotel Theodore Seattle Downtown, Tapestry by Hilton",
+        "Mediterranean Inn",
+        "The Edgewater",
+        "Populus Seattle Luxury"
+      ],
+      "retrievedSourceTitles": [
+        "The Edgewater Hotel - Google",
+        "The 10 best 5-star hotels in Seattle, US | Booking.com",
+        "10 Best Seattle Hotels, United States (From $158) - Booking.com",
+        "17 Best Hotels in Seattle, Washington (2025) | Condé Nast Traveler",
+        "The 10 best 4-star hotels in Seattle, US | Booking.com",
+        "The 10 best family hotels in Seattle, US | Booking.com",
+        "The 10 best luxury hotels in Seattle, US | Booking.com",
+        "THE 10 BEST Hotels in Seattle, WA 2026 (from $85) - Tripadvisor"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Kimpton Hotel Monaco Seattle",
+        "Hotel Theodore Seattle Downtown, Tapestry by Hilton",
+        "Mediterranean Inn",
+        "The Edgewater",
+        "Populus Seattle Luxury"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Kimpton Hotel Monaco Seattle",
+          "score": 16.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "cntraveler.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 16.8,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Hotel Theodore Seattle Downtown, Tapestry by Hilton",
+          "score": 11.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "booking.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 11.3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Mediterranean Inn",
+          "score": 11.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 11.3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "The Edgewater",
+          "score": 5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "google.com.jm"
+          ],
+          "extractionConfidence": 0.73,
+          "localRelevanceScore": 5,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Populus Seattle Luxury",
+          "score": -5.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "booking.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": -5.2,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12123,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "The Edgewater"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Four Seasons Hotel Seattle",
+        "Thompson Seattle"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best pizza in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Lucali",
+      "expectedTopContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "actualWinner": "L'industrie Pizzeria",
+      "actualResults": [
+        "L'industrie Pizzeria",
+        "Juliana's",
+        "Brooklyn Pizzeria & Italian Food",
+        "Chrissy's Pizza",
+        "Mancini's"
+      ],
+      "retrievedSourceTitles": [
+        "BROOKLYN PIZZERIA & ITALIAN FOOD - Reseda, California - Yelp",
+        "Best Pizza - Review - Williamsburg - New York - The Infatuation",
+        "THE 10 BEST Pizza Places in Brooklyn (Updated 2026) - Tripadvisor",
+        "Best Pizza in Brooklyn, NY | Sottocasa Brooklyn",
+        "THE BEST 10 PIZZA PLACES IN BROOKLYN, NY - Yelp",
+        "BEST PIZZA - Updated June 2026 - 854 Photos & 832 Reviews - Yelp",
+        "Best Pizza Brooklyn, NY - Last Updated June 2026 - Yelp",
+        "Best Pizza in Brooklyn: A look at 477 Pizza Places"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "L'industrie Pizzeria",
+        "Juliana's",
+        "Brooklyn Pizzeria & Italian Food",
+        "Chrissy's Pizza",
+        "Mancini's",
+        "Sottocasa Brooklyn"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "L'industrie Pizzeria",
+          "score": 15,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 15,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Juliana's",
+          "score": 12.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 12.8,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Brooklyn Pizzeria & Italian Food",
+          "score": 12.5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 12.5,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Chrissy's Pizza",
+          "score": 11.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "m.yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 11.3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Mancini's",
+          "score": 9.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "m.yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 9.1,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Sottocasa Brooklyn",
+          "score": 2.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "brooklyn.sottocasanyc.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": 2.8,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12485,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "L'Industrie"
+      ],
+      "localTop5Coverage": 0.25,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Lucali",
+        "Di Fara",
+        "Roberta's"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best sushi in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Sushi Nakazawa",
+      "expectedTopContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "actualWinner": "Chicken Robatayaki",
+      "actualResults": [
+        "Chicken Robatayaki",
+        "Hatsuhana",
+        "Sushi Sho",
+        "Hatsuhana Sushi Restaurant",
+        "Sushi Ikumi"
+      ],
+      "retrievedSourceTitles": [
+        "Best Sushi Restaurants in New York City, Manhattan | Eater NY",
+        "The Best Sushi in NYC—For Omakase, Handroll Counters, and Lively Group Spots | Condé Nast Traveler",
+        "Zagat Rated Best Sushi New York, NY - Last Updated June 2026",
+        "THE BEST Sushi in New York City (Updated 2026) - Tripadvisor",
+        "Sushi Ikumi is as good as SoHo gets",
+        "The Best Sushi In New York | Sushi Seven January 2026",
+        "The 19 Best Sushi Spots In NYC - New York - The Infatuation",
+        "Sushi 35 West: Hole in the Wall Making NYC's BEST SUSHI!"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Chicken Robatayaki",
+        "Hatsuhana",
+        "Sushi Sho",
+        "Hatsuhana Sushi Restaurant",
+        "Sushi Ikumi",
+        "Blue Ribbon Sushi",
+        "Sushi 35 West"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Chicken Robatayaki",
+          "score": 6.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://ny.eater.com/maps/best-sushi-nyc-omakase-japanese-restaurants-manhattan"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 6.6,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 2,
+          "name": "Hatsuhana",
+          "score": 4.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.yelp.com/search?find_desc=Zagat+Rated+Best+Sushi&find_loc=New+York%2C+NY"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 4.2,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 3,
+          "name": "Sushi Sho",
+          "score": 4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.yelp.com/search?find_desc=Zagat+Rated+Best+Sushi&find_loc=New+York%2C+NY"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 4,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 4,
+          "name": "Hatsuhana Sushi Restaurant",
+          "score": 4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.tripadvisor.com/Restaurants-g60763-c38-New_York_City_New_York.html"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 4,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 5,
+          "name": "Sushi Ikumi",
+          "score": 2.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://thesushilegend.com/reviews/sushi-ikumi"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 2.2,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 6,
+          "name": "Blue Ribbon Sushi",
+          "score": 2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.tripadvisor.com/Restaurants-g60763-c38-New_York_City_New_York.html"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 2,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 7,
+          "name": "Sushi 35 West",
+          "score": 1.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.youtube.com/watch?v=RL-eHT9Pj2s"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 1.7,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12308,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best kid-friendly restaurant in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Carmine's",
+      "expectedTopContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "actualWinner": "Motto by Hilton New York City Chelsea",
+      "actualResults": [
+        "Motto by Hilton New York City Chelsea",
+        "Parm",
+        "Dinerschoice"
+      ],
+      "retrievedSourceTitles": [
+        "restaurant for kids - New York City Forum - Tripadvisor",
+        "New York Restaurants, Dentists, Bars, Beauty Salons, Doctors - Yelp",
+        "Authentic Italian Restaurant in New York | Pasta Eater",
+        "The Best Kid-Friendly Restaurants in NYC, According to Eater Editors",
+        "A Guide to Dining Out With Children in NYC | Eater NY",
+        "The Best Kid-Friendly Restaurants In NYC - New York - The Infatuation",
+        "A Guide To The “Super Cute Reasonably Priced Restaurant To Catch Up With A Few Friends” - New York - The Infatuation",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan"
+      ],
+      "extractedCandidates": [
+        "Bar Ferdinando",
+        "Dinerschoice"
+      ],
+      "rejectedCandidates": [
+        "restaurant for kids: generic_or_placeholder",
+        "New York City Forum: generic_or_placeholder",
+        "New York Restaurants, Dentists, Bars, Beauty Salons, Doctors: too_many_words",
+        "Authentic Italian Restaurant in New York: generic_or_placeholder",
+        "Pasta: generic_or_placeholder",
+        "The Best Kid-Friendly Restaurants in NYC, According to Editors: too_many_words",
+        "Best Kid Friendly Restaurants: generic_or_placeholder",
+        "A Guide to Dining Out With Children in NYC: too_many_words",
+        "Best Family Friendly Restaurants Kids: generic_or_placeholder",
+        "The Best Kid-Friendly Restaurants In NYC: article_title_fragment",
+        "New York: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Best Kid Friendly Restaurants: generic_or_placeholder",
+        "A Guide To The “Super Cute Reasonably Priced Restaurant To Catch Up With A Few Friends”: too_many_words",
+        "New York: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Diners' Choice: Kid-friendly restaurants in Manhattan: article_title_fragment",
+        "S: empty_or_too_short"
+      ],
+      "finalContenders": [
+        "Motto by Hilton New York City Chelsea",
+        "Parm",
+        "Dinerschoice"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Motto by Hilton New York City Chelsea",
+          "score": 2.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 2.9,
+          "categoryMatchScore": -4.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Parm",
+          "score": -3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "theinfatuation.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": -3,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Dinerschoice",
+          "score": -15.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -15.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 38281,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso martini in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "Dante",
+      "expectedTopContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [
+        "TOP 10 BEST Espresso Martini in New York, NY - Yelp",
+        "Looking for a great espresso martini : r/AskNYC - Reddit",
+        "Where is the best espresso martini in NYC? : r/NYCbitcheswithtaste",
+        "Announcing the best espresso martini (I could find) in NYC! - Medium",
+        "The Best Canned Espresso Martinis, According to Our Taste Test",
+        "The Best Espresso Martini in New York City - InsideHook",
+        "Canned Espresso Martinis, Ranked",
+        "Calling all espresso martini lovers.... - New York City Forum",
+        "The Best Home Espresso Machine",
+        "Ultimate Budget Espresso Machine Tier List!",
+        "Espresso Martinis : r/BarOwners - Reddit",
+        "CNN rated the top espresso machines - Reddit"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 17173,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best golf course on Long Island",
+      "category": "local_recommendation",
+      "expectedWinner": "Bethpage Black",
+      "expectedTopContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "actualWinner": "Merrick",
+      "actualResults": [
+        "Merrick",
+        "Shoreham's Tallgrass",
+        "Leatherstocking"
+      ],
+      "retrievedSourceTitles": [
+        "Merrick Golf Course - All You SHOULD Know Before Going 2026 (with Reviews)",
+        "THE 15 BEST Long Island Golf Courses (2026) - Tripadvisor",
+        "The best public golf courses on Long Island, ranked by Long Islanders | Golf Courses | Golf Digest",
+        "Long Island NY courses : r/golf - Reddit",
+        "Bethpage Black ranks #7 on Long Island-dominated Golf Digest course list – Golf on Long Island",
+        "Bethpage, Tallgrass, Montauk Downs stay on top of Golfweek’s Best Courses list – Golf on Long Island",
+        "The best golf courses on Long Island | Golf Courses | Golf Digest",
+        "Golfweek's best modern golf courses include 4 in New York"
+      ],
+      "extractedCandidates": [
+        "Merrick",
+        "Montauk Downs State Park Golf",
+        "Shoreham's Tallgrass",
+        "Leatherstocking"
+      ],
+      "rejectedCandidates": [
+        "All You SHOULD Know Before Going 2026 (with ): too_many_words",
+        "THE 15 BEST Long Island Golf Courses (2026): too_many_words",
+        "Golf Courses: generic_or_placeholder",
+        "Course: generic_or_placeholder",
+        "The best public golf courses on Long Island, ranked by Long Islanders: too_many_words",
+        "Golf Courses: generic_or_placeholder",
+        "Courses: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Long Island Best Public Golf Courses: generic_or_placeholder",
+        "Golf Digest: generic_or_placeholder",
+        "What's: generic_or_placeholder",
+        "Long Island NY courses: generic_or_placeholder",
+        "r/golf: generic_or_placeholder",
+        "Comments: generic_or_placeholder",
+        "1j3do8e: numeric_slug",
+        "Long Island Courses: generic_or_placeholder",
+        "Bethpage Black ranks #7 on Long Island-dominated Golf Digest course list: too_many_words",
+        "Golf on Long Island: generic_or_placeholder",
+        "Bethpage, Tallgrass, Montauk Downs stay on top of Golfweek's Best Courses list: too_many_words",
+        "Golf on Long Island: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Merrick",
+        "Shoreham's Tallgrass",
+        "Leatherstocking"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Merrick",
+          "score": 11.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": 11.2,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Shoreham's Tallgrass",
+          "score": -0.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "golfonlongisland.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -0.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Leatherstocking",
+          "score": -0.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "golfonlongisland.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -0.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 24940,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best restaurant in Massapequa NY",
+      "category": "local_recommendation",
+      "expectedWinner": "Big Daddy's",
+      "expectedTopContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "actualWinner": "Mangia e Bevi",
+      "actualResults": [
+        "Mangia e Bevi",
+        "Mercato Kitchen & Cocktails",
+        "Big Daddy's",
+        "Pulcinella Neapolitan",
+        "Massapequa Local Questions & Answers"
+      ],
+      "retrievedSourceTitles": [
+        "Restaurants Near Massapequa Park Station | OpenTable",
+        "Mercato Kitchen & Cocktails, 4958 Merrick Rd, Massapequa Park, NY 11762, US - MapQuest",
+        "MANGIA E BEVI - Updated June 2026 - 177 Photos & 84 Reviews",
+        "Massapequa Local Questions & Answers - Yelp",
+        "THE 10  BEST Restaurants in Massapequa (Updated June 2026)",
+        "Yelp's Top 10 Restaurants in Massapequa: Do You Agree? | Massapequa, NY Patch",
+        "The 38 Best Restaurants in New York City - Eater NY",
+        "The 10 Best Restaurants Near Me in Massapequa | OpenTable"
+      ],
+      "extractedCandidates": [
+        "Big Daddy's",
+        "Mercato Kitchen Cocktails",
+        "MANGIA E BEVI",
+        "Mangia E Bevi Park",
+        "Massapequa Local Questions & Answers",
+        "Local Questions And Answers",
+        "Massapequa, NY Patch",
+        "Momofuku's",
+        "Pulcinella Neapolitan"
+      ],
+      "rejectedCandidates": [
+        "Restaurants Near Massapequa Park Station: generic_or_placeholder",
+        "Landmark: generic_or_placeholder",
+        "Restaurants Near Park Station: generic_or_placeholder",
+        "Mercato Kitchen & Cocktails, 4958 Merrick Rd: too_many_words",
+        "Us: empty_or_too_short",
+        "177 & 84: generic_or_placeholder",
+        "THE 10 BEST Restaurants in Massapequa ( ): too_many_words",
+        "'s Top 10 Restaurants in Massapequa: Do You Agree?: too_many_words",
+        "Yelps Top 10 Restaurants In Do You Agree: too_many_words",
+        "The 38 Best Restaurants in New York City: too_many_words",
+        "Best Restaurants 38 Map: generic_or_placeholder",
+        "The 10 Best Restaurants in Massapequa: article_title_fragment",
+        "Restaurants Near Me North: generic_or_placeholder"
+      ],
+      "finalContenders": [
+        "Mangia e Bevi",
+        "Mercato Kitchen & Cocktails",
+        "Big Daddy's",
+        "Pulcinella Neapolitan",
+        "Massapequa Local Questions & Answers",
+        "Massapequa, NY Patch",
+        "Momofuku's"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Mangia e Bevi",
+          "score": 6.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 6.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 6.6,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 2.5
+        },
+        {
+          "rank": 2,
+          "name": "Mercato Kitchen & Cocktails",
+          "score": 5.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "mapquest.com"
+          ],
+          "extractionConfidence": 0.65,
+          "localRelevanceScore": 5.8,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 1.3,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 2.5
+        },
+        {
+          "rank": 3,
+          "name": "Big Daddy's",
+          "score": 2.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.77,
+          "localRelevanceScore": 2.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Pulcinella Neapolitan",
+          "score": 2.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.77,
+          "localRelevanceScore": 2.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Massapequa Local Questions & Answers",
+          "score": 0.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 0.7,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 2.5
+        },
+        {
+          "rank": 6,
+          "name": "Massapequa, NY Patch",
+          "score": -4.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "patch.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -4.3,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "Momofuku's",
+          "score": -8.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "ny.eater.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -8.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": -4.6,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 24172,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Big Daddy's"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best ramen in Los Angeles",
+      "category": "local_recommendation",
+      "expectedWinner": "Tsujita LA Artisan Noodle",
+      "expectedTopContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 12388,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best tacos in Austin",
+      "category": "local_recommendation",
+      "expectedWinner": "Veracruz All Natural",
+      "expectedTopContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "actualWinner": "El Buen Taquero",
+      "actualResults": [
+        "El Buen Taquero",
+        "Discada",
+        "Taqueria Chapala",
+        "Torchy’s Tacos",
+        "Taco Guerrero"
+      ],
+      "retrievedSourceTitles": [
+        "10 de 10 Taqueria makes a solid argument for best tacos in Austin",
+        "Here is an *actual* Q/A for the best *authentic* tacos in Austin. I'll go ...",
+        "The 21 Best Tacos In Austin - Austin - The Infatuation",
+        "Your Guide to the Best Tacos in Austin, TX | Austin Food Adventures",
+        "Where to Find the Best Tacos in Austin - Bon Appétit | Bon Appétit",
+        "The Austin Taco Guide: Ranking Best to Worst",
+        "23 Best Tacos in Austin - Female Foodie",
+        "The Best Tacos in Austin - The MICHELIN Guide"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "El Buen Taquero",
+        "Discada",
+        "Taqueria Chapala",
+        "Torchy’s Tacos",
+        "Taco Guerrero",
+        "Casa Moreno’s"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "El Buen Taquero",
+          "score": 6.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.theinfatuation.com/austin/guides/best-austin-tacos"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 6.6,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 2,
+          "name": "Discada",
+          "score": 4.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.austinfoodadventures.com/blog/your-guide-to-the-best-tacos-in-austin-tx"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 4.6,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 3,
+          "name": "Taqueria Chapala",
+          "score": 2.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.reddit.com/r/austinfood/comments/1nr1d3f/10_de_10_taqueria_makes_a_solid_argument_for_best"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 2.6,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 4,
+          "name": "Torchy’s Tacos",
+          "score": 2.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://mileslesstraveled.com/austin-taco-ranking"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 2.6,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 5,
+          "name": "Taco Guerrero",
+          "score": 2.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.reddit.com/r/Austin/comments/odv2me/here_is_an_actual_qa_for_the_best_authentic_tacos"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 2.1,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        },
+        {
+          "rank": 6,
+          "name": "Casa Moreno’s",
+          "score": 1.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "https://www.femalefoodie.com/restaurant-reviews/best-tacos-in-austin"
+          ],
+          "extractionConfidence": null,
+          "localRelevanceScore": 1.7,
+          "categoryMatchScore": null,
+          "locationMatchScore": null,
+          "sourceAuthorityScore": null,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": null,
+          "weakSingleSourcePenalty": null,
+          "urlOnlyPenalty": null
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12240,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best cocktail bar in Chicago",
+      "category": "local_recommendation",
+      "expectedWinner": "The Violet Hour",
+      "expectedTopContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 12396,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best brunch in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Sunday in Brooklyn",
+      "expectedTopContenders": [
+        "Sunday in Brooklyn",
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "actualWinner": "Terrace Restaurant and Bakery",
+      "actualResults": [
+        "Terrace Restaurant and Bakery",
+        "Kong Sihk Tong",
+        "Sunday in Brooklyn",
+        "Rana Fifteen",
+        "Moody's Co"
+      ],
+      "retrievedSourceTitles": [
+        "The 21 best brunch spots in Brooklyn - Time Out",
+        "The Best Breakfasts in NYC — Resy | Right This Way",
+        "Diners' Choice: Great for brunch restaurants in Brooklyn",
+        "THE BEST Brunch in Brooklyn (UPDATED 2026) - Tripadvisor",
+        "Book Your Sunday in Brooklyn Reservation Now on Resy",
+        "The Best Brunch Spots In NYC - New York - The Infatuation",
+        "Best Brunch Brooklyn, NY - Last Updated June 2026 - Yelp",
+        "TOP 10 BEST Brunch Park Slope in Brooklyn, NY - Yelp"
+      ],
+      "extractedCandidates": [
+        "Breakfast",
+        "Dinerschoice",
+        "Venues",
+        "Sunday In",
+        "SET Lounge Bar & Billiards",
+        "Moody's Co",
+        "Terrace Restaurant and Bakery",
+        "Stone Park Cafe"
+      ],
+      "rejectedCandidates": [
+        "The 21 best brunch spots in Brooklyn: too_many_words",
+        "Newyork: source_or_ui_fragment",
+        "Restaurants: generic_or_placeholder",
+        "Best Brunch In: generic_or_placeholder",
+        "The Best Breakfasts in NYC: generic_or_placeholder",
+        "Diners' Choice: Great for brunch restaurants in Brooklyn: too_many_words",
+        "S: empty_or_too_short",
+        "THE BEST Brunch in Brooklyn ( ): too_many_words",
+        "Book Your Sunday in Brooklyn Now on: too_many_words",
+        "The Best Brunch Spots In NYC: article_title_fragment",
+        "New York: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Best Brunch Restaurants: generic_or_placeholder",
+        "Best Brunch Brooklyn, NY: generic_or_placeholder",
+        "Last: generic_or_placeholder",
+        "TOP 10 BEST Brunch Park Slope in Brooklyn, NY: too_many_words"
+      ],
+      "finalContenders": [
+        "Terrace Restaurant and Bakery",
+        "Kong Sihk Tong",
+        "Sunday in Brooklyn",
+        "Rana Fifteen",
+        "Moody's Co",
+        "Breakfast",
+        "Dinerschoice",
+        "Venues"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Terrace Restaurant and Bakery",
+          "score": 12.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 12.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Kong Sihk Tong",
+          "score": 5.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "blog.resy.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 5.6,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Sunday in Brooklyn",
+          "score": 2.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "resy.com"
+          ],
+          "extractionConfidence": 0.76,
+          "localRelevanceScore": 2.6,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 2.5
+        },
+        {
+          "rank": 4,
+          "name": "Rana Fifteen",
+          "score": -4.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "timeout.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -4.8,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Moody's Co",
+          "score": -5.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "m.yelp.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -5.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Breakfast",
+          "score": -15.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "blog.resy.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -15.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        },
+        {
+          "rank": 7,
+          "name": "Dinerschoice",
+          "score": -15.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -15.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        },
+        {
+          "rank": 8,
+          "name": "Venues",
+          "score": -15.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "resy.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -15.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 16297,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Sunday in Brooklyn"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best bakery in San Francisco",
+      "category": "local_recommendation",
+      "expectedWinner": "Tartine Bakery",
+      "expectedTopContenders": [
+        "Tartine Bakery",
+        "B. Patisserie",
+        "Arsicault Bakery"
+      ],
+      "actualWinner": "B Patisserie",
+      "actualResults": [
+        "B Patisserie",
+        "Tartine Bakery",
+        "Arsicault Bakery",
+        "Dianda's Italian American Pastry",
+        "Black Jet Baking Co"
+      ],
+      "retrievedSourceTitles": [
+        "The 16 Best Cakes in San Francisco | Eater SF",
+        "The 25 Best Bakeries In SF - San Francisco - The Infatuation",
+        "THE BEST 10 Bakeries in SAN FRANCISCO, CA - Yelp",
+        "The Best Bakeries in San Francisco | Eater SF",
+        "Best Bakery San Francisco, CA - Last Updated June 2026 - Yelp",
+        "Best San Francisco Bakery | Flour & Branch",
+        "The 38 Best Restaurants in San Francisco - Eater SF",
+        "Bakeries : r/AskSF"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "B Patisserie",
+        "Tartine Bakery",
+        "Arsicault Bakery",
+        "Dianda's Italian American Pastry",
+        "Black Jet Baking Co",
+        "Flour & Branch"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "B Patisserie",
+          "score": 12.4,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "yelp.com",
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 12.4,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.9,
+          "crossSourceAgreementCount": 2,
+          "sourceAgreementScore": 4.6,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Tartine Bakery",
+          "score": 3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "m.yelp.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Arsicault Bakery",
+          "score": 1.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 1.1,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Dianda's Italian American Pastry",
+          "score": -1.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "sf.eater.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -1.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Black Jet Baking Co",
+          "score": -1.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "theinfatuation.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -1.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Flour & Branch",
+          "score": -4.5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "flourandbranch.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -4.5,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11509,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Tartine Bakery",
+        "B. Patisserie",
+        "Arsicault Bakery"
+      ],
+      "localTop5Coverage": 1,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [],
+      "localTimeout": false,
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best attractions in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Space Needle",
+      "expectedTopContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "actualWinner": "Seattle's Original Guided Harbor",
+      "actualResults": [
+        "Seattle's Original Guided Harbor",
+        "Beneath The Streets Underground History Tour",
+        "The Seattle Times",
+        "Must-See Attractions",
+        "Paper Planes and Caramel Waffles"
+      ],
+      "retrievedSourceTitles": [
+        "The Most Reviewed Place On Google Maps For The 25 Largest US Cities hugequiz",
+        "THE 10 BEST Seattle Tours & Excursions (2026) - with Reviews",
+        "Google Maps says we love these 50 Seattle-area places in the summer | The Seattle Times",
+        "THE 15 BEST Things to Do in Seattle (2026) - Must-See Attractions",
+        "THE 10 BEST Seattle Sights & Historical Landmarks to Visit (2026)",
+        "25 Great Things To Do In Seattle If You’re Visiting For The First Time - Paper Planes and Caramel Waffles",
+        "THE 10 BEST Free Things to Do in Seattle (2026) - Tripadvisor",
+        "Seattle, WA: All You Must Know Before You Go (2026) - Tripadvisor"
+      ],
+      "extractedCandidates": [
+        "Seattle's Original Guided Harbor",
+        "The Seattle Times",
+        "Entertainment",
+        "Must-See Attractions",
+        "Paper Planes and Caramel Waffles"
+      ],
+      "rejectedCandidates": [
+        "The Most Reviewed Place On Google Maps For The 25 Largest US Cities hugequiz: too_many_words",
+        "The Most Reviewed Place On Google Maps For The 25 Largest Us Cities: too_many_words",
+        "THE 10 BEST Seattle Tours & Excursions (2026): too_many_words",
+        "with: does_not_look_like_named_place",
+        "Google Maps says we love these 50 Seattle-area places in the summer: too_many_words",
+        "Google Maps Says We Love These 50 Area Places In The Summer: too_many_words",
+        "THE 15 BEST Things to Do in Seattle (2026): too_many_words",
+        "THE 10 BEST Seattle Sights & Historical Landmarks to Visit (2026): too_many_words",
+        "25 Great Things To Do In Seattle If You're Visiting For The First Time: too_many_words",
+        "Things To Do In First Time Visitors: too_many_words",
+        "THE 10 BEST Free Things to Do in Seattle (2026): too_many_words",
+        "Seattle, WA: All You Must Know Before You Go (2026): too_many_words"
+      ],
+      "finalContenders": [
+        "Seattle's Original Guided Harbor",
+        "Beneath The Streets Underground History Tour",
+        "The Seattle Times",
+        "Must-See Attractions",
+        "Paper Planes and Caramel Waffles",
+        "Entertainment"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Seattle's Original Guided Harbor",
+          "score": 5.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.77,
+          "localRelevanceScore": 5.6,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 2.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Beneath The Streets Underground History Tour",
+          "score": 3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "The Seattle Times",
+          "score": -4.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "seattletimes.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -4.3,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Must-See Attractions",
+          "score": -4.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -4.3,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Paper Planes and Caramel Waffles",
+          "score": -11.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "paperplanesandcaramelwaffles.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": -11.8,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Entertainment",
+          "score": -15.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "seattletimes.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -15.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10599,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best gyms in Williamsburg Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Equinox Williamsburg",
+      "expectedTopContenders": [
+        "Equinox Williamsburg",
+        "Grind House",
+        "Vital Brooklyn"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 12390,
+      "error": "Connection error.",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Equinox Williamsburg",
+        "Grind House",
+        "Vital Brooklyn"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best dentists in Austin TX",
+      "category": "local_recommendation",
+      "expectedWinner": "Swish Dental",
+      "expectedTopContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 405,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best plumbers in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "O'Neill Plumbing",
+      "expectedTopContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 398,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    }
+  ]
+}

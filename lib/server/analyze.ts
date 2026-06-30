@@ -19,6 +19,7 @@ import {
   normalizeQuery,
   slugify
 } from "@/lib/utils";
+import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 import type { QueryEvidenceType } from "@/lib/utils";
 
 const sourceTypes = [
@@ -119,8 +120,8 @@ const classificationThresholds = {
 
 const categoryMismatchPenalty = 12;
 
-export async function analyzeConsensus(query: string, sources: VeraSource[]): Promise<ConsensusResponse> {
-  const debug = await analyzeConsensusWithDebug(query, sources);
+export async function analyzeConsensus(query: string, sources: VeraSource[], callCounts?: ExternalCallCounts): Promise<ConsensusResponse> {
+  const debug = await analyzeConsensusWithDebug(query, sources, callCounts);
   return debug.consensus;
 }
 
@@ -264,7 +265,7 @@ export function buildLocalFallbackConsensus(
   };
 }
 
-export async function analyzeConsensusWithDebug(query: string, sources: VeraSource[]) {
+export async function analyzeConsensusWithDebug(query: string, sources: VeraSource[], callCounts?: ExternalCallCounts) {
   const key = process.env.OPENAI_API_KEY;
 
   if (!key) {
@@ -283,9 +284,9 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     };
   }
 
-  const sourceSignals = await extractSourceSignals(query, modelSources, key, evidenceType);
+  const sourceSignals = await extractSourceSignals(query, modelSources, key, evidenceType, callCounts);
   const recoveredSignals =
-    evidenceType === "local_recommendation" ? await recoverSparseLocalBusinessNames(query, modelSources, sourceSignals.signals, key) : [];
+    evidenceType === "local_recommendation" ? await recoverSparseLocalBusinessNames(query, modelSources, sourceSignals.signals, key, callCounts) : [];
   const allSignals = recoveredSignals.length ? dedupeSignals([...sourceSignals.signals, ...recoveredSignals]) : sourceSignals.signals;
   const structuredConsensus = aggregateSignals(allSignals, modelSources, query);
 
@@ -309,7 +310,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   };
 }
 
-async function recoverSparseLocalBusinessNames(query: string, sources: VeraSource[], signals: SourceSignal[], key: string) {
+async function recoverSparseLocalBusinessNames(query: string, sources: VeraSource[], signals: SourceSignal[], key: string, callCounts?: ExternalCallCounts) {
   const validBusinessKeys = new Set(
     signals
       .map((signal) => signal.contenderName)
@@ -368,6 +369,19 @@ async function recoverSparseLocalBusinessNames(query: string, sources: VeraSourc
         ].join("\n")
       )
       .join("\n\n");
+
+    if (callCounts) {
+      callCounts.openAiCalls += 1;
+      callCounts.openAiCallReasons.push({
+        evidenceType: "local_recommendation",
+        phase: "local_business_name_recovery"
+      });
+    }
+    console.log("OPENAI_CALL_COUNT", {
+      evidenceType: "local_recommendation",
+      phase: "local_business_name_recovery",
+      total: callCounts?.openAiCalls ?? null
+    });
 
     const completion = await openai.chat.completions.create(
       {
@@ -485,7 +499,7 @@ async function recoverSparseLocalBusinessNames(query: string, sources: VeraSourc
   }
 }
 
-async function extractSourceSignals(query: string, sources: VeraSource[], key: string, evidenceType: QueryEvidenceType) {
+async function extractSourceSignals(query: string, sources: VeraSource[], key: string, evidenceType: QueryEvidenceType, callCounts?: ExternalCallCounts) {
   const timeoutMs =
     evidenceType === "dominant_platform"
       ? dominantPlatformOpenAITimeoutMs
@@ -527,6 +541,19 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
       ].join("\n");
     })
     .join("\n\n");
+
+  if (callCounts) {
+    callCounts.openAiCalls += 1;
+    callCounts.openAiCallReasons.push({
+      evidenceType,
+      phase: "source_signal_extraction"
+    });
+  }
+  console.log("OPENAI_CALL_COUNT", {
+    evidenceType,
+    phase: "source_signal_extraction",
+    total: callCounts?.openAiCalls ?? null
+  });
 
   const completion = await openai.chat.completions.create({
     model: openAIModel,

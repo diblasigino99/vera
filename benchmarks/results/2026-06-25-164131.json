@@ -1,0 +1,1257 @@
+{
+  "timestamp": "2026-06-25T16:41:31.759Z",
+  "commitHash": "133a486",
+  "baseUrl": "http://127.0.0.1:3117",
+  "benchmarkCount": 21,
+  "completedCount": 21,
+  "metrics": {
+    "winnerAccuracy": 0.047619047619047616,
+    "top3Accuracy": 0.19047619047619047,
+    "contenderAccuracy": 0.18181818181818182
+  },
+  "counts": {
+    "winnerHits": 1,
+    "top3Hits": 4,
+    "contenderHits": 12,
+    "contenderSlots": 66,
+    "errors": 0
+  },
+  "byCategory": {
+    "local_recommendation": {
+      "benchmarks": 21,
+      "winnerAccuracy": 0.047619047619047616,
+      "top3Accuracy": 0.19047619047619047,
+      "contenderAccuracy": 0.18181818181818182,
+      "top5Coverage": 0.18253968253968256,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeouts": 0
+    }
+  },
+  "failures": [
+    {
+      "query": "best restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Lilia",
+      "expectedTopContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 13024,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best first date restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Maison Premiere",
+      "expectedTopContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 6469,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "La Cabra",
+      "expectedTopContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 20179,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop to work from in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Devocion",
+      "expectedTopContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "actualWinner": "Coffee/Espresso recs",
+      "actualResults": [
+        "Coffee/Espresso recs",
+        "Non-Burnt Coffee",
+        "Devoción Coffee"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12987,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "The Moore Hotel",
+      "expectedTopContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "actualWinner": "Places to Stay",
+      "actualResults": [
+        "Places to Stay",
+        "Booking.com",
+        "Places to stay on a budget"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13465,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Four Seasons Hotel Seattle",
+      "expectedTopContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "actualWinner": "Kimpton Monaco",
+      "actualResults": [
+        "Kimpton Monaco",
+        "The Edgewater Hotel",
+        "Fairmont Olympic Hotel",
+        "Hotel Ändra",
+        "Hotel Andra Seattle"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9367,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "The Edgewater"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best pizza in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Lucali",
+      "expectedTopContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "actualWinner": "Luigi's",
+      "actualResults": [
+        "Luigi's",
+        "L'industrie Pizzeria",
+        "1424 Avenue J",
+        "Lucali",
+        "DOP"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11983,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Lucali",
+        "L'Industrie"
+      ],
+      "localTop5Coverage": 0.5,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.5
+    },
+    {
+      "query": "best sushi in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Sushi Nakazawa",
+      "expectedTopContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "actualWinner": "Double Knot",
+      "actualResults": [
+        "Double Knot",
+        "Hatsuhana",
+        "Sushi Sho",
+        "15e",
+        "Sushi Yasaka"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13038,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best kid-friendly restaurant in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Carmine's",
+      "expectedTopContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "actualWinner": "Junior's Restaurant",
+      "actualResults": [
+        "Junior's Restaurant",
+        "Bubby's Tribeca",
+        "Parm",
+        "The Smith"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 16185,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso martini in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "Dante",
+      "expectedTopContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "actualWinner": "Hawksmoor",
+      "actualResults": [
+        "Hawksmoor",
+        "Primi",
+        "Maison Premiere",
+        "Dudley’s",
+        "Valerie"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 17671,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best golf course on Long Island",
+      "category": "local_recommendation",
+      "expectedWinner": "Bethpage Black",
+      "expectedTopContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "actualWinner": "Deepdale Golf Club",
+      "actualResults": [
+        "Deepdale Golf Club",
+        "Bethpage Black",
+        "Montauk Downs State Park Golf Course",
+        "Gabe Lee Golf",
+        "Maidstone Club"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10601,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Bethpage Black"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best restaurant in Massapequa NY",
+      "category": "local_recommendation",
+      "expectedWinner": "Big Daddy's",
+      "expectedTopContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "actualWinner": "Alessia's Pizza and Pasta",
+      "actualResults": [
+        "Alessia's Pizza and Pasta",
+        "Pulcinella Neapolitan Restaurant",
+        "The Good Life"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 16347,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best ramen in Los Angeles",
+      "category": "local_recommendation",
+      "expectedWinner": "Tsujita LA Artisan Noodle",
+      "expectedTopContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "actualWinner": "Josui Ramen",
+      "actualResults": [
+        "Josui Ramen",
+        "Saikai Ramen",
+        "Menya Tigre",
+        "Daikokuya",
+        "ramen tatsunoya"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 10093,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Daikokuya"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best tacos in Austin",
+      "category": "local_recommendation",
+      "expectedWinner": "Veracruz All Natural",
+      "expectedTopContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "actualWinner": "El Tacorrido",
+      "actualResults": [
+        "El Tacorrido",
+        "Austin Taco Project",
+        "Industry",
+        "Veracruz All Natural",
+        "Torchy’s Tacos"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 14277,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Veracruz All Natural"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best cocktail bar in Chicago",
+      "category": "local_recommendation",
+      "expectedWinner": "The Violet Hour",
+      "expectedTopContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "actualWinner": "Coco Club",
+      "actualResults": [
+        "Coco Club",
+        "The Aviary",
+        "Dearly Beloved",
+        "Rainbo Club",
+        "Lazy Bird"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9701,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Aviary"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best brunch in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Sunday in Brooklyn",
+      "expectedTopContenders": [
+        "Sunday in Brooklyn",
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "actualWinner": "NOMO Kitchen",
+      "actualResults": [
+        "NOMO Kitchen",
+        "Ziggy's",
+        "Sunday In Brooklyn",
+        "Barbuto Brooklyn",
+        "The Butcher's Daughter"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12547,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Sunday in Brooklyn"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best attractions in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Space Needle",
+      "expectedTopContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "actualWinner": "Beneath The Streets Underground History Tour",
+      "actualResults": [
+        "Beneath The Streets Underground History Tour",
+        "Seattle Center",
+        "The Space Needle"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12101,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Space Needle"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best gyms in Williamsburg Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Equinox Williamsburg",
+      "expectedTopContenders": [
+        "Equinox Williamsburg",
+        "Grind House",
+        "Vital Brooklyn"
+      ],
+      "actualWinner": "Planet Fitness Williamsburg",
+      "actualResults": [
+        "Planet Fitness Williamsburg",
+        "Gyms in Williamsburg Greenpoint and bushwick",
+        "Williamsburg Fitness Club",
+        "Brooklyn Athletic Club",
+        "Mercedes Club"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13344,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best dentists in Austin TX",
+      "category": "local_recommendation",
+      "expectedWinner": "Swish Dental",
+      "expectedTopContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "actualWinner": "Union Dental Implant Center",
+      "actualResults": [
+        "Union Dental Implant Center",
+        "Forest Family Dentistry",
+        "Dr. Robin Bethell",
+        "Dr. Christopher Disla",
+        "Dr. Camila Garcia"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9442,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Forest Family Dentistry"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best plumbers in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "O'Neill Plumbing",
+      "expectedTopContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "actualWinner": "Mike's Plumbing",
+      "actualResults": [
+        "Mike's Plumbing",
+        "Ally Plumbing & Restoration",
+        "Anthony's plumbing",
+        "The Plumbing Joint",
+        "Fischer Plumbing"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9104,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    }
+  ],
+  "cases": [
+    {
+      "query": "best restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Lilia",
+      "expectedTopContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 13024,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best first date restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Maison Premiere",
+      "expectedTopContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 6469,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "La Cabra",
+      "expectedTopContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 20179,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop to work from in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Devocion",
+      "expectedTopContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "actualWinner": "Coffee/Espresso recs",
+      "actualResults": [
+        "Coffee/Espresso recs",
+        "Non-Burnt Coffee",
+        "Devoción Coffee"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12987,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "The Moore Hotel",
+      "expectedTopContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "actualWinner": "Places to Stay",
+      "actualResults": [
+        "Places to Stay",
+        "Booking.com",
+        "Places to stay on a budget"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13465,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Four Seasons Hotel Seattle",
+      "expectedTopContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "actualWinner": "Kimpton Monaco",
+      "actualResults": [
+        "Kimpton Monaco",
+        "The Edgewater Hotel",
+        "Fairmont Olympic Hotel",
+        "Hotel Ändra",
+        "Hotel Andra Seattle"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9367,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "The Edgewater"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best pizza in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Lucali",
+      "expectedTopContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "actualWinner": "Luigi's",
+      "actualResults": [
+        "Luigi's",
+        "L'industrie Pizzeria",
+        "1424 Avenue J",
+        "Lucali",
+        "DOP"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11983,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Lucali",
+        "L'Industrie"
+      ],
+      "localTop5Coverage": 0.5,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.5
+    },
+    {
+      "query": "best sushi in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Sushi Nakazawa",
+      "expectedTopContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "actualWinner": "Double Knot",
+      "actualResults": [
+        "Double Knot",
+        "Hatsuhana",
+        "Sushi Sho",
+        "15e",
+        "Sushi Yasaka"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13038,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best kid-friendly restaurant in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Carmine's",
+      "expectedTopContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "actualWinner": "Junior's Restaurant",
+      "actualResults": [
+        "Junior's Restaurant",
+        "Bubby's Tribeca",
+        "Parm",
+        "The Smith"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 16185,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso martini in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "Dante",
+      "expectedTopContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "actualWinner": "Hawksmoor",
+      "actualResults": [
+        "Hawksmoor",
+        "Primi",
+        "Maison Premiere",
+        "Dudley’s",
+        "Valerie"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 17671,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best golf course on Long Island",
+      "category": "local_recommendation",
+      "expectedWinner": "Bethpage Black",
+      "expectedTopContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "actualWinner": "Deepdale Golf Club",
+      "actualResults": [
+        "Deepdale Golf Club",
+        "Bethpage Black",
+        "Montauk Downs State Park Golf Course",
+        "Gabe Lee Golf",
+        "Maidstone Club"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10601,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Bethpage Black"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best restaurant in Massapequa NY",
+      "category": "local_recommendation",
+      "expectedWinner": "Big Daddy's",
+      "expectedTopContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "actualWinner": "Alessia's Pizza and Pasta",
+      "actualResults": [
+        "Alessia's Pizza and Pasta",
+        "Pulcinella Neapolitan Restaurant",
+        "The Good Life"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 16347,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best ramen in Los Angeles",
+      "category": "local_recommendation",
+      "expectedWinner": "Tsujita LA Artisan Noodle",
+      "expectedTopContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "actualWinner": "Josui Ramen",
+      "actualResults": [
+        "Josui Ramen",
+        "Saikai Ramen",
+        "Menya Tigre",
+        "Daikokuya",
+        "ramen tatsunoya"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 10093,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Daikokuya"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best tacos in Austin",
+      "category": "local_recommendation",
+      "expectedWinner": "Veracruz All Natural",
+      "expectedTopContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "actualWinner": "El Tacorrido",
+      "actualResults": [
+        "El Tacorrido",
+        "Austin Taco Project",
+        "Industry",
+        "Veracruz All Natural",
+        "Torchy’s Tacos"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 14277,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Veracruz All Natural"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best cocktail bar in Chicago",
+      "category": "local_recommendation",
+      "expectedWinner": "The Violet Hour",
+      "expectedTopContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "actualWinner": "Coco Club",
+      "actualResults": [
+        "Coco Club",
+        "The Aviary",
+        "Dearly Beloved",
+        "Rainbo Club",
+        "Lazy Bird"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9701,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Aviary"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best brunch in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Sunday in Brooklyn",
+      "expectedTopContenders": [
+        "Sunday in Brooklyn",
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "actualWinner": "NOMO Kitchen",
+      "actualResults": [
+        "NOMO Kitchen",
+        "Ziggy's",
+        "Sunday In Brooklyn",
+        "Barbuto Brooklyn",
+        "The Butcher's Daughter"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12547,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Sunday in Brooklyn"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best bakery in San Francisco",
+      "category": "local_recommendation",
+      "expectedWinner": "Tartine Bakery",
+      "expectedTopContenders": [
+        "Tartine Bakery",
+        "B. Patisserie",
+        "Arsicault Bakery"
+      ],
+      "actualWinner": "Tartine Bakery",
+      "actualResults": [
+        "Tartine Bakery",
+        "La Victoria Panadería",
+        "Arsicault Bakery",
+        "Devil’s Teeth Baking Company"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9144,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Tartine Bakery",
+        "Arsicault Bakery"
+      ],
+      "localTop5Coverage": 0.6666666666666666,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best attractions in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Space Needle",
+      "expectedTopContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "actualWinner": "Beneath The Streets Underground History Tour",
+      "actualResults": [
+        "Beneath The Streets Underground History Tour",
+        "Seattle Center",
+        "The Space Needle"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12101,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Space Needle"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best gyms in Williamsburg Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Equinox Williamsburg",
+      "expectedTopContenders": [
+        "Equinox Williamsburg",
+        "Grind House",
+        "Vital Brooklyn"
+      ],
+      "actualWinner": "Planet Fitness Williamsburg",
+      "actualResults": [
+        "Planet Fitness Williamsburg",
+        "Gyms in Williamsburg Greenpoint and bushwick",
+        "Williamsburg Fitness Club",
+        "Brooklyn Athletic Club",
+        "Mercedes Club"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13344,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best dentists in Austin TX",
+      "category": "local_recommendation",
+      "expectedWinner": "Swish Dental",
+      "expectedTopContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "actualWinner": "Union Dental Implant Center",
+      "actualResults": [
+        "Union Dental Implant Center",
+        "Forest Family Dentistry",
+        "Dr. Robin Bethell",
+        "Dr. Christopher Disla",
+        "Dr. Camila Garcia"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9442,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Forest Family Dentistry"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best plumbers in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "O'Neill Plumbing",
+      "expectedTopContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "actualWinner": "Mike's Plumbing",
+      "actualResults": [
+        "Mike's Plumbing",
+        "Ally Plumbing & Restoration",
+        "Anthony's plumbing",
+        "The Plumbing Joint",
+        "Fischer Plumbing"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9104,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "duplicateBusinesses": 0,
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    }
+  ]
+}

@@ -1,0 +1,3395 @@
+{
+  "timestamp": "2026-06-26T16:57:42.458Z",
+  "commitHash": "8da93ec",
+  "baseUrl": "http://127.0.0.1:3117",
+  "benchmarkCount": 21,
+  "completedCount": 7,
+  "metrics": {
+    "winnerAccuracy": 0.047619047619047616,
+    "top3Accuracy": 0.09523809523809523,
+    "contenderAccuracy": 0.10606060606060606
+  },
+  "counts": {
+    "winnerHits": 1,
+    "top3Hits": 2,
+    "contenderHits": 7,
+    "contenderSlots": 66,
+    "errors": 14
+  },
+  "byCategory": {
+    "local_recommendation": {
+      "benchmarks": 21,
+      "winnerAccuracy": 0.047619047619047616,
+      "top3Accuracy": 0.09523809523809523,
+      "contenderAccuracy": 0.10606060606060606,
+      "top5Coverage": 0.11111111111111109,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "localTimeouts": 14,
+      "emptyResults": 14,
+      "coverageScore": 0.11111111111111109
+    }
+  },
+  "failures": [
+    {
+      "query": "best restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Lilia",
+      "expectedTopContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 6622,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best first date restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Maison Premiere",
+      "expectedTopContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 42,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "La Cabra",
+      "expectedTopContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 32,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop to work from in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Devocion",
+      "expectedTopContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 97,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "The Moore Hotel",
+      "expectedTopContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 40,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Four Seasons Hotel Seattle",
+      "expectedTopContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 20,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best pizza in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Lucali",
+      "expectedTopContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 21,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best sushi in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Sushi Nakazawa",
+      "expectedTopContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 379,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best kid-friendly restaurant in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Carmine's",
+      "expectedTopContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 44,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso martini in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "Dante",
+      "expectedTopContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 382,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best golf course on Long Island",
+      "category": "local_recommendation",
+      "expectedWinner": "Bethpage Black",
+      "expectedTopContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 48,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best restaurant in Massapequa NY",
+      "category": "local_recommendation",
+      "expectedWinner": "Big Daddy's",
+      "expectedTopContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 24,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best ramen in Los Angeles",
+      "category": "local_recommendation",
+      "expectedWinner": "Tsujita LA Artisan Noodle",
+      "expectedTopContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 379,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best tacos in Austin",
+      "category": "local_recommendation",
+      "expectedWinner": "Veracruz All Natural",
+      "expectedTopContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 400,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best cocktail bar in Chicago",
+      "category": "local_recommendation",
+      "expectedWinner": "The Violet Hour",
+      "expectedTopContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "actualWinner": "The Aviary",
+      "actualResults": [
+        "The Aviary",
+        "King Of Cups",
+        "Craft Cocktail Lounge",
+        "Bisous",
+        "Drinking Great Cocktails"
+      ],
+      "retrievedSourceTitles": [
+        "The 23 Best Cocktail Bars In Chicago - Chicago - The Infatuation",
+        "Bars | Chicago Bars, Reviews & Bar Events | Time Out Chicago",
+        "King Of Cups · Craft Cocktail Lounge | Lincoln Park | Chicago",
+        "The Best Places to Drink Cocktails in Chicago Right Now",
+        "Drinking Great Cocktails - Chicago - The Infatuation",
+        "The 13 Best Cocktail Bars For Special Occasions - Chicago by The Infatuation | The Vendry",
+        "The 10 Best Hidden Bars In Chicago - Chicago - The Infatuation by The Infatuation | The Vendry",
+        "3 Chicago bars named among best in North America on TimeOut list – NBC Chicago"
+      ],
+      "extractedCandidates": [
+        "King Of Cups",
+        "Craft Cocktail Lounge",
+        "Lincoln Park",
+        "Fulton Market",
+        "Drinking Great Cocktails",
+        "IYRXlx",
+        "NBC Chicago",
+        "Local",
+        "WATCH HERE Leading Chicago's"
+      ],
+      "rejectedCandidates": [
+        "The 23 Best Cocktail Bars In Chicago: too_many_words",
+        "Chicago: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Cocktail Bars Chicago: generic_or_placeholder",
+        "Bars: generic_or_placeholder",
+        "Chicago Bars, & Bar Events: generic_or_placeholder",
+        "Chicago: generic_or_placeholder",
+        "Chicago: generic_or_placeholder",
+        "The Best Places to Drink Cocktails in Chicago Right Now: too_many_words",
+        "Best New Bars Map Chicago: generic_or_placeholder",
+        "Chicago: generic_or_placeholder",
+        "The Chicago Bar Hit List: generic_or_placeholder",
+        "The 13 Best Cocktail Bars For Special Occasions: too_many_words",
+        "Chicago by: generic_or_placeholder",
+        "List: generic_or_placeholder",
+        "IddpH1: generic_or_placeholder",
+        "The 13 Best Cocktail Bars For Special Occasions Chicago: too_many_words",
+        "The Vendry: generic_or_placeholder",
+        "Chicago The Infatuation's: source_website_name",
+        "The 10 Best Hidden Bars In Chicago: too_many_words"
+      ],
+      "finalContenders": [
+        "The Aviary",
+        "King Of Cups",
+        "Craft Cocktail Lounge",
+        "Bisous",
+        "Drinking Great Cocktails",
+        "NBC Chicago",
+        "WATCH HERE Leading Chicago's",
+        "IYRXlx",
+        "Local"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "The Aviary",
+          "score": 10.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "theinfatuation.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 10.7,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "King Of Cups",
+          "score": 7.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "chicagokingofcups.com"
+          ],
+          "extractionConfidence": 0.77,
+          "localRelevanceScore": 7.7,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 1.3,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Craft Cocktail Lounge",
+          "score": 5.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "chicagokingofcups.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": 5.9,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Bisous",
+          "score": -1.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "chicago.eater.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -1.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Drinking Great Cocktails",
+          "score": -2.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "theinfatuation.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -2.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "NBC Chicago",
+          "score": -2.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "nbcchicago.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -2.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "WATCH HERE Leading Chicago's",
+          "score": -2.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "nbcchicago.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -2.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 8,
+          "name": "IYRXlx",
+          "score": -13.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "thevendry.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -13.7,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        },
+        {
+          "rank": 9,
+          "name": "Local",
+          "score": -13.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "nbcchicago.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -13.7,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11685,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Aviary"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "The Violet Hour",
+        "Three Dots and a Dash"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best brunch in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Sunday in Brooklyn",
+      "expectedTopContenders": [
+        "Sunday in Brooklyn",
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "actualWinner": "The Snail Greenpoint",
+      "actualResults": [
+        "The Snail Greenpoint",
+        "Kong Sihk Tong",
+        "Rana Fifteen",
+        "Sweet Catch Brooklyn",
+        "Westville Dumbo"
+      ],
+      "retrievedSourceTitles": [
+        "Diners' Choice: Great for brunch restaurants in Brooklyn",
+        "How to Get the Toughest Restaurant Reservations in New York",
+        "The 21 best brunch spots in Brooklyn - Time Out",
+        "THE BEST Brunch in Brooklyn (UPDATED 2026) - Tripadvisor",
+        "78 Best Brunch Restaurants in Park Slope | OpenTable",
+        "The Best Breakfasts in NYC — Resy | Right This Way",
+        "2026’s Top 100 Brunch Restaurants - OpenTable US | OpenTable",
+        "The Ultimate Resy Guide to Brunch in New York"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "The Snail Greenpoint",
+        "Kong Sihk Tong",
+        "Rana Fifteen",
+        "Sweet Catch Brooklyn",
+        "Westville Dumbo"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "The Snail Greenpoint",
+          "score": 9.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "blog.resy.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 9.1,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Kong Sihk Tong",
+          "score": 6.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "blog.resy.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 6.8,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Rana Fifteen",
+          "score": -4.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "timeout.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -4.8,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Sweet Catch Brooklyn",
+          "score": -5.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "blog.resy.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": -5.2,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Westville Dumbo",
+          "score": -6.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -6.4,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10965,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Sunday in Brooklyn",
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best gyms in Williamsburg Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Equinox Williamsburg",
+      "expectedTopContenders": [
+        "Equinox Williamsburg",
+        "Grind House",
+        "Vital Brooklyn"
+      ],
+      "actualWinner": "VITAL Brooklyn",
+      "actualResults": [
+        "VITAL Brooklyn",
+        "Orangetheory Fitness",
+        "Club Pilates",
+        "Brooklyn Athletic Club",
+        "Chalk Gym"
+      ],
+      "retrievedSourceTitles": [
+        "THE BEST 10 Gyms near EAST WILLIAMSBURG, BROOKLYN, NY",
+        "Brooklyn Athletic Club - Gym in Williamsburg, New York - Postcard.inc",
+        "The best gyms and health clubs in New York - NYC - Time Out",
+        "Gym recommendations? : r/williamsburg",
+        "Do you like your gym? : r/williamsburg",
+        "best gyms in the area? : r/williamsburg - Reddit",
+        "Gyms in Williamsburg : r/williamsburg",
+        "Gym in Brooklyn, NY – F45 Training Williamsburg North (Reviews & Hours)"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "VITAL Brooklyn",
+        "Orangetheory Fitness",
+        "Club Pilates",
+        "Brooklyn Athletic Club",
+        "Chalk Gym"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "VITAL Brooklyn",
+          "score": 4.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "timeout.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 4.9,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 2.8,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Orangetheory Fitness",
+          "score": 0.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 0.7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 2.8,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Club Pilates",
+          "score": 0.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 0.7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 2.8,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Brooklyn Athletic Club",
+          "score": -5.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "postcard.inc"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": -5.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 2.8,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Chalk Gym",
+          "score": -6.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": -6.8,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 2.8,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12132,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Vital Brooklyn"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Equinox Williamsburg",
+        "Grind House"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best dentists in Austin TX",
+      "category": "local_recommendation",
+      "expectedWinner": "Swish Dental",
+      "expectedTopContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "actualWinner": "Carus Dental South Central",
+      "actualResults": [
+        "Carus Dental South Central",
+        "Union Dental Implant Center1211",
+        "Hamilton Dental: Dentist in Austin, TX",
+        "Celebrate Dental & Braces",
+        "Delta Dental"
+      ],
+      "retrievedSourceTitles": [
+        "10 Best Dentists in Austin Texas - TopRatedDentist.com",
+        "Dentists in Austin, TX | TexasDentalHub",
+        "Top 10 Best Dentists in Austin, TX - Celebrate Dental & Braces",
+        "20 Best Dentists Near Me in Austin, TX | Opencare.com",
+        "38th Street Dental: Dentist Austin, TX",
+        "Austin Dentist Office - 38th Street Dental",
+        "The Best Dentists in Austin, According to Locals",
+        "Hamilton Dental: Dentist in Austin, TX",
+        "Who is the best dentist in Austin? - Reddit",
+        "Best Dentists Near Me in Austin, Texas | Delta Dental",
+        "20 Best Dentists Near Austin, TX - Healthgrades",
+        "20 Best Dentists Near Pflugerville, TX | Healthgrades"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Carus Dental South Central",
+        "Union Dental Implant Center1211",
+        "Hamilton Dental: Dentist in Austin, TX",
+        "Celebrate Dental & Braces",
+        "Delta Dental",
+        "Healing Tooth Dental",
+        "Balcones Family Dental",
+        "Walden Dental",
+        "Honest Family Dental",
+        "Jack Sansing Dental"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Carus Dental South Central",
+          "score": -7.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "healthgrades.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -7.4,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Union Dental Implant Center1211",
+          "score": -12.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "statesman.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -12.6,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Hamilton Dental: Dentist in Austin, TX",
+          "score": -13.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "hamiltondentalaustin.com"
+          ],
+          "extractionConfidence": 0.85,
+          "localRelevanceScore": -13.3,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Celebrate Dental & Braces",
+          "score": -14.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "celebratedental.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": -14.1,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Delta Dental",
+          "score": -14.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "deltadental.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": -14.1,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Healing Tooth Dental",
+          "score": -14.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -14.4,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "Balcones Family Dental",
+          "score": -14.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -14.4,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 8,
+          "name": "Walden Dental",
+          "score": -14.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "toprateddentist.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -14.9,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 9,
+          "name": "Honest Family Dental",
+          "score": -14.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "texasdentalhub.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -14.9,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 10,
+          "name": "Jack Sansing Dental",
+          "score": -14.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "texasdentalhub.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -14.9,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 15126,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best plumbers in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "O'Neill Plumbing",
+      "expectedTopContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "actualWinner": "Mike's Plumbing & Drain Cleaning",
+      "actualResults": [
+        "Mike's Plumbing & Drain Cleaning",
+        "Little Guy Plumbing",
+        "Raymark Plumbing",
+        "Jim Dandy Sewer & Plumbing",
+        "Bee's Plumbing & Heating"
+      ],
+      "retrievedSourceTitles": [
+        "Seattle Plumbing Services, 24/7 Emergency Plumber",
+        "Best plumbers in Seattle, Wash. - Yahoo Local",
+        "Leave A Review | O'Neill Plumbing",
+        "Can anyone recommend a good plumber in King County who ...",
+        "Top 10 Best Plumbers in Seattle, WA | Angi",
+        "Find The Best Plumbers In Seattle, WA – Forbes Home",
+        "Recommended Plumbers in S. Seattle (Beacon Hill) : r/Seattle",
+        "Best Plumbing in Seattle, WA, New York - Reviews & Contact Info ..."
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Mike's Plumbing & Drain Cleaning",
+        "Little Guy Plumbing",
+        "Raymark Plumbing",
+        "Jim Dandy Sewer & Plumbing",
+        "Bee's Plumbing & Heating",
+        "O'Neill Plumbing"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Mike's Plumbing & Drain Cleaning",
+          "score": 7.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "local.yahoo.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": 7.3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Little Guy Plumbing",
+          "score": 2.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.73,
+          "localRelevanceScore": 2.4,
+          "categoryMatchScore": 1.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Raymark Plumbing",
+          "score": 0.5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "angi.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 0.5,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Jim Dandy Sewer & Plumbing",
+          "score": -5.5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "serviceagent.ai"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": -5.5,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Bee's Plumbing & Heating",
+          "score": -7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "beesplumbingandheating.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": -7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "O'Neill Plumbing",
+          "score": -7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "oneillplumbing.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": -7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10319,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Raymark Plumbing"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    }
+  ],
+  "cases": [
+    {
+      "query": "best restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Lilia",
+      "expectedTopContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 6622,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best first date restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Maison Premiere",
+      "expectedTopContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 42,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "La Cabra",
+      "expectedTopContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 32,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best coffee shop to work from in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Devocion",
+      "expectedTopContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 97,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "The Moore Hotel",
+      "expectedTopContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 40,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Four Seasons Hotel Seattle",
+      "expectedTopContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 20,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best pizza in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Lucali",
+      "expectedTopContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 21,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best sushi in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Sushi Nakazawa",
+      "expectedTopContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 379,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best kid-friendly restaurant in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Carmine's",
+      "expectedTopContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 44,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso martini in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "Dante",
+      "expectedTopContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 382,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best golf course on Long Island",
+      "category": "local_recommendation",
+      "expectedWinner": "Bethpage Black",
+      "expectedTopContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 48,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best restaurant in Massapequa NY",
+      "category": "local_recommendation",
+      "expectedWinner": "Big Daddy's",
+      "expectedTopContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 24,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best ramen in Los Angeles",
+      "category": "local_recommendation",
+      "expectedWinner": "Tsujita LA Artisan Noodle",
+      "expectedTopContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 379,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best tacos in Austin",
+      "category": "local_recommendation",
+      "expectedWinner": "Veracruz All Natural",
+      "expectedTopContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "retrievedSourceTitles": [],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [],
+      "localRankingDiagnostics": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 400,
+      "error": "fetch failed",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "localTimeout": true,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best cocktail bar in Chicago",
+      "category": "local_recommendation",
+      "expectedWinner": "The Violet Hour",
+      "expectedTopContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "actualWinner": "The Aviary",
+      "actualResults": [
+        "The Aviary",
+        "King Of Cups",
+        "Craft Cocktail Lounge",
+        "Bisous",
+        "Drinking Great Cocktails"
+      ],
+      "retrievedSourceTitles": [
+        "The 23 Best Cocktail Bars In Chicago - Chicago - The Infatuation",
+        "Bars | Chicago Bars, Reviews & Bar Events | Time Out Chicago",
+        "King Of Cups · Craft Cocktail Lounge | Lincoln Park | Chicago",
+        "The Best Places to Drink Cocktails in Chicago Right Now",
+        "Drinking Great Cocktails - Chicago - The Infatuation",
+        "The 13 Best Cocktail Bars For Special Occasions - Chicago by The Infatuation | The Vendry",
+        "The 10 Best Hidden Bars In Chicago - Chicago - The Infatuation by The Infatuation | The Vendry",
+        "3 Chicago bars named among best in North America on TimeOut list – NBC Chicago"
+      ],
+      "extractedCandidates": [
+        "King Of Cups",
+        "Craft Cocktail Lounge",
+        "Lincoln Park",
+        "Fulton Market",
+        "Drinking Great Cocktails",
+        "IYRXlx",
+        "NBC Chicago",
+        "Local",
+        "WATCH HERE Leading Chicago's"
+      ],
+      "rejectedCandidates": [
+        "The 23 Best Cocktail Bars In Chicago: too_many_words",
+        "Chicago: generic_or_placeholder",
+        "Guides: source_or_ui_fragment",
+        "Cocktail Bars Chicago: generic_or_placeholder",
+        "Bars: generic_or_placeholder",
+        "Chicago Bars, & Bar Events: generic_or_placeholder",
+        "Chicago: generic_or_placeholder",
+        "Chicago: generic_or_placeholder",
+        "The Best Places to Drink Cocktails in Chicago Right Now: too_many_words",
+        "Best New Bars Map Chicago: generic_or_placeholder",
+        "Chicago: generic_or_placeholder",
+        "The Chicago Bar Hit List: generic_or_placeholder",
+        "The 13 Best Cocktail Bars For Special Occasions: too_many_words",
+        "Chicago by: generic_or_placeholder",
+        "List: generic_or_placeholder",
+        "IddpH1: generic_or_placeholder",
+        "The 13 Best Cocktail Bars For Special Occasions Chicago: too_many_words",
+        "The Vendry: generic_or_placeholder",
+        "Chicago The Infatuation's: source_website_name",
+        "The 10 Best Hidden Bars In Chicago: too_many_words"
+      ],
+      "finalContenders": [
+        "The Aviary",
+        "King Of Cups",
+        "Craft Cocktail Lounge",
+        "Bisous",
+        "Drinking Great Cocktails",
+        "NBC Chicago",
+        "WATCH HERE Leading Chicago's",
+        "IYRXlx",
+        "Local"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "The Aviary",
+          "score": 10.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "theinfatuation.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 10.7,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "King Of Cups",
+          "score": 7.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "chicagokingofcups.com"
+          ],
+          "extractionConfidence": 0.77,
+          "localRelevanceScore": 7.7,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 1.3,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Craft Cocktail Lounge",
+          "score": 5.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "chicagokingofcups.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": 5.9,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Bisous",
+          "score": -1.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "chicago.eater.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -1.3,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Drinking Great Cocktails",
+          "score": -2.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "theinfatuation.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -2.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "NBC Chicago",
+          "score": -2.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "nbcchicago.com"
+          ],
+          "extractionConfidence": 0.9,
+          "localRelevanceScore": -2.1,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "WATCH HERE Leading Chicago's",
+          "score": -2.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "nbcchicago.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -2.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 8,
+          "name": "IYRXlx",
+          "score": -13.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "thevendry.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -13.7,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        },
+        {
+          "rank": 9,
+          "name": "Local",
+          "score": -13.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "nbcchicago.com"
+          ],
+          "extractionConfidence": 0.7,
+          "localRelevanceScore": -13.7,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 7.5,
+          "urlOnlyPenalty": 7
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11685,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Aviary"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "The Violet Hour",
+        "Three Dots and a Dash"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best brunch in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Sunday in Brooklyn",
+      "expectedTopContenders": [
+        "Sunday in Brooklyn",
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "actualWinner": "The Snail Greenpoint",
+      "actualResults": [
+        "The Snail Greenpoint",
+        "Kong Sihk Tong",
+        "Rana Fifteen",
+        "Sweet Catch Brooklyn",
+        "Westville Dumbo"
+      ],
+      "retrievedSourceTitles": [
+        "Diners' Choice: Great for brunch restaurants in Brooklyn",
+        "How to Get the Toughest Restaurant Reservations in New York",
+        "The 21 best brunch spots in Brooklyn - Time Out",
+        "THE BEST Brunch in Brooklyn (UPDATED 2026) - Tripadvisor",
+        "78 Best Brunch Restaurants in Park Slope | OpenTable",
+        "The Best Breakfasts in NYC — Resy | Right This Way",
+        "2026’s Top 100 Brunch Restaurants - OpenTable US | OpenTable",
+        "The Ultimate Resy Guide to Brunch in New York"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "The Snail Greenpoint",
+        "Kong Sihk Tong",
+        "Rana Fifteen",
+        "Sweet Catch Brooklyn",
+        "Westville Dumbo"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "The Snail Greenpoint",
+          "score": 9.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "blog.resy.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 9.1,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Kong Sihk Tong",
+          "score": 6.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "blog.resy.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 6.8,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Rana Fifteen",
+          "score": -4.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "timeout.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -4.8,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Sweet Catch Brooklyn",
+          "score": -5.2,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "blog.resy.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": -5.2,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Westville Dumbo",
+          "score": -6.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "opentable.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": -6.4,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10965,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Sunday in Brooklyn",
+        "Cafe Mogador",
+        "Five Leaves"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best bakery in San Francisco",
+      "category": "local_recommendation",
+      "expectedWinner": "Tartine Bakery",
+      "expectedTopContenders": [
+        "Tartine Bakery",
+        "B. Patisserie",
+        "Arsicault Bakery"
+      ],
+      "actualWinner": "Arsicault Bakery",
+      "actualResults": [
+        "Arsicault Bakery",
+        "Tartine Bakery",
+        "Arizmendi Bakery",
+        "Jane the Bakery",
+        "Black Jet Baking Co. It's"
+      ],
+      "retrievedSourceTitles": [
+        "Recommended bakeries? : r/AskSF - Reddit",
+        "Best bread/bakery in SF : r/SanFranciscoSecrets - Reddit",
+        "The 18 Best Bakeries in San Francisco - Eater SF",
+        "The 25 Best Bakeries In SF - San Francisco - The Infatuation",
+        "How to Spend a Big Fat Weekend Eating Pastries in San Francisco",
+        "THE BEST 10 Bakeries in SAN FRANCISCO, CA - Yelp",
+        "Best Bakery San Francisco, CA - Last Updated June 2026 - Yelp",
+        "Where To Find the Best Bakeries in San Francisco - Feastio",
+        "Insider's Guide to the Best Bakeries in San Francisco",
+        "The Best Bakeries in San Francisco - David Lebovitz",
+        "I Tried the Best Bakeries in San Francisco Bay Area - YouTube",
+        "San Francisco Street Bakery – Olympia's Neighborhood Bakery"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Arsicault Bakery",
+        "Tartine Bakery",
+        "Arizmendi Bakery",
+        "Jane the Bakery",
+        "Black Jet Baking Co. It's",
+        "San Francisco Street Bakery",
+        "Olympia's Neighborhood Bakery",
+        "Arsicault Jane The Bakery Maison",
+        "Rize Up Bakery",
+        "La Mexicana Bakery and Noe"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Arsicault Bakery",
+          "score": 16.5,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "yelp.com",
+            "m.yelp.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 16.5,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 2,
+          "sourceAgreementScore": 4.6,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Tartine Bakery",
+          "score": 16.5,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "yelp.com",
+            "m.yelp.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": 16.5,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 2,
+          "sourceAgreementScore": 4.6,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Arizmendi Bakery",
+          "score": 13.5,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "m.yelp.com",
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.76,
+          "localRelevanceScore": 13.5,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.9,
+          "crossSourceAgreementCount": 2,
+          "sourceAgreementScore": 4.6,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Jane the Bakery",
+          "score": 8,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "feastio.com",
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": 8,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 1.3,
+          "crossSourceAgreementCount": 2,
+          "sourceAgreementScore": 4.6,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Black Jet Baking Co. It's",
+          "score": -2.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "theinfatuation.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -2.9,
+          "categoryMatchScore": 0,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "San Francisco Street Bakery",
+          "score": -5.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "sfsbakery.com"
+          ],
+          "extractionConfidence": 0.85,
+          "localRelevanceScore": -5.3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "Olympia's Neighborhood Bakery",
+          "score": -6.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "sfsbakery.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": -6.1,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 8,
+          "name": "Arsicault Jane The Bakery Maison",
+          "score": -6.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -6.4,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 9,
+          "name": "Rize Up Bakery",
+          "score": -6.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -6.4,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 10,
+          "name": "La Mexicana Bakery and Noe",
+          "score": -6.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "bonappetit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -6.9,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12547,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Tartine Bakery",
+        "Arsicault Bakery"
+      ],
+      "localTop5Coverage": 0.6666666666666666,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "B. Patisserie"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best attractions in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Space Needle",
+      "expectedTopContenders": [
+        "Space Needle",
+        "Pike Place Market",
+        "Chihuly Garden and Glass"
+      ],
+      "actualWinner": "Space Needle",
+      "actualResults": [
+        "Space Needle",
+        "Beneath The Streets Underground History Tour",
+        "Klondike Gold Rush National Historical Park",
+        "Chihuly Garden and Glass",
+        "Seattle Aquarium"
+      ],
+      "retrievedSourceTitles": [
+        "THE 15 BEST Things to Do in Seattle (2026) - Must-See Attractions",
+        "THE 10 BEST Seattle Sights & Historical Landmarks to Visit (2026)",
+        "25 Great Things To Do In Seattle If You're Visiting For The First Time",
+        "THE 10 BEST Seattle Tours & Excursions (2026) - Tripadvisor",
+        "THE 10 BEST Free Things to Do in Seattle (2026) - Tripadvisor",
+        "THE 10 BEST Things to Do in Downtown (2026) - Tripadvisor",
+        "Seattle, WA: All You Must Know Before You Go (2026) - Tripadvisor",
+        "Suggestions on things to do - Seattle Forum - Tripadvisor"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Space Needle",
+        "Beneath The Streets Underground History Tour",
+        "Klondike Gold Rush National Historical Park",
+        "Chihuly Garden and Glass",
+        "Seattle Aquarium"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Space Needle",
+          "score": 27.7,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 27.7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 1.2,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Beneath The Streets Underground History Tour",
+          "score": 17.6,
+          "sourceCount": 2,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 17.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 4.4,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 1.2,
+          "weakSingleSourcePenalty": 0,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Klondike Gold Rush National Historical Park",
+          "score": 15,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 15,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Chihuly Garden and Glass",
+          "score": 11.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 11.1,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Seattle Aquarium",
+          "score": 3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "tripadvisor.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13977,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Space Needle",
+        "Chihuly Garden and Glass"
+      ],
+      "localTop5Coverage": 0.6666666666666666,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Pike Place Market"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best gyms in Williamsburg Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Equinox Williamsburg",
+      "expectedTopContenders": [
+        "Equinox Williamsburg",
+        "Grind House",
+        "Vital Brooklyn"
+      ],
+      "actualWinner": "VITAL Brooklyn",
+      "actualResults": [
+        "VITAL Brooklyn",
+        "Orangetheory Fitness",
+        "Club Pilates",
+        "Brooklyn Athletic Club",
+        "Chalk Gym"
+      ],
+      "retrievedSourceTitles": [
+        "THE BEST 10 Gyms near EAST WILLIAMSBURG, BROOKLYN, NY",
+        "Brooklyn Athletic Club - Gym in Williamsburg, New York - Postcard.inc",
+        "The best gyms and health clubs in New York - NYC - Time Out",
+        "Gym recommendations? : r/williamsburg",
+        "Do you like your gym? : r/williamsburg",
+        "best gyms in the area? : r/williamsburg - Reddit",
+        "Gyms in Williamsburg : r/williamsburg",
+        "Gym in Brooklyn, NY – F45 Training Williamsburg North (Reviews & Hours)"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "VITAL Brooklyn",
+        "Orangetheory Fitness",
+        "Club Pilates",
+        "Brooklyn Athletic Club",
+        "Chalk Gym"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "VITAL Brooklyn",
+          "score": 4.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "timeout.com"
+          ],
+          "extractionConfidence": 0.82,
+          "localRelevanceScore": 4.9,
+          "categoryMatchScore": 3.5,
+          "locationMatchScore": 2.8,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Orangetheory Fitness",
+          "score": 0.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 0.7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 2.8,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Club Pilates",
+          "score": 0.7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "yelp.com"
+          ],
+          "extractionConfidence": 0.74,
+          "localRelevanceScore": 0.7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 2.8,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Brooklyn Athletic Club",
+          "score": -5.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "postcard.inc"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": -5.6,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 2.8,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Chalk Gym",
+          "score": -6.8,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": -6.8,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 2.8,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12132,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Vital Brooklyn"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Equinox Williamsburg",
+        "Grind House"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best dentists in Austin TX",
+      "category": "local_recommendation",
+      "expectedWinner": "Swish Dental",
+      "expectedTopContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "actualWinner": "Carus Dental South Central",
+      "actualResults": [
+        "Carus Dental South Central",
+        "Union Dental Implant Center1211",
+        "Hamilton Dental: Dentist in Austin, TX",
+        "Celebrate Dental & Braces",
+        "Delta Dental"
+      ],
+      "retrievedSourceTitles": [
+        "10 Best Dentists in Austin Texas - TopRatedDentist.com",
+        "Dentists in Austin, TX | TexasDentalHub",
+        "Top 10 Best Dentists in Austin, TX - Celebrate Dental & Braces",
+        "20 Best Dentists Near Me in Austin, TX | Opencare.com",
+        "38th Street Dental: Dentist Austin, TX",
+        "Austin Dentist Office - 38th Street Dental",
+        "The Best Dentists in Austin, According to Locals",
+        "Hamilton Dental: Dentist in Austin, TX",
+        "Who is the best dentist in Austin? - Reddit",
+        "Best Dentists Near Me in Austin, Texas | Delta Dental",
+        "20 Best Dentists Near Austin, TX - Healthgrades",
+        "20 Best Dentists Near Pflugerville, TX | Healthgrades"
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Carus Dental South Central",
+        "Union Dental Implant Center1211",
+        "Hamilton Dental: Dentist in Austin, TX",
+        "Celebrate Dental & Braces",
+        "Delta Dental",
+        "Healing Tooth Dental",
+        "Balcones Family Dental",
+        "Walden Dental",
+        "Honest Family Dental",
+        "Jack Sansing Dental"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Carus Dental South Central",
+          "score": -7.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "healthgrades.com"
+          ],
+          "extractionConfidence": 0.8,
+          "localRelevanceScore": -7.4,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Union Dental Implant Center1211",
+          "score": -12.6,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "statesman.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -12.6,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Hamilton Dental: Dentist in Austin, TX",
+          "score": -13.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "hamiltondentalaustin.com"
+          ],
+          "extractionConfidence": 0.85,
+          "localRelevanceScore": -13.3,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Celebrate Dental & Braces",
+          "score": -14.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "celebratedental.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": -14.1,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Delta Dental",
+          "score": -14.1,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "deltadental.com"
+          ],
+          "extractionConfidence": 0.81,
+          "localRelevanceScore": -14.1,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "Healing Tooth Dental",
+          "score": -14.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -14.4,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 7,
+          "name": "Balcones Family Dental",
+          "score": -14.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -14.4,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 8,
+          "name": "Walden Dental",
+          "score": -14.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "toprateddentist.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -14.9,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 9,
+          "name": "Honest Family Dental",
+          "score": -14.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "texasdentalhub.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -14.9,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 10,
+          "name": "Jack Sansing Dental",
+          "score": -14.9,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "texasdentalhub.com"
+          ],
+          "extractionConfidence": 0.71,
+          "localRelevanceScore": -14.9,
+          "categoryMatchScore": -2.3,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 15126,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "localTop5Coverage": 0,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "Swish Dental",
+        "Forest Family Dentistry",
+        "Austin Dental Spa"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best plumbers in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "O'Neill Plumbing",
+      "expectedTopContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing",
+        "Raymark Plumbing"
+      ],
+      "actualWinner": "Mike's Plumbing & Drain Cleaning",
+      "actualResults": [
+        "Mike's Plumbing & Drain Cleaning",
+        "Little Guy Plumbing",
+        "Raymark Plumbing",
+        "Jim Dandy Sewer & Plumbing",
+        "Bee's Plumbing & Heating"
+      ],
+      "retrievedSourceTitles": [
+        "Seattle Plumbing Services, 24/7 Emergency Plumber",
+        "Best plumbers in Seattle, Wash. - Yahoo Local",
+        "Leave A Review | O'Neill Plumbing",
+        "Can anyone recommend a good plumber in King County who ...",
+        "Top 10 Best Plumbers in Seattle, WA | Angi",
+        "Find The Best Plumbers In Seattle, WA – Forbes Home",
+        "Recommended Plumbers in S. Seattle (Beacon Hill) : r/Seattle",
+        "Best Plumbing in Seattle, WA, New York - Reviews & Contact Info ..."
+      ],
+      "extractedCandidates": [],
+      "rejectedCandidates": [],
+      "finalContenders": [
+        "Mike's Plumbing & Drain Cleaning",
+        "Little Guy Plumbing",
+        "Raymark Plumbing",
+        "Jim Dandy Sewer & Plumbing",
+        "Bee's Plumbing & Heating",
+        "O'Neill Plumbing"
+      ],
+      "localRankingDiagnostics": [
+        {
+          "rank": 1,
+          "name": "Mike's Plumbing & Drain Cleaning",
+          "score": 7.3,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "local.yahoo.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": 7.3,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 2,
+          "name": "Little Guy Plumbing",
+          "score": 2.4,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "reddit.com"
+          ],
+          "extractionConfidence": 0.73,
+          "localRelevanceScore": 2.4,
+          "categoryMatchScore": 1.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 3,
+          "name": "Raymark Plumbing",
+          "score": 0.5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "angi.com"
+          ],
+          "extractionConfidence": 0.78,
+          "localRelevanceScore": 0.5,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 2.2,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 4.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 4,
+          "name": "Jim Dandy Sewer & Plumbing",
+          "score": -5.5,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "serviceagent.ai"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": -5.5,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 5,
+          "name": "Bee's Plumbing & Heating",
+          "score": -7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "beesplumbingandheating.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": -7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        },
+        {
+          "rank": 6,
+          "name": "O'Neill Plumbing",
+          "score": -7,
+          "sourceCount": 1,
+          "sourceDomains": [
+            "oneillplumbing.com"
+          ],
+          "extractionConfidence": 0.69,
+          "localRelevanceScore": -7,
+          "categoryMatchScore": 5.7,
+          "locationMatchScore": 1.4,
+          "sourceAuthorityScore": 0.7,
+          "crossSourceAgreementCount": 1,
+          "sourceAgreementScore": 0,
+          "weakSingleSourcePenalty": 6.5,
+          "urlOnlyPenalty": 0
+        }
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10319,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Raymark Plumbing"
+      ],
+      "localTop5Coverage": 0.3333333333333333,
+      "irrelevantResults": 0,
+      "genericPlaceholders": 0,
+      "duplicateBusinesses": 0,
+      "duplicateBusinessDetails": [],
+      "missingObviousContenders": [
+        "O'Neill Plumbing",
+        "Beacon Plumbing"
+      ],
+      "localTimeout": false,
+      "contenderAccuracy": 0.3333333333333333
+    }
+  ]
+}

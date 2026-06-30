@@ -3,6 +3,15 @@ export type ExternalCallCounts = {
   tavilyCalls: number;
   openAiCalls: number;
   supabaseWrites: number;
+  tavilyCallReasons: Array<{
+    evidenceType: string;
+    queryVariant: string;
+    phase: string;
+  }>;
+  openAiCallReasons: Array<{
+    evidenceType: string;
+    phase: string;
+  }>;
 };
 
 export function createExternalCallCounts(): ExternalCallCounts {
@@ -10,6 +19,8 @@ export function createExternalCallCounts(): ExternalCallCounts {
     supabaseReads: 0,
     tavilyCalls: 0,
     openAiCalls: 0,
-    supabaseWrites: 0
+    supabaseWrites: 0,
+    tavilyCallReasons: [],
+    openAiCallReasons: []
   };
 }

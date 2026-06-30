@@ -1,0 +1,624 @@
+{
+  "timestamp": "2026-06-24T20:19:09.001Z",
+  "commitHash": "aa006fb",
+  "baseUrl": "http://127.0.0.1:3117",
+  "benchmarkCount": 15,
+  "completedCount": 15,
+  "metrics": {
+    "winnerAccuracy": 0.8,
+    "top3Accuracy": 1,
+    "contenderAccuracy": 0.6727272727272727
+  },
+  "counts": {
+    "winnerHits": 12,
+    "top3Hits": 15,
+    "contenderHits": 37,
+    "contenderSlots": 55,
+    "errors": 0
+  },
+  "byCategory": {
+    "software_tool": {
+      "benchmarks": 15,
+      "winnerAccuracy": 0.8,
+      "top3Accuracy": 1,
+      "contenderAccuracy": 0.6727272727272727
+    }
+  },
+  "failures": [
+    {
+      "query": "best project management software",
+      "category": "software_tool",
+      "expectedWinner": "Asana",
+      "expectedTopContenders": [
+        "Asana",
+        "ClickUp",
+        "Monday.com",
+        "Trello",
+        "Notion"
+      ],
+      "actualWinner": "Notion",
+      "actualResults": [
+        "Notion",
+        "asana",
+        "Hi",
+        "CA PPM",
+        "celoxis"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 5233,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Asana",
+        "Notion"
+      ],
+      "contenderAccuracy": 0.4
+    },
+    {
+      "query": "best project management software for small teams",
+      "category": "software_tool",
+      "expectedWinner": "Trello",
+      "expectedTopContenders": [
+        "Trello",
+        "Asana",
+        "ClickUp",
+        "Monday.com",
+        "Notion"
+      ],
+      "actualWinner": "Asana",
+      "actualResults": [
+        "Asana",
+        "Monday.com",
+        "Trello",
+        "Miro",
+        "ProofHub"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9800,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Trello",
+        "Asana",
+        "Monday.com"
+      ],
+      "contenderAccuracy": 0.6
+    },
+    {
+      "query": "best note taking app",
+      "category": "software_tool",
+      "expectedWinner": "Notion",
+      "expectedTopContenders": [
+        "Notion",
+        "Obsidian",
+        "Evernote",
+        "OneNote"
+      ],
+      "actualWinner": "Notion",
+      "actualResults": [
+        "Notion",
+        "Noteful",
+        "Concepts",
+        "AFFiNE",
+        "Kosmik"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9613,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Notion"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best ecommerce platform",
+      "category": "software_tool",
+      "expectedWinner": "Shopify",
+      "expectedTopContenders": [
+        "Shopify",
+        "WooCommerce",
+        "BigCommerce"
+      ],
+      "actualWinner": "Shopify",
+      "actualResults": [
+        "Shopify"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 1279,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Shopify"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best payroll software for small business",
+      "category": "software_tool",
+      "expectedWinner": "Gusto",
+      "expectedTopContenders": [
+        "Gusto",
+        "ADP",
+        "QuickBooks Payroll"
+      ],
+      "actualWinner": "RUN Powered by ADP",
+      "actualResults": [
+        "RUN Powered by ADP",
+        "Gusto",
+        "ADP",
+        "OnPay",
+        "SurePayroll"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7773,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Gusto",
+        "ADP"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    }
+  ],
+  "cases": [
+    {
+      "query": "best ai coding assistant",
+      "category": "software_tool",
+      "expectedWinner": "Cursor",
+      "expectedTopContenders": [
+        "Cursor",
+        "Claude Code",
+        "GitHub Copilot"
+      ],
+      "actualWinner": "Cursor",
+      "actualResults": [
+        "Cursor",
+        "Cline",
+        "VsCode and copilot with sonnet",
+        "Windsurf",
+        "Copilot"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12297,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Cursor",
+        "GitHub Copilot"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best CRM for small business",
+      "category": "software_tool",
+      "expectedWinner": "HubSpot",
+      "expectedTopContenders": [
+        "HubSpot",
+        "Salesforce",
+        "Zoho CRM",
+        "Pipedrive"
+      ],
+      "actualWinner": "HubSpot CRM",
+      "actualResults": [
+        "HubSpot CRM",
+        "HubSpot",
+        "Pipedrive",
+        "Salesforce",
+        "Bigin by Zoho CRM"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10065,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "HubSpot",
+        "Salesforce",
+        "Zoho CRM",
+        "Pipedrive"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best password manager",
+      "category": "software_tool",
+      "expectedWinner": "1Password",
+      "expectedTopContenders": [
+        "1Password",
+        "Bitwarden",
+        "Dashlane"
+      ],
+      "actualWinner": "1Password",
+      "actualResults": [
+        "1Password",
+        "Bitwarden",
+        "Vaultwarden",
+        "LastPass",
+        "Dashlane"
+      ],
+      "mode": "moderate_consensus",
+      "cached": false,
+      "elapsedMs": 10219,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "1Password",
+        "Bitwarden",
+        "Dashlane"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best project management software",
+      "category": "software_tool",
+      "expectedWinner": "Asana",
+      "expectedTopContenders": [
+        "Asana",
+        "ClickUp",
+        "Monday.com",
+        "Trello",
+        "Notion"
+      ],
+      "actualWinner": "Notion",
+      "actualResults": [
+        "Notion",
+        "asana",
+        "Hi",
+        "CA PPM",
+        "celoxis"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 5233,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Asana",
+        "Notion"
+      ],
+      "contenderAccuracy": 0.4
+    },
+    {
+      "query": "best project management software for small teams",
+      "category": "software_tool",
+      "expectedWinner": "Trello",
+      "expectedTopContenders": [
+        "Trello",
+        "Asana",
+        "ClickUp",
+        "Monday.com",
+        "Notion"
+      ],
+      "actualWinner": "Asana",
+      "actualResults": [
+        "Asana",
+        "Monday.com",
+        "Trello",
+        "Miro",
+        "ProofHub"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9800,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Trello",
+        "Asana",
+        "Monday.com"
+      ],
+      "contenderAccuracy": 0.6
+    },
+    {
+      "query": "best note taking app",
+      "category": "software_tool",
+      "expectedWinner": "Notion",
+      "expectedTopContenders": [
+        "Notion",
+        "Obsidian",
+        "Evernote",
+        "OneNote"
+      ],
+      "actualWinner": "Notion",
+      "actualResults": [
+        "Notion",
+        "Noteful",
+        "Concepts",
+        "AFFiNE",
+        "Kosmik"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9613,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Notion"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best team chat app",
+      "category": "software_tool",
+      "expectedWinner": "Slack",
+      "expectedTopContenders": [
+        "Slack",
+        "Microsoft Teams",
+        "Discord"
+      ],
+      "actualWinner": "Slack",
+      "actualResults": [
+        "Slack",
+        "Microsoft Teams",
+        "Discord",
+        "Blink",
+        "Zulip"
+      ],
+      "mode": "moderate_consensus",
+      "cached": false,
+      "elapsedMs": 15091,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Slack",
+        "Microsoft Teams",
+        "Discord"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best design tool",
+      "category": "software_tool",
+      "expectedWinner": "Figma",
+      "expectedTopContenders": [
+        "Figma",
+        "Sketch",
+        "Adobe XD"
+      ],
+      "actualWinner": "Figma",
+      "actualResults": [
+        "Figma",
+        "Storyflow",
+        "Adobe",
+        "Wrike",
+        "Adobe suite"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9257,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Figma",
+        "Adobe XD"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best analytics tool for startups",
+      "category": "software_tool",
+      "expectedWinner": "Google Analytics",
+      "expectedTopContenders": [
+        "Google Analytics",
+        "Mixpanel",
+        "Amplitude",
+        "PostHog"
+      ],
+      "actualWinner": "Google Analytics",
+      "actualResults": [
+        "Google Analytics",
+        "Amplitude",
+        "Mixpanel",
+        "Heap",
+        "Posthog"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7548,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Analytics",
+        "Mixpanel",
+        "Amplitude",
+        "PostHog"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best help desk software for small business",
+      "category": "software_tool",
+      "expectedWinner": "Zendesk",
+      "expectedTopContenders": [
+        "Zendesk",
+        "Freshdesk",
+        "Intercom",
+        "Help Scout"
+      ],
+      "actualWinner": "Zendesk",
+      "actualResults": [
+        "Zendesk",
+        "Freshdesk",
+        "Help Scout",
+        "LiveChat",
+        "Gorgias"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11658,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Zendesk",
+        "Freshdesk",
+        "Help Scout"
+      ],
+      "contenderAccuracy": 0.75
+    },
+    {
+      "query": "best email marketing software",
+      "category": "software_tool",
+      "expectedWinner": "Mailchimp",
+      "expectedTopContenders": [
+        "Mailchimp",
+        "Klaviyo",
+        "Constant Contact",
+        "ConvertKit"
+      ],
+      "actualWinner": "Mailchimp",
+      "actualResults": [
+        "Mailchimp",
+        "Klaviyo",
+        "Brevo",
+        "Getsitecontrol",
+        "Mailerlite"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 5878,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Mailchimp",
+        "Klaviyo"
+      ],
+      "contenderAccuracy": 0.5
+    },
+    {
+      "query": "best accounting software for small business",
+      "category": "software_tool",
+      "expectedWinner": "QuickBooks",
+      "expectedTopContenders": [
+        "QuickBooks",
+        "Xero",
+        "FreshBooks"
+      ],
+      "actualWinner": "QuickBooks Online (QBO)",
+      "actualResults": [
+        "QuickBooks Online (QBO)",
+        "QuickBooks Online",
+        "Xero",
+        "Zoho Books",
+        "Aplos"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7275,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "QuickBooks",
+        "Xero"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best website builder",
+      "category": "software_tool",
+      "expectedWinner": "Wix",
+      "expectedTopContenders": [
+        "Wix",
+        "Squarespace",
+        "Webflow",
+        "WordPress"
+      ],
+      "actualWinner": "Wix",
+      "actualResults": [
+        "Wix",
+        "Webflow",
+        "Kleap",
+        "Shopify",
+        "Squarespace"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10624,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Wix",
+        "Squarespace",
+        "Webflow"
+      ],
+      "contenderAccuracy": 0.75
+    },
+    {
+      "query": "best ecommerce platform",
+      "category": "software_tool",
+      "expectedWinner": "Shopify",
+      "expectedTopContenders": [
+        "Shopify",
+        "WooCommerce",
+        "BigCommerce"
+      ],
+      "actualWinner": "Shopify",
+      "actualResults": [
+        "Shopify"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 1279,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Shopify"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best payroll software for small business",
+      "category": "software_tool",
+      "expectedWinner": "Gusto",
+      "expectedTopContenders": [
+        "Gusto",
+        "ADP",
+        "QuickBooks Payroll"
+      ],
+      "actualWinner": "RUN Powered by ADP",
+      "actualResults": [
+        "RUN Powered by ADP",
+        "Gusto",
+        "ADP",
+        "OnPay",
+        "SurePayroll"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7773,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Gusto",
+        "ADP"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    }
+  ]
+}

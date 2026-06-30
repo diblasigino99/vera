@@ -1,0 +1,393 @@
+{
+  "timestamp": "2026-06-24T19:56:01.129Z",
+  "commitHash": "aa006fb",
+  "baseUrl": "https://vera-snowy-psi.vercel.app",
+  "benchmarkCount": 10,
+  "completedCount": 10,
+  "metrics": {
+    "winnerAccuracy": 1,
+    "top3Accuracy": 0.9,
+    "contenderAccuracy": 0.5151515151515151
+  },
+  "counts": {
+    "winnerHits": 10,
+    "top3Hits": 9,
+    "contenderHits": 17,
+    "contenderSlots": 33,
+    "errors": 0
+  },
+  "byCategory": {
+    "dominant_platform": {
+      "benchmarks": 10,
+      "winnerAccuracy": 1,
+      "top3Accuracy": 0.9,
+      "contenderAccuracy": 0.5151515151515151
+    }
+  },
+  "failures": [
+    {
+      "query": "best video platform",
+      "category": "dominant_platform",
+      "expectedWinner": "YouTube",
+      "expectedTopContenders": [
+        "YouTube",
+        "Vimeo",
+        "TikTok"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 4690,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best messaging app",
+      "category": "dominant_platform",
+      "expectedWinner": "WhatsApp",
+      "expectedTopContenders": [
+        "WhatsApp",
+        "Signal",
+        "Telegram",
+        "iMessage"
+      ],
+      "actualWinner": "WhatsApp",
+      "actualResults": [
+        "WhatsApp"
+      ],
+      "mode": "moderate_consensus",
+      "cached": false,
+      "elapsedMs": 6672,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "WhatsApp"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best music streaming service",
+      "category": "dominant_platform",
+      "expectedWinner": "Spotify",
+      "expectedTopContenders": [
+        "Spotify",
+        "Apple Music",
+        "YouTube Music"
+      ],
+      "actualWinner": "Spotify",
+      "actualResults": [
+        "Spotify"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 5133,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Spotify"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best cloud storage",
+      "category": "dominant_platform",
+      "expectedWinner": "Google Drive",
+      "expectedTopContenders": [
+        "Google Drive",
+        "Dropbox",
+        "OneDrive",
+        "iCloud"
+      ],
+      "actualWinner": "Google Drive",
+      "actualResults": [
+        "Google Drive",
+        "Nextcloud",
+        "MEGA Cloud",
+        "IDrive",
+        "Sync.com"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9893,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Drive"
+      ],
+      "contenderAccuracy": 0.25
+    }
+  ],
+  "cases": [
+    {
+      "query": "best search engine",
+      "category": "dominant_platform",
+      "expectedWinner": "Google",
+      "expectedTopContenders": [
+        "Google",
+        "Bing",
+        "DuckDuckGo"
+      ],
+      "actualWinner": "Google",
+      "actualResults": [
+        "Google",
+        "Bing"
+      ],
+      "mode": "strong_consensus",
+      "cached": false,
+      "elapsedMs": 8443,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google",
+        "Bing"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best browser",
+      "category": "dominant_platform",
+      "expectedWinner": "Google Chrome",
+      "expectedTopContenders": [
+        "Google Chrome",
+        "Safari",
+        "Firefox",
+        "Microsoft Edge"
+      ],
+      "actualWinner": "Google Chrome",
+      "actualResults": [
+        "Google Chrome",
+        "Safari"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 5520,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Chrome",
+        "Safari"
+      ],
+      "contenderAccuracy": 0.5
+    },
+    {
+      "query": "best maps app",
+      "category": "dominant_platform",
+      "expectedWinner": "Google Maps",
+      "expectedTopContenders": [
+        "Google Maps",
+        "Apple Maps",
+        "Waze"
+      ],
+      "actualWinner": "Google Maps",
+      "actualResults": [
+        "Google Maps",
+        "Apple Maps",
+        "Waze"
+      ],
+      "mode": "strong_consensus",
+      "cached": false,
+      "elapsedMs": 11913,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Maps",
+        "Apple Maps",
+        "Waze"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best email provider",
+      "category": "dominant_platform",
+      "expectedWinner": "Gmail",
+      "expectedTopContenders": [
+        "Gmail",
+        "Outlook",
+        "Proton Mail"
+      ],
+      "actualWinner": "Gmail",
+      "actualResults": [
+        "Gmail",
+        "Microsoft Outlook",
+        "Apple"
+      ],
+      "mode": "strong_consensus",
+      "cached": false,
+      "elapsedMs": 12734,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Gmail",
+        "Outlook"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best video platform",
+      "category": "dominant_platform",
+      "expectedWinner": "YouTube",
+      "expectedTopContenders": [
+        "YouTube",
+        "Vimeo",
+        "TikTok"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 4690,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best messaging app",
+      "category": "dominant_platform",
+      "expectedWinner": "WhatsApp",
+      "expectedTopContenders": [
+        "WhatsApp",
+        "Signal",
+        "Telegram",
+        "iMessage"
+      ],
+      "actualWinner": "WhatsApp",
+      "actualResults": [
+        "WhatsApp"
+      ],
+      "mode": "moderate_consensus",
+      "cached": false,
+      "elapsedMs": 6672,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "WhatsApp"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best music streaming service",
+      "category": "dominant_platform",
+      "expectedWinner": "Spotify",
+      "expectedTopContenders": [
+        "Spotify",
+        "Apple Music",
+        "YouTube Music"
+      ],
+      "actualWinner": "Spotify",
+      "actualResults": [
+        "Spotify"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 5133,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Spotify"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best cloud storage",
+      "category": "dominant_platform",
+      "expectedWinner": "Google Drive",
+      "expectedTopContenders": [
+        "Google Drive",
+        "Dropbox",
+        "OneDrive",
+        "iCloud"
+      ],
+      "actualWinner": "Google Drive",
+      "actualResults": [
+        "Google Drive",
+        "Nextcloud",
+        "MEGA Cloud",
+        "IDrive",
+        "Sync.com"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9893,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Drive"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best spreadsheet app",
+      "category": "dominant_platform",
+      "expectedWinner": "Microsoft Excel",
+      "expectedTopContenders": [
+        "Microsoft Excel",
+        "Google Sheets",
+        "Airtable"
+      ],
+      "actualWinner": "Microsoft Excel",
+      "actualResults": [
+        "Microsoft Excel",
+        "Google Sheets",
+        "Handsontable",
+        "Zapier Tables",
+        "Google Workspace"
+      ],
+      "mode": "strong_consensus",
+      "cached": false,
+      "elapsedMs": 11042,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Microsoft Excel",
+        "Google Sheets"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best calendar app",
+      "category": "dominant_platform",
+      "expectedWinner": "Google Calendar",
+      "expectedTopContenders": [
+        "Google Calendar",
+        "Apple Calendar",
+        "Outlook Calendar"
+      ],
+      "actualWinner": "Google Calendar",
+      "actualResults": [
+        "Google Calendar",
+        "Apple Calendar",
+        "Calendly",
+        "Acuity"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9251,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Calendar",
+        "Apple Calendar",
+        "Outlook Calendar"
+      ],
+      "contenderAccuracy": 1
+    }
+  ]
+}

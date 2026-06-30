@@ -1,0 +1,2256 @@
+{
+  "timestamp": "2026-06-24T20:30:15.088Z",
+  "commitHash": "aa006fb",
+  "baseUrl": "https://vera-snowy-psi.vercel.app",
+  "benchmarkCount": 50,
+  "completedCount": 47,
+  "metrics": {
+    "winnerAccuracy": 0.44,
+    "top3Accuracy": 0.56,
+    "contenderAccuracy": 0.38323353293413176
+  },
+  "counts": {
+    "winnerHits": 22,
+    "top3Hits": 28,
+    "contenderHits": 64,
+    "contenderSlots": 167,
+    "errors": 3
+  },
+  "byCategory": {
+    "dominant_platform": {
+      "benchmarks": 10,
+      "winnerAccuracy": 1,
+      "top3Accuracy": 1,
+      "contenderAccuracy": 0.6666666666666666
+    },
+    "local_recommendation": {
+      "benchmarks": 15,
+      "winnerAccuracy": 0.06666666666666667,
+      "top3Accuracy": 0.26666666666666666,
+      "contenderAccuracy": 0.16666666666666666
+    },
+    "product_recommendation": {
+      "benchmarks": 10,
+      "winnerAccuracy": 0.1,
+      "top3Accuracy": 0.4,
+      "contenderAccuracy": 0.3225806451612903
+    },
+    "software_tool": {
+      "benchmarks": 15,
+      "winnerAccuracy": 0.6666666666666666,
+      "top3Accuracy": 0.6666666666666666,
+      "contenderAccuracy": 0.43636363636363634
+    }
+  },
+  "failures": [
+    {
+      "query": "best video platform",
+      "category": "dominant_platform",
+      "expectedWinner": "YouTube",
+      "expectedTopContenders": [
+        "YouTube",
+        "Vimeo",
+        "TikTok"
+      ],
+      "actualWinner": "YouTube",
+      "actualResults": [
+        "YouTube"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 4370,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "YouTube"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best cloud storage",
+      "category": "dominant_platform",
+      "expectedWinner": "Google Drive",
+      "expectedTopContenders": [
+        "Google Drive",
+        "Dropbox",
+        "OneDrive",
+        "iCloud"
+      ],
+      "actualWinner": "Google Drive",
+      "actualResults": [
+        "Google Drive",
+        "Google"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 3489,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Drive"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best spreadsheet app",
+      "category": "dominant_platform",
+      "expectedWinner": "Microsoft Excel",
+      "expectedTopContenders": [
+        "Microsoft Excel",
+        "Google Sheets",
+        "Airtable"
+      ],
+      "actualWinner": "Microsoft Excel",
+      "actualResults": [
+        "Microsoft Excel"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 3879,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Microsoft Excel"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best project management software",
+      "category": "software_tool",
+      "expectedWinner": "Asana",
+      "expectedTopContenders": [
+        "Asana",
+        "ClickUp",
+        "Monday.com",
+        "Trello",
+        "Notion"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 12315,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best project management software for small teams",
+      "category": "software_tool",
+      "expectedWinner": "Trello",
+      "expectedTopContenders": [
+        "Trello",
+        "Asana",
+        "ClickUp",
+        "Monday.com",
+        "Notion"
+      ],
+      "actualWinner": "Monday.com",
+      "actualResults": [
+        "Monday.com",
+        "Any.do",
+        "Miro",
+        "ProofHub",
+        "Linear"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 6244,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Monday.com"
+      ],
+      "contenderAccuracy": 0.2
+    },
+    {
+      "query": "best note taking app",
+      "category": "software_tool",
+      "expectedWinner": "Notion",
+      "expectedTopContenders": [
+        "Notion",
+        "Obsidian",
+        "Evernote",
+        "OneNote"
+      ],
+      "actualWinner": "Notion",
+      "actualResults": [
+        "Notion",
+        "GoodNotes",
+        "Concepts",
+        "Apple Notes",
+        "Google Keep"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 6344,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Notion"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best team chat app",
+      "category": "software_tool",
+      "expectedWinner": "Slack",
+      "expectedTopContenders": [
+        "Slack",
+        "Microsoft Teams",
+        "Discord"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 12261,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best analytics tool for startups",
+      "category": "software_tool",
+      "expectedWinner": "Google Analytics",
+      "expectedTopContenders": [
+        "Google Analytics",
+        "Mixpanel",
+        "Amplitude",
+        "PostHog"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 6141,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best website builder",
+      "category": "software_tool",
+      "expectedWinner": "Wix",
+      "expectedTopContenders": [
+        "Wix",
+        "Squarespace",
+        "Webflow",
+        "WordPress"
+      ],
+      "actualWinner": "Webflow",
+      "actualResults": [
+        "Webflow",
+        "Shopify",
+        "Webstudio",
+        "Wix",
+        "Pagy"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7000,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Wix",
+        "Webflow"
+      ],
+      "contenderAccuracy": 0.5
+    },
+    {
+      "query": "best ecommerce platform",
+      "category": "software_tool",
+      "expectedWinner": "Shopify",
+      "expectedTopContenders": [
+        "Shopify",
+        "WooCommerce",
+        "BigCommerce"
+      ],
+      "actualWinner": "Shopify",
+      "actualResults": [
+        "Shopify"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 1456,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Shopify"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best Wi-Fi router for a large house",
+      "category": "product_recommendation",
+      "expectedWinner": "Eero Pro 6E",
+      "expectedTopContenders": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "TP-Link Deco"
+      ],
+      "actualWinner": "PrismXR",
+      "actualResults": [
+        "PrismXR",
+        "Linksys",
+        "NETGEAR"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 8354,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Netgear Orbi"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best running shoes for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Brooks Ghost",
+      "expectedTopContenders": [
+        "Brooks Ghost",
+        "Nike Pegasus",
+        "Asics Gel-Nimbus",
+        "Hoka Clifton"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 15747,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best noise cancelling headphones",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony WH-1000XM5",
+      "expectedTopContenders": [
+        "Sony WH-1000XM5",
+        "Bose QuietComfort Ultra",
+        "Apple AirPods Max"
+      ],
+      "actualWinner": "Apple AirPods Max",
+      "actualResults": [
+        "Apple AirPods Max",
+        "Soundcore Q30",
+        "Soundcore Q20i",
+        "Audio-Technica ATH-S300BT",
+        "Sony XM5"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11519,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Sony WH-1000XM5",
+        "Apple AirPods Max"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best espresso machine for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Breville Bambino Plus",
+      "expectedTopContenders": [
+        "Breville Bambino Plus",
+        "Breville Barista Express",
+        "De'Longhi Dedica"
+      ],
+      "actualWinner": "Breville Barista Touch",
+      "actualResults": [
+        "Breville Barista Touch",
+        "Gaggia Classic Pro",
+        "Breville Bambino"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 8188,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Breville Bambino Plus"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best budget laptop",
+      "category": "product_recommendation",
+      "expectedWinner": "Acer Aspire",
+      "expectedTopContenders": [
+        "Acer Aspire",
+        "Lenovo IdeaPad",
+        "Asus Vivobook"
+      ],
+      "actualWinner": "Dell Inspiron 14 2‑in‑1 (7445)",
+      "actualResults": [
+        "Dell Inspiron 14 2‑in‑1 (7445)",
+        "Lenovo Yoga 7 14 Gen 9",
+        "Lenovo Thinkpad T14 series",
+        "HP ZBook",
+        "Lenovo ThinkPad"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10439,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best mechanical keyboard",
+      "category": "product_recommendation",
+      "expectedWinner": "Keychron Q1",
+      "expectedTopContenders": [
+        "Keychron Q1",
+        "Keychron K2",
+        "Logitech MX Mechanical"
+      ],
+      "actualWinner": "Wooting 80HE",
+      "actualResults": [
+        "Wooting 80HE",
+        "Logitech MX Keys S",
+        "NuPhy Air75 V3",
+        "Cooler Master NovaTouch TKL",
+        "Keychron Q6"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9364,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best office chair",
+      "category": "product_recommendation",
+      "expectedWinner": "Herman Miller Aeron",
+      "expectedTopContenders": [
+        "Herman Miller Aeron",
+        "Steelcase Gesture",
+        "Herman Miller Embody"
+      ],
+      "actualWinner": "Steelcase",
+      "actualResults": [
+        "Steelcase",
+        "Herman Miller",
+        "Secretlab Titan Evo"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 6295,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Herman Miller Aeron",
+        "Steelcase Gesture",
+        "Herman Miller Embody"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best robot vacuum",
+      "category": "product_recommendation",
+      "expectedWinner": "Roborock",
+      "expectedTopContenders": [
+        "Roborock",
+        "iRobot Roomba",
+        "Eufy"
+      ],
+      "actualWinner": "Miele Scout RX3 Home Vision",
+      "actualResults": [
+        "Miele Scout RX3 Home Vision",
+        "Roborock Qrevo Curv",
+        "Dreame L40S Ultra CE",
+        "Dreame",
+        "Roborock"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10748,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Roborock"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best air purifier",
+      "category": "product_recommendation",
+      "expectedWinner": "Coway Airmega AP-1512HH",
+      "expectedTopContenders": [
+        "Coway Airmega AP-1512HH",
+        "Blueair Blue Pure",
+        "Levoit Core"
+      ],
+      "actualWinner": "Medify Air",
+      "actualResults": [
+        "Medify Air",
+        "Rabbit Air",
+        "TEQOYA"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 6183,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Lilia",
+      "expectedTopContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "actualWinner": "Best Pizza",
+      "actualResults": [
+        "Best Pizza",
+        "Bozu",
+        "Meadowsweet",
+        "Sugarfish",
+        "Birds of a Feather"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10517,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best first date restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Maison Premiere",
+      "expectedTopContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "actualWinner": "Food for Thought",
+      "actualResults": [
+        "Food for Thought",
+        "Le Yaca",
+        "Fat Canary",
+        "Maison Premiere",
+        "Lilia"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 14316,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Maison Premiere",
+        "Lilia"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best coffee shop in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "La Cabra",
+      "expectedTopContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "actualWinner": "Villager",
+      "actualResults": [
+        "Villager",
+        "Drip",
+        "Cafe Angelique",
+        "Sey",
+        "Prince Coffee House"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 15340,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Sey Coffee"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best coffee shop to work from in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Devocion",
+      "expectedTopContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "actualWinner": "Copper Mug",
+      "actualResults": [
+        "Copper Mug",
+        "Santander Work Cafe",
+        "The Culture Cafe",
+        "Cafe at Amant",
+        "Pink Frog"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10785,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "The Moore Hotel",
+      "expectedTopContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 16023,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Four Seasons Hotel Seattle",
+      "expectedTopContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "actualWinner": "Kimpton Palladian Hotel",
+      "actualResults": [
+        "Kimpton Palladian Hotel",
+        "Fairmont Olympic",
+        "1 Hotel Seattle",
+        "Hyatt Regency Seattle",
+        "Grand Hyatt"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13362,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best pizza in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Lucali",
+      "expectedTopContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "actualWinner": "L'Industrie",
+      "actualResults": [
+        "L'Industrie",
+        "The Astarita",
+        "Lucali",
+        "DiFara",
+        "L'industrie Pizzeria"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 14580,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Lucali",
+        "L'Industrie"
+      ],
+      "contenderAccuracy": 0.5
+    },
+    {
+      "query": "best sushi in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Sushi Nakazawa",
+      "expectedTopContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 6243,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best kid-friendly restaurant in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Carmine's",
+      "expectedTopContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 6246,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso martini in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "Dante",
+      "expectedTopContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "actualWinner": "Valerie",
+      "actualResults": [
+        "Valerie",
+        "Dante",
+        "Public",
+        "Dear Irving",
+        "Banter"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9453,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Dante"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best golf course on Long Island",
+      "category": "local_recommendation",
+      "expectedWinner": "Bethpage Black",
+      "expectedTopContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "actualWinner": "Bethpage Black",
+      "actualResults": [
+        "Bethpage Black",
+        "Montauk Downs State Park Golf Course",
+        "Willow Creek",
+        "Pine Hills",
+        "Rock Hills"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12420,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Bethpage Black"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best restaurant in Massapequa NY",
+      "category": "local_recommendation",
+      "expectedWinner": "Big Daddy's",
+      "expectedTopContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "actualWinner": "Pulcinella Neapolitan Restaurant",
+      "actualResults": [
+        "Pulcinella Neapolitan Restaurant",
+        "Massapequa Diner",
+        "Alessia's Pizza and Pasta",
+        "HARLEYS American Grille",
+        "Dar Lbahja"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12065,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best ramen in Los Angeles",
+      "category": "local_recommendation",
+      "expectedWinner": "Tsujita LA Artisan Noodle",
+      "expectedTopContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "actualWinner": "Afuri Ramen + Dumpling Japanese",
+      "actualResults": [
+        "Afuri Ramen + Dumpling Japanese",
+        "Tatsu Ramen",
+        "Afuri",
+        "Ramen Nagi",
+        "Susuru Ramen Bar"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 15923,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best tacos in Austin",
+      "category": "local_recommendation",
+      "expectedWinner": "Veracruz All Natural",
+      "expectedTopContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 15846,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best cocktail bar in Chicago",
+      "category": "local_recommendation",
+      "expectedWinner": "The Violet Hour",
+      "expectedTopContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "actualWinner": "Bar Logan Square",
+      "actualResults": [
+        "Bar Logan Square",
+        "Julia Momose",
+        "The Violet Hour",
+        "Clara",
+        "Bisous"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11964,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "The Violet Hour"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    }
+  ],
+  "cases": [
+    {
+      "query": "best search engine",
+      "category": "dominant_platform",
+      "expectedWinner": "Google",
+      "expectedTopContenders": [
+        "Google",
+        "Bing",
+        "DuckDuckGo"
+      ],
+      "actualWinner": "Google",
+      "actualResults": [
+        "Google",
+        "Google Search",
+        "Bing",
+        "Microsoft Bing"
+      ],
+      "mode": "moderate_consensus",
+      "cached": false,
+      "elapsedMs": 10494,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google",
+        "Bing"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best browser",
+      "category": "dominant_platform",
+      "expectedWinner": "Google Chrome",
+      "expectedTopContenders": [
+        "Google Chrome",
+        "Safari",
+        "Firefox",
+        "Microsoft Edge"
+      ],
+      "actualWinner": "Google Chrome",
+      "actualResults": [
+        "Google Chrome",
+        "Chrome",
+        "Firefox",
+        "Safari",
+        "Internet Explorer"
+      ],
+      "mode": "moderate_consensus",
+      "cached": false,
+      "elapsedMs": 9202,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Chrome",
+        "Safari",
+        "Firefox"
+      ],
+      "contenderAccuracy": 0.75
+    },
+    {
+      "query": "best maps app",
+      "category": "dominant_platform",
+      "expectedWinner": "Google Maps",
+      "expectedTopContenders": [
+        "Google Maps",
+        "Apple Maps",
+        "Waze"
+      ],
+      "actualWinner": "Google Maps",
+      "actualResults": [
+        "Google Maps",
+        "Apple Maps",
+        "Waze",
+        "HERE WeGo",
+        "Google LLC"
+      ],
+      "mode": "moderate_consensus",
+      "cached": false,
+      "elapsedMs": 11758,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Maps",
+        "Apple Maps",
+        "Waze"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best email provider",
+      "category": "dominant_platform",
+      "expectedWinner": "Gmail",
+      "expectedTopContenders": [
+        "Gmail",
+        "Outlook",
+        "Proton Mail"
+      ],
+      "actualWinner": "Gmail",
+      "actualResults": [
+        "Gmail",
+        "Microsoft Outlook",
+        "Mailchimp",
+        "MailerLite",
+        "Constant Contact"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9592,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Gmail",
+        "Outlook"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best video platform",
+      "category": "dominant_platform",
+      "expectedWinner": "YouTube",
+      "expectedTopContenders": [
+        "YouTube",
+        "Vimeo",
+        "TikTok"
+      ],
+      "actualWinner": "YouTube",
+      "actualResults": [
+        "YouTube"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 4370,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "YouTube"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best messaging app",
+      "category": "dominant_platform",
+      "expectedWinner": "WhatsApp",
+      "expectedTopContenders": [
+        "WhatsApp",
+        "Signal",
+        "Telegram",
+        "iMessage"
+      ],
+      "actualWinner": "WhatsApp",
+      "actualResults": [
+        "WhatsApp",
+        "WhatsApp Messenger",
+        "Telegram",
+        "Facebook Messenger",
+        "Signal"
+      ],
+      "mode": "strong_consensus",
+      "cached": false,
+      "elapsedMs": 11272,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "WhatsApp",
+        "Signal",
+        "Telegram"
+      ],
+      "contenderAccuracy": 0.75
+    },
+    {
+      "query": "best music streaming service",
+      "category": "dominant_platform",
+      "expectedWinner": "Spotify",
+      "expectedTopContenders": [
+        "Spotify",
+        "Apple Music",
+        "YouTube Music"
+      ],
+      "actualWinner": "Spotify",
+      "actualResults": [
+        "Spotify",
+        "Deezer",
+        "YouTube Music",
+        "Pandora",
+        "Apple Music"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7534,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Spotify",
+        "Apple Music",
+        "YouTube Music"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best cloud storage",
+      "category": "dominant_platform",
+      "expectedWinner": "Google Drive",
+      "expectedTopContenders": [
+        "Google Drive",
+        "Dropbox",
+        "OneDrive",
+        "iCloud"
+      ],
+      "actualWinner": "Google Drive",
+      "actualResults": [
+        "Google Drive",
+        "Google"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 3489,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Drive"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best spreadsheet app",
+      "category": "dominant_platform",
+      "expectedWinner": "Microsoft Excel",
+      "expectedTopContenders": [
+        "Microsoft Excel",
+        "Google Sheets",
+        "Airtable"
+      ],
+      "actualWinner": "Microsoft Excel",
+      "actualResults": [
+        "Microsoft Excel"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 3879,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Microsoft Excel"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best calendar app",
+      "category": "dominant_platform",
+      "expectedWinner": "Google Calendar",
+      "expectedTopContenders": [
+        "Google Calendar",
+        "Apple Calendar",
+        "Outlook Calendar"
+      ],
+      "actualWinner": "Google Calendar",
+      "actualResults": [
+        "Google Calendar",
+        "Apple Calendar"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 4609,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Google Calendar",
+        "Apple Calendar",
+        "Outlook Calendar"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best ai coding assistant",
+      "category": "software_tool",
+      "expectedWinner": "Cursor",
+      "expectedTopContenders": [
+        "Cursor",
+        "Claude Code",
+        "GitHub Copilot"
+      ],
+      "actualWinner": "Cursor",
+      "actualResults": [
+        "Cursor",
+        "GitHub Copilot",
+        "Qodo",
+        "Cline",
+        "VsCode and copilot"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7466,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Cursor",
+        "GitHub Copilot"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best CRM for small business",
+      "category": "software_tool",
+      "expectedWinner": "HubSpot",
+      "expectedTopContenders": [
+        "HubSpot",
+        "Salesforce",
+        "Zoho CRM",
+        "Pipedrive"
+      ],
+      "actualWinner": "Hubspot",
+      "actualResults": [
+        "Hubspot",
+        "HubSpot CRM",
+        "HubSpot",
+        "Salesforce Starter Suite",
+        "Pipedrive CRM"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 8905,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "HubSpot",
+        "Salesforce",
+        "Pipedrive"
+      ],
+      "contenderAccuracy": 0.75
+    },
+    {
+      "query": "best password manager",
+      "category": "software_tool",
+      "expectedWinner": "1Password",
+      "expectedTopContenders": [
+        "1Password",
+        "Bitwarden",
+        "Dashlane"
+      ],
+      "actualWinner": "1Password",
+      "actualResults": [
+        "1Password",
+        "Bitwarden",
+        "Proton Pass",
+        "Vaultwarden",
+        "RoboForm"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 5596,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "1Password",
+        "Bitwarden"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best project management software",
+      "category": "software_tool",
+      "expectedWinner": "Asana",
+      "expectedTopContenders": [
+        "Asana",
+        "ClickUp",
+        "Monday.com",
+        "Trello",
+        "Notion"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 12315,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best project management software for small teams",
+      "category": "software_tool",
+      "expectedWinner": "Trello",
+      "expectedTopContenders": [
+        "Trello",
+        "Asana",
+        "ClickUp",
+        "Monday.com",
+        "Notion"
+      ],
+      "actualWinner": "Monday.com",
+      "actualResults": [
+        "Monday.com",
+        "Any.do",
+        "Miro",
+        "ProofHub",
+        "Linear"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 6244,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Monday.com"
+      ],
+      "contenderAccuracy": 0.2
+    },
+    {
+      "query": "best note taking app",
+      "category": "software_tool",
+      "expectedWinner": "Notion",
+      "expectedTopContenders": [
+        "Notion",
+        "Obsidian",
+        "Evernote",
+        "OneNote"
+      ],
+      "actualWinner": "Notion",
+      "actualResults": [
+        "Notion",
+        "GoodNotes",
+        "Concepts",
+        "Apple Notes",
+        "Google Keep"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 6344,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Notion"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best team chat app",
+      "category": "software_tool",
+      "expectedWinner": "Slack",
+      "expectedTopContenders": [
+        "Slack",
+        "Microsoft Teams",
+        "Discord"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 12261,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best design tool",
+      "category": "software_tool",
+      "expectedWinner": "Figma",
+      "expectedTopContenders": [
+        "Figma",
+        "Sketch",
+        "Adobe XD"
+      ],
+      "actualWinner": "Figma",
+      "actualResults": [
+        "Figma",
+        "Storyflow",
+        "Adobe",
+        "Webflow",
+        "Wrike"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 6461,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Figma",
+        "Adobe XD"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best analytics tool for startups",
+      "category": "software_tool",
+      "expectedWinner": "Google Analytics",
+      "expectedTopContenders": [
+        "Google Analytics",
+        "Mixpanel",
+        "Amplitude",
+        "PostHog"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 6141,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best help desk software for small business",
+      "category": "software_tool",
+      "expectedWinner": "Zendesk",
+      "expectedTopContenders": [
+        "Zendesk",
+        "Freshdesk",
+        "Intercom",
+        "Help Scout"
+      ],
+      "actualWinner": "Zendesk",
+      "actualResults": [
+        "Zendesk",
+        "Freshdesk",
+        "Help Scout",
+        "LiveChat",
+        "RingCentral Contact Center"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 5054,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Zendesk",
+        "Freshdesk",
+        "Help Scout"
+      ],
+      "contenderAccuracy": 0.75
+    },
+    {
+      "query": "best email marketing software",
+      "category": "software_tool",
+      "expectedWinner": "Mailchimp",
+      "expectedTopContenders": [
+        "Mailchimp",
+        "Klaviyo",
+        "Constant Contact",
+        "ConvertKit"
+      ],
+      "actualWinner": "Mailchimp",
+      "actualResults": [
+        "Mailchimp",
+        "Klaviyo",
+        "Brevo",
+        "Mailtrap Email Delivery Platform",
+        "Cordial"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 8573,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Mailchimp",
+        "Klaviyo"
+      ],
+      "contenderAccuracy": 0.5
+    },
+    {
+      "query": "best accounting software for small business",
+      "category": "software_tool",
+      "expectedWinner": "QuickBooks",
+      "expectedTopContenders": [
+        "QuickBooks",
+        "Xero",
+        "FreshBooks"
+      ],
+      "actualWinner": "QuickBooks Online (QBO)",
+      "actualResults": [
+        "QuickBooks Online (QBO)",
+        "QuickBooks Online",
+        "FreshBooks",
+        "Xero",
+        "Zoho Books"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 5587,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "QuickBooks",
+        "Xero",
+        "FreshBooks"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best website builder",
+      "category": "software_tool",
+      "expectedWinner": "Wix",
+      "expectedTopContenders": [
+        "Wix",
+        "Squarespace",
+        "Webflow",
+        "WordPress"
+      ],
+      "actualWinner": "Webflow",
+      "actualResults": [
+        "Webflow",
+        "Shopify",
+        "Webstudio",
+        "Wix",
+        "Pagy"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7000,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Wix",
+        "Webflow"
+      ],
+      "contenderAccuracy": 0.5
+    },
+    {
+      "query": "best ecommerce platform",
+      "category": "software_tool",
+      "expectedWinner": "Shopify",
+      "expectedTopContenders": [
+        "Shopify",
+        "WooCommerce",
+        "BigCommerce"
+      ],
+      "actualWinner": "Shopify",
+      "actualResults": [
+        "Shopify"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 1456,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Shopify"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best payroll software for small business",
+      "category": "software_tool",
+      "expectedWinner": "Gusto",
+      "expectedTopContenders": [
+        "Gusto",
+        "ADP",
+        "QuickBooks Payroll"
+      ],
+      "actualWinner": "Gusto",
+      "actualResults": [
+        "Gusto",
+        "RUN Powered by ADP",
+        "ADP",
+        "OnPay",
+        "SurePayroll"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 7829,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Gusto",
+        "ADP"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best Wi-Fi router for a large house",
+      "category": "product_recommendation",
+      "expectedWinner": "Eero Pro 6E",
+      "expectedTopContenders": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "TP-Link Deco"
+      ],
+      "actualWinner": "PrismXR",
+      "actualResults": [
+        "PrismXR",
+        "Linksys",
+        "NETGEAR"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 8354,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Netgear Orbi"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best running shoes for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Brooks Ghost",
+      "expectedTopContenders": [
+        "Brooks Ghost",
+        "Nike Pegasus",
+        "Asics Gel-Nimbus",
+        "Hoka Clifton"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 15747,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best carry-on suitcase",
+      "category": "product_recommendation",
+      "expectedWinner": "Away Carry-On",
+      "expectedTopContenders": [
+        "Away Carry-On",
+        "Travelpro Platinum Elite",
+        "Monos Carry-On"
+      ],
+      "actualWinner": "Away The Bigger Carry-On",
+      "actualResults": [
+        "Away The Bigger Carry-On",
+        "Travelpro Platinum Elite",
+        "Tumi Voyageur Léger International",
+        "Briggs & Riley",
+        "CX® expansion system carry-on"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10372,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Away Carry-On",
+        "Travelpro Platinum Elite"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best noise cancelling headphones",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony WH-1000XM5",
+      "expectedTopContenders": [
+        "Sony WH-1000XM5",
+        "Bose QuietComfort Ultra",
+        "Apple AirPods Max"
+      ],
+      "actualWinner": "Apple AirPods Max",
+      "actualResults": [
+        "Apple AirPods Max",
+        "Soundcore Q30",
+        "Soundcore Q20i",
+        "Audio-Technica ATH-S300BT",
+        "Sony XM5"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11519,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Sony WH-1000XM5",
+        "Apple AirPods Max"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best espresso machine for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Breville Bambino Plus",
+      "expectedTopContenders": [
+        "Breville Bambino Plus",
+        "Breville Barista Express",
+        "De'Longhi Dedica"
+      ],
+      "actualWinner": "Breville Barista Touch",
+      "actualResults": [
+        "Breville Barista Touch",
+        "Gaggia Classic Pro",
+        "Breville Bambino"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 8188,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Breville Bambino Plus"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best budget laptop",
+      "category": "product_recommendation",
+      "expectedWinner": "Acer Aspire",
+      "expectedTopContenders": [
+        "Acer Aspire",
+        "Lenovo IdeaPad",
+        "Asus Vivobook"
+      ],
+      "actualWinner": "Dell Inspiron 14 2‑in‑1 (7445)",
+      "actualResults": [
+        "Dell Inspiron 14 2‑in‑1 (7445)",
+        "Lenovo Yoga 7 14 Gen 9",
+        "Lenovo Thinkpad T14 series",
+        "HP ZBook",
+        "Lenovo ThinkPad"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10439,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best mechanical keyboard",
+      "category": "product_recommendation",
+      "expectedWinner": "Keychron Q1",
+      "expectedTopContenders": [
+        "Keychron Q1",
+        "Keychron K2",
+        "Logitech MX Mechanical"
+      ],
+      "actualWinner": "Wooting 80HE",
+      "actualResults": [
+        "Wooting 80HE",
+        "Logitech MX Keys S",
+        "NuPhy Air75 V3",
+        "Cooler Master NovaTouch TKL",
+        "Keychron Q6"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9364,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best office chair",
+      "category": "product_recommendation",
+      "expectedWinner": "Herman Miller Aeron",
+      "expectedTopContenders": [
+        "Herman Miller Aeron",
+        "Steelcase Gesture",
+        "Herman Miller Embody"
+      ],
+      "actualWinner": "Steelcase",
+      "actualResults": [
+        "Steelcase",
+        "Herman Miller",
+        "Secretlab Titan Evo"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 6295,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Herman Miller Aeron",
+        "Steelcase Gesture",
+        "Herman Miller Embody"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best robot vacuum",
+      "category": "product_recommendation",
+      "expectedWinner": "Roborock",
+      "expectedTopContenders": [
+        "Roborock",
+        "iRobot Roomba",
+        "Eufy"
+      ],
+      "actualWinner": "Miele Scout RX3 Home Vision",
+      "actualResults": [
+        "Miele Scout RX3 Home Vision",
+        "Roborock Qrevo Curv",
+        "Dreame L40S Ultra CE",
+        "Dreame",
+        "Roborock"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10748,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Roborock"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best air purifier",
+      "category": "product_recommendation",
+      "expectedWinner": "Coway Airmega AP-1512HH",
+      "expectedTopContenders": [
+        "Coway Airmega AP-1512HH",
+        "Blueair Blue Pure",
+        "Levoit Core"
+      ],
+      "actualWinner": "Medify Air",
+      "actualResults": [
+        "Medify Air",
+        "Rabbit Air",
+        "TEQOYA"
+      ],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 6183,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Lilia",
+      "expectedTopContenders": [
+        "Lilia",
+        "Maison Premiere",
+        "Misi",
+        "Peter Luger"
+      ],
+      "actualWinner": "Best Pizza",
+      "actualResults": [
+        "Best Pizza",
+        "Bozu",
+        "Meadowsweet",
+        "Sugarfish",
+        "Birds of a Feather"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10517,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best first date restaurant in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Maison Premiere",
+      "expectedTopContenders": [
+        "Maison Premiere",
+        "Fresh Kills",
+        "Lilia"
+      ],
+      "actualWinner": "Food for Thought",
+      "actualResults": [
+        "Food for Thought",
+        "Le Yaca",
+        "Fat Canary",
+        "Maison Premiere",
+        "Lilia"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 14316,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Maison Premiere",
+        "Lilia"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best coffee shop in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "La Cabra",
+      "expectedTopContenders": [
+        "La Cabra",
+        "Sey Coffee",
+        "Devocion",
+        "Abraco"
+      ],
+      "actualWinner": "Villager",
+      "actualResults": [
+        "Villager",
+        "Drip",
+        "Cafe Angelique",
+        "Sey",
+        "Prince Coffee House"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 15340,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Sey Coffee"
+      ],
+      "contenderAccuracy": 0.25
+    },
+    {
+      "query": "best coffee shop to work from in Williamsburg",
+      "category": "local_recommendation",
+      "expectedWinner": "Devocion",
+      "expectedTopContenders": [
+        "Devocion",
+        "Partners Coffee",
+        "Hungry Ghost"
+      ],
+      "actualWinner": "Copper Mug",
+      "actualResults": [
+        "Copper Mug",
+        "Santander Work Cafe",
+        "The Culture Cafe",
+        "Cafe at Amant",
+        "Pink Frog"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 10785,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "The Moore Hotel",
+      "expectedTopContenders": [
+        "The Moore Hotel",
+        "Staypineapple",
+        "Belltown Inn"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 16023,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best hotel in Seattle",
+      "category": "local_recommendation",
+      "expectedWinner": "Four Seasons Hotel Seattle",
+      "expectedTopContenders": [
+        "Four Seasons Hotel Seattle",
+        "The Edgewater",
+        "Thompson Seattle"
+      ],
+      "actualWinner": "Kimpton Palladian Hotel",
+      "actualResults": [
+        "Kimpton Palladian Hotel",
+        "Fairmont Olympic",
+        "1 Hotel Seattle",
+        "Hyatt Regency Seattle",
+        "Grand Hyatt"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 13362,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best pizza in Brooklyn",
+      "category": "local_recommendation",
+      "expectedWinner": "Lucali",
+      "expectedTopContenders": [
+        "Lucali",
+        "Di Fara",
+        "L'Industrie",
+        "Roberta's"
+      ],
+      "actualWinner": "L'Industrie",
+      "actualResults": [
+        "L'Industrie",
+        "The Astarita",
+        "Lucali",
+        "DiFara",
+        "L'industrie Pizzeria"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 14580,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Lucali",
+        "L'Industrie"
+      ],
+      "contenderAccuracy": 0.5
+    },
+    {
+      "query": "best sushi in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Sushi Nakazawa",
+      "expectedTopContenders": [
+        "Sushi Nakazawa",
+        "Masa",
+        "Sushi Yasuda"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 6243,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best kid-friendly restaurant in Manhattan",
+      "category": "local_recommendation",
+      "expectedWinner": "Carmine's",
+      "expectedTopContenders": [
+        "Carmine's",
+        "Serendipity3",
+        "Ellen's Stardust Diner"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 6246,
+      "error": "The operation was aborted due to timeout",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best espresso martini in NYC",
+      "category": "local_recommendation",
+      "expectedWinner": "Dante",
+      "expectedTopContenders": [
+        "Dante",
+        "Double Chicken Please",
+        "Temple Bar"
+      ],
+      "actualWinner": "Valerie",
+      "actualResults": [
+        "Valerie",
+        "Dante",
+        "Public",
+        "Dear Irving",
+        "Banter"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9453,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Dante"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best golf course on Long Island",
+      "category": "local_recommendation",
+      "expectedWinner": "Bethpage Black",
+      "expectedTopContenders": [
+        "Bethpage Black",
+        "Shinnecock Hills",
+        "National Golf Links of America"
+      ],
+      "actualWinner": "Bethpage Black",
+      "actualResults": [
+        "Bethpage Black",
+        "Montauk Downs State Park Golf Course",
+        "Willow Creek",
+        "Pine Hills",
+        "Rock Hills"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12420,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Bethpage Black"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    },
+    {
+      "query": "best restaurant in Massapequa NY",
+      "category": "local_recommendation",
+      "expectedWinner": "Big Daddy's",
+      "expectedTopContenders": [
+        "Big Daddy's",
+        "All American Hamburger Drive-In",
+        "Cara Mia"
+      ],
+      "actualWinner": "Pulcinella Neapolitan Restaurant",
+      "actualResults": [
+        "Pulcinella Neapolitan Restaurant",
+        "Massapequa Diner",
+        "Alessia's Pizza and Pasta",
+        "HARLEYS American Grille",
+        "Dar Lbahja"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 12065,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best ramen in Los Angeles",
+      "category": "local_recommendation",
+      "expectedWinner": "Tsujita LA Artisan Noodle",
+      "expectedTopContenders": [
+        "Tsujita LA Artisan Noodle",
+        "Daikokuya",
+        "Men Oh Tokushima"
+      ],
+      "actualWinner": "Afuri Ramen + Dumpling Japanese",
+      "actualResults": [
+        "Afuri Ramen + Dumpling Japanese",
+        "Tatsu Ramen",
+        "Afuri",
+        "Ramen Nagi",
+        "Susuru Ramen Bar"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 15923,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best tacos in Austin",
+      "category": "local_recommendation",
+      "expectedWinner": "Veracruz All Natural",
+      "expectedTopContenders": [
+        "Veracruz All Natural",
+        "Taco Joint",
+        "Cuantos Tacos"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": "no_reliable_consensus",
+      "cached": false,
+      "elapsedMs": 15846,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best cocktail bar in Chicago",
+      "category": "local_recommendation",
+      "expectedWinner": "The Violet Hour",
+      "expectedTopContenders": [
+        "The Violet Hour",
+        "Aviary",
+        "Three Dots and a Dash"
+      ],
+      "actualWinner": "Bar Logan Square",
+      "actualResults": [
+        "Bar Logan Square",
+        "Julia Momose",
+        "The Violet Hour",
+        "Clara",
+        "Bisous"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11964,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "The Violet Hour"
+      ],
+      "contenderAccuracy": 0.3333333333333333
+    }
+  ]
+}

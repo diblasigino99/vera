@@ -1,0 +1,852 @@
+{
+  "timestamp": "2026-06-25T14:31:17.768Z",
+  "commitHash": "aa006fb",
+  "baseUrl": "http://127.0.0.1:3117",
+  "benchmarkCount": 20,
+  "completedCount": 4,
+  "metrics": {
+    "winnerAccuracy": 0.1,
+    "top3Accuracy": 0.15,
+    "contenderAccuracy": 0.1774193548387097
+  },
+  "counts": {
+    "winnerHits": 2,
+    "top3Hits": 3,
+    "contenderHits": 11,
+    "contenderSlots": 62,
+    "errors": 16
+  },
+  "byCategory": {
+    "product_recommendation": {
+      "benchmarks": 20,
+      "winnerAccuracy": 0.1,
+      "top3Accuracy": 0.15,
+      "contenderAccuracy": 0.1774193548387097
+    }
+  },
+  "failures": [
+    {
+      "query": "best running shoes for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Brooks Ghost",
+      "expectedTopContenders": [
+        "Brooks Ghost",
+        "Nike Pegasus",
+        "Asics Gel-Nimbus",
+        "Hoka Clifton"
+      ],
+      "actualWinner": "Nike Pegasus",
+      "actualResults": [
+        "Nike Pegasus",
+        "Brooks Ghost",
+        "Asics Gel-Nimbus",
+        "Kiprun Kipride Max",
+        "Nike Infinity RN4"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 8561,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Brooks Ghost",
+        "Nike Pegasus",
+        "Asics Gel-Nimbus"
+      ],
+      "contenderAccuracy": 0.75
+    },
+    {
+      "query": "best noise cancelling headphones",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony WH-1000XM5",
+      "expectedTopContenders": [
+        "Sony WH-1000XM5",
+        "Bose QuietComfort Ultra",
+        "Apple AirPods Max"
+      ],
+      "actualWinner": "Bose QuietComfort Ultra",
+      "actualResults": [
+        "Bose QuietComfort Ultra",
+        "Sony WH-1000XM6",
+        "Apple AirPods Max",
+        "Sony WH-1000XM4",
+        "Bose QuietComfort 45"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11248,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Bose QuietComfort Ultra",
+        "Apple AirPods Max"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best espresso machine for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Breville Bambino Plus",
+      "expectedTopContenders": [
+        "Breville Bambino Plus",
+        "Breville Barista Express",
+        "De'Longhi Dedica"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 154,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget laptop",
+      "category": "product_recommendation",
+      "expectedWinner": "Acer Aspire",
+      "expectedTopContenders": [
+        "Acer Aspire",
+        "Lenovo IdeaPad",
+        "Asus Vivobook"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 64,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best mechanical keyboard",
+      "category": "product_recommendation",
+      "expectedWinner": "Keychron Q1",
+      "expectedTopContenders": [
+        "Keychron Q1",
+        "Keychron K2",
+        "Logitech MX Mechanical"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 95,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best office chair",
+      "category": "product_recommendation",
+      "expectedWinner": "Herman Miller Aeron",
+      "expectedTopContenders": [
+        "Herman Miller Aeron",
+        "Steelcase Gesture",
+        "Herman Miller Embody"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 77,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best robot vacuum",
+      "category": "product_recommendation",
+      "expectedWinner": "Roborock",
+      "expectedTopContenders": [
+        "Roborock",
+        "iRobot Roomba",
+        "Eufy"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 58,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best air purifier",
+      "category": "product_recommendation",
+      "expectedWinner": "Coway Airmega AP-1512HH",
+      "expectedTopContenders": [
+        "Coway Airmega AP-1512HH",
+        "Blueair Blue Pure",
+        "Levoit Core"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 61,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget headphones",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony WH-CH720N",
+      "expectedTopContenders": [
+        "Sony WH-CH720N",
+        "Anker Soundcore Life Q30",
+        "EarFun Air Pro"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 60,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best laptop",
+      "category": "product_recommendation",
+      "expectedWinner": "MacBook Air",
+      "expectedTopContenders": [
+        "MacBook Air",
+        "MacBook Pro",
+        "Dell XPS",
+        "Lenovo ThinkPad"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 56,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best router",
+      "category": "product_recommendation",
+      "expectedWinner": "Eero Pro 6E",
+      "expectedTopContenders": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "TP-Link Deco"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 88,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best gaming monitor",
+      "category": "product_recommendation",
+      "expectedWinner": "Dell Alienware AW3423DWF",
+      "expectedTopContenders": [
+        "Dell Alienware AW3423DWF",
+        "LG UltraGear OLED",
+        "Gigabyte M27Q"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 61,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best wireless mouse",
+      "category": "product_recommendation",
+      "expectedWinner": "Logitech MX Master 3S",
+      "expectedTopContenders": [
+        "Logitech MX Master 3S",
+        "Razer Basilisk V3",
+        "Logitech G Pro X Superlight"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 60,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best external SSD",
+      "category": "product_recommendation",
+      "expectedWinner": "Samsung T7 Shield",
+      "expectedTopContenders": [
+        "Samsung T7 Shield",
+        "SanDisk Extreme Portable SSD",
+        "Crucial X9 Pro"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 60,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best camera",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony A7 IV",
+      "expectedTopContenders": [
+        "Sony A7 IV",
+        "Canon EOS R6 Mark II",
+        "Fujifilm X-T5"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 59,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best phone",
+      "category": "product_recommendation",
+      "expectedWinner": "iPhone 15",
+      "expectedTopContenders": [
+        "iPhone 15",
+        "Samsung Galaxy S24",
+        "Google Pixel 8"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 56,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best television",
+      "category": "product_recommendation",
+      "expectedWinner": "LG C3 OLED",
+      "expectedTopContenders": [
+        "LG C3 OLED",
+        "Samsung S90C",
+        "Sony A95L"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 61,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best backpack",
+      "category": "product_recommendation",
+      "expectedWinner": "Osprey Farpoint",
+      "expectedTopContenders": [
+        "Osprey Farpoint",
+        "Aer Travel Pack",
+        "Peak Design Travel Backpack"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 83,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    }
+  ],
+  "cases": [
+    {
+      "query": "best Wi-Fi router for a large house",
+      "category": "product_recommendation",
+      "expectedWinner": "Eero Pro 6E",
+      "expectedTopContenders": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "TP-Link Deco"
+      ],
+      "actualWinner": "Eero Pro 6E",
+      "actualResults": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "TP-Link Deco",
+        "ASUS RT-BE86U"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 9619,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "TP-Link Deco"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best running shoes for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Brooks Ghost",
+      "expectedTopContenders": [
+        "Brooks Ghost",
+        "Nike Pegasus",
+        "Asics Gel-Nimbus",
+        "Hoka Clifton"
+      ],
+      "actualWinner": "Nike Pegasus",
+      "actualResults": [
+        "Nike Pegasus",
+        "Brooks Ghost",
+        "Asics Gel-Nimbus",
+        "Kiprun Kipride Max",
+        "Nike Infinity RN4"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 8561,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Brooks Ghost",
+        "Nike Pegasus",
+        "Asics Gel-Nimbus"
+      ],
+      "contenderAccuracy": 0.75
+    },
+    {
+      "query": "best carry-on suitcase",
+      "category": "product_recommendation",
+      "expectedWinner": "Away Carry-On",
+      "expectedTopContenders": [
+        "Away Carry-On",
+        "Travelpro Platinum Elite",
+        "Monos Carry-On"
+      ],
+      "actualWinner": "Away Carry-On",
+      "actualResults": [
+        "Away Carry-On",
+        "Travelpro Platinum Elite",
+        "Monos Carry-On",
+        "Tumi Voyageur Léger International",
+        "SwissGear Sion Softside Expandable Roller 29\""
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 5303,
+      "error": null,
+      "winnerIsRankOne": true,
+      "winnerInTop3": true,
+      "contenderMatches": [
+        "Away Carry-On",
+        "Travelpro Platinum Elite",
+        "Monos Carry-On"
+      ],
+      "contenderAccuracy": 1
+    },
+    {
+      "query": "best noise cancelling headphones",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony WH-1000XM5",
+      "expectedTopContenders": [
+        "Sony WH-1000XM5",
+        "Bose QuietComfort Ultra",
+        "Apple AirPods Max"
+      ],
+      "actualWinner": "Bose QuietComfort Ultra",
+      "actualResults": [
+        "Bose QuietComfort Ultra",
+        "Sony WH-1000XM6",
+        "Apple AirPods Max",
+        "Sony WH-1000XM4",
+        "Bose QuietComfort 45"
+      ],
+      "mode": "split_consensus",
+      "cached": false,
+      "elapsedMs": 11248,
+      "error": null,
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [
+        "Bose QuietComfort Ultra",
+        "Apple AirPods Max"
+      ],
+      "contenderAccuracy": 0.6666666666666666
+    },
+    {
+      "query": "best espresso machine for beginners",
+      "category": "product_recommendation",
+      "expectedWinner": "Breville Bambino Plus",
+      "expectedTopContenders": [
+        "Breville Bambino Plus",
+        "Breville Barista Express",
+        "De'Longhi Dedica"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 154,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget laptop",
+      "category": "product_recommendation",
+      "expectedWinner": "Acer Aspire",
+      "expectedTopContenders": [
+        "Acer Aspire",
+        "Lenovo IdeaPad",
+        "Asus Vivobook"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 64,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best mechanical keyboard",
+      "category": "product_recommendation",
+      "expectedWinner": "Keychron Q1",
+      "expectedTopContenders": [
+        "Keychron Q1",
+        "Keychron K2",
+        "Logitech MX Mechanical"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 95,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best office chair",
+      "category": "product_recommendation",
+      "expectedWinner": "Herman Miller Aeron",
+      "expectedTopContenders": [
+        "Herman Miller Aeron",
+        "Steelcase Gesture",
+        "Herman Miller Embody"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 77,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best robot vacuum",
+      "category": "product_recommendation",
+      "expectedWinner": "Roborock",
+      "expectedTopContenders": [
+        "Roborock",
+        "iRobot Roomba",
+        "Eufy"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 58,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best air purifier",
+      "category": "product_recommendation",
+      "expectedWinner": "Coway Airmega AP-1512HH",
+      "expectedTopContenders": [
+        "Coway Airmega AP-1512HH",
+        "Blueair Blue Pure",
+        "Levoit Core"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 61,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best budget headphones",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony WH-CH720N",
+      "expectedTopContenders": [
+        "Sony WH-CH720N",
+        "Anker Soundcore Life Q30",
+        "EarFun Air Pro"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 60,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best laptop",
+      "category": "product_recommendation",
+      "expectedWinner": "MacBook Air",
+      "expectedTopContenders": [
+        "MacBook Air",
+        "MacBook Pro",
+        "Dell XPS",
+        "Lenovo ThinkPad"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 56,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best router",
+      "category": "product_recommendation",
+      "expectedWinner": "Eero Pro 6E",
+      "expectedTopContenders": [
+        "Eero Pro 6E",
+        "Netgear Orbi",
+        "TP-Link Deco"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 88,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best gaming monitor",
+      "category": "product_recommendation",
+      "expectedWinner": "Dell Alienware AW3423DWF",
+      "expectedTopContenders": [
+        "Dell Alienware AW3423DWF",
+        "LG UltraGear OLED",
+        "Gigabyte M27Q"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 61,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best wireless mouse",
+      "category": "product_recommendation",
+      "expectedWinner": "Logitech MX Master 3S",
+      "expectedTopContenders": [
+        "Logitech MX Master 3S",
+        "Razer Basilisk V3",
+        "Logitech G Pro X Superlight"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 60,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best external SSD",
+      "category": "product_recommendation",
+      "expectedWinner": "Samsung T7 Shield",
+      "expectedTopContenders": [
+        "Samsung T7 Shield",
+        "SanDisk Extreme Portable SSD",
+        "Crucial X9 Pro"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 60,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best camera",
+      "category": "product_recommendation",
+      "expectedWinner": "Sony A7 IV",
+      "expectedTopContenders": [
+        "Sony A7 IV",
+        "Canon EOS R6 Mark II",
+        "Fujifilm X-T5"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 59,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best phone",
+      "category": "product_recommendation",
+      "expectedWinner": "iPhone 15",
+      "expectedTopContenders": [
+        "iPhone 15",
+        "Samsung Galaxy S24",
+        "Google Pixel 8"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 56,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best television",
+      "category": "product_recommendation",
+      "expectedWinner": "LG C3 OLED",
+      "expectedTopContenders": [
+        "LG C3 OLED",
+        "Samsung S90C",
+        "Sony A95L"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 61,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    },
+    {
+      "query": "best backpack",
+      "category": "product_recommendation",
+      "expectedWinner": "Osprey Farpoint",
+      "expectedTopContenders": [
+        "Osprey Farpoint",
+        "Aer Travel Pack",
+        "Peak Design Travel Backpack"
+      ],
+      "actualWinner": "",
+      "actualResults": [],
+      "mode": null,
+      "cached": null,
+      "elapsedMs": 83,
+      "error": "Tavily search failed with 432. {\"detail\":{\"error\":\"This request exceeds your plan's set usage limit. Please upgrade your plan or contact support@tavily.com\"}}",
+      "winnerIsRankOne": false,
+      "winnerInTop3": false,
+      "contenderMatches": [],
+      "contenderAccuracy": 0
+    }
+  ]
+}

@@ -34,6 +34,7 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
   const startedAt = Date.now();
   let tavilyMs = 0;
   const evidenceType = inferQueryEvidenceType(query);
+  const tavilyCallsBefore = callCounts?.tavilyCalls ?? 0;
   const tavilyCallLimit = evidenceType === "local_recommendation" ? maxLocalTavilyCallsPerRequest : maxTavilyCallsPerRequest;
   const variants = buildSearchVariants(query);
   const guardedVariants = variants.slice(0, tavilyCallLimit);
@@ -120,6 +121,13 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
     filteringMs,
     elapsedMs: Date.now() - startedAt,
     domains: domainCounts(finalSources)
+  });
+  console.log("TAVILY_CALL_COUNT", {
+    evidenceType,
+    phase: "initial_retrieval",
+    calls: (callCounts?.tavilyCalls ?? 0) - tavilyCallsBefore,
+    total: callCounts?.tavilyCalls ?? 0,
+    limit: tavilyCallLimit
   });
 
   return finalSources;
@@ -348,6 +356,7 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
   }
 
   const context = localRecoveryContext(query);
+  const tavilyCallsBefore = callCounts?.tavilyCalls ?? 0;
   const remainingLocalCalls = Math.max(0, maxLocalTotalTavilyCallsPerRequest - (callCounts?.tavilyCalls ?? 0));
   const variants = buildLocalSparseRecoveryVariants(query, context).slice(0, Math.min(maxLocalSparseRecoveryCalls, remainingLocalCalls));
   console.log("LOCAL_SPARSE_RECOVERY_TRIGGERED", {
@@ -392,6 +401,13 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
     recoveredRawSources: recoveredSources.length,
     existingSourceCount: existingSources.length,
     mergedSourceCount: merged.length
+  });
+  console.log("TAVILY_CALL_COUNT", {
+    evidenceType: "local_recommendation",
+    phase: "local_sparse_recovery",
+    calls: (callCounts?.tavilyCalls ?? 0) - tavilyCallsBefore,
+    total: callCounts?.tavilyCalls ?? 0,
+    limit: maxLocalTotalTavilyCallsPerRequest
   });
 
   return merged;
@@ -449,9 +465,21 @@ async function searchVariantWithRetry(
 }
 
 async function searchVariant(queryVariant: string, key: string, callCounts?: ExternalCallCounts): Promise<VeraSource[]> {
+  const evidenceType = inferQueryEvidenceType(queryVariant);
   if (callCounts) {
     callCounts.tavilyCalls += 1;
+    callCounts.tavilyCallReasons.push({
+      evidenceType,
+      queryVariant,
+      phase: "tavily_search"
+    });
   }
+  console.log("TAVILY_CALL_REASON", {
+    evidenceType,
+    queryVariant,
+    phase: "tavily_search",
+    callNumber: callCounts?.tavilyCalls ?? null
+  });
 
   const response = await fetch("https://api.tavily.com/search", {
     method: "POST",
@@ -465,7 +493,7 @@ async function searchVariant(queryVariant: string, key: string, callCounts?: Ext
       search_depth: "advanced",
       include_answer: false,
       include_raw_content: false,
-      max_results: inferQueryEvidenceType(queryVariant) === "local_recommendation" ? 10 : 24
+      max_results: evidenceType === "local_recommendation" ? 10 : 24
     }),
     cache: "no-store",
     signal: AbortSignal.timeout(tavilyTimeoutMs)
