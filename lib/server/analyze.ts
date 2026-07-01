@@ -265,6 +265,193 @@ export function buildLocalFallbackConsensus(
   };
 }
 
+export function debugLocalCandidateDiscovery(query: string) {
+  const { sources, signals } = localCandidateDiscoveryDebugFixture(query);
+  const intendedCategory = inferIntendedCategory(query);
+  const queryEvidenceType = inferQueryEvidenceType(query);
+  const byName = new Map<string, SourceSignal[]>();
+
+  for (const signal of mergeLocalBusinessSignalNames(signals)) {
+    const existing = byName.get(signal.contenderName) ?? [];
+    existing.push(signal);
+    byName.set(signal.contenderName, existing);
+  }
+
+  const rawCandidates = Array.from(byName.entries())
+    .map(([name, contenderSignals]) =>
+      applyEvidenceStrategy(
+        applyDominantPlatformCategory(
+          applyCategoryRelevanceForEvidenceType(buildContenderMetrics(name, contenderSignals, queryEvidenceType), intendedCategory, contenderSignals, queryEvidenceType),
+          queryEvidenceType
+        ),
+        query,
+        queryEvidenceType,
+        false,
+        contenderSignals
+      )
+    )
+    .sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount);
+
+  const rawExtractedCandidates = rawCandidates.map((candidate) => {
+    const candidateSignals = byName.get(candidate.name) ?? [];
+    return {
+      name: candidate.name,
+      sourceCount: candidate.sourceCount,
+      positiveMentionCount: candidate.positiveMentionCount,
+      score: candidate.netWeightedScore,
+      rejectionReason: localCandidateDiscoveryRejectionReason(query, candidate, candidateSignals)
+    };
+  });
+  const discoveredCandidates = rawCandidates.filter((candidate) => localCandidatePassesDiscovery(query, candidate, byName.get(candidate.name) ?? []));
+  const { contenders } = filterContendersByCategory(discoveredCandidates, intendedCategory);
+  const structuredConsensus = aggregateSignals(signals, sources, query);
+  const finalResult = buildConsensus(query, sources, intentFromQuery(query), structuredConsensus);
+  const thinSignals = signals.filter((signal) => !["TO GO AND DELIVERY", "Keens Steakhouse"].includes(signal.contenderName)).slice(0, 2);
+  const thinSourceUrls = new Set(thinSignals.map((signal) => signal.sourceUrl));
+  const thinSources = sources.filter((source) => thinSourceUrls.has(source.url));
+  const thinConsensus = buildConsensus(query, thinSources, intentFromQuery(query), aggregateSignals(thinSignals, thinSources, query));
+
+  return {
+    query,
+    rawExtractedCandidates,
+    rejectedCandidates: rawExtractedCandidates.filter((candidate) => candidate.rejectionReason),
+    finalValidCandidates: contenders.map((candidate, index) => ({
+      rank: index + 1,
+      name: candidate.name,
+      sourceCount: candidate.sourceCount,
+      positiveMentionCount: candidate.positiveMentionCount,
+      score: candidate.netWeightedScore
+    })),
+    finalUserFacingResult: {
+      mode: finalResult.mode,
+      headline: finalResult.headline,
+      explanation: finalResult.explanation,
+      results: finalResult.results.map((result) => ({
+        rank: result.rank,
+        name: result.name,
+        summary: result.summary
+      }))
+    },
+    thinCandidateCheck: {
+      mode: thinConsensus.mode,
+      headline: thinConsensus.headline,
+      resultCount: thinConsensus.results.length
+    }
+  };
+}
+
+function localCandidateDiscoveryDebugFixture(query: string) {
+  const normalized = normalizeQuery(query);
+  const location = normalized.includes("delray") ? "Delray Beach FL" : normalized.includes("huntington") ? "Huntington NY" : "Seaford NY";
+  const cuisine = localSpecificIntentForQuery(query)?.label ?? localCategoryForQuery(query);
+  const validNames = localCandidateDiscoveryFixtureNames(normalized);
+  const invalidNames = [
+    {
+      name: "TO GO AND DELIVERY",
+      title: "Pasta Eater: Authentic Italian Restaurant in New York",
+      domain: "pasta-eater.com",
+      text: "TO GO AND DELIVERY order online menu hours catering"
+    },
+    {
+      name: "Keens Steakhouse",
+      title: "Keens Steakhouse - New York City steakhouse",
+      domain: "keens.com",
+      text: "Keens Steakhouse is a classic steakhouse in Manhattan New York City."
+    }
+  ];
+  const sources: VeraSource[] = [
+    ...validNames.map((item, index) => ({
+      title: `${item.name} ${cuisine} recommendation in ${location}`,
+      url: `https://debug.local/${slugify(item.name)}-${index + 1}`,
+      domain: index % 2 === 0 ? "yelp.com" : "tripadvisor.com",
+      snippet: `${item.name} is recommended for ${item.evidence} in ${location}.`,
+      queryVariant: `${cuisine} ${location} local debug`
+    })),
+    ...invalidNames.map((item, index) => ({
+      title: item.title,
+      url: `https://debug.local/invalid-${index + 1}`,
+      domain: item.domain,
+      snippet: item.text,
+      queryVariant: `${cuisine} ${location} local debug`
+    }))
+  ];
+  const signals: SourceSignal[] = [
+    ...validNames.map((item, index) =>
+      localDebugSignal({
+        source: sources[index],
+        contenderName: item.name,
+        reason: `Recommended for ${item.evidence} in ${location}`,
+        themes: [item.evidence]
+      })
+    ),
+    ...invalidNames.map((item, index) =>
+      localDebugSignal({
+        source: sources[validNames.length + index],
+        contenderName: item.name,
+        reason: item.text,
+        themes: ["local source support"]
+      })
+    )
+  ];
+
+  return { sources, signals };
+}
+
+function localCandidateDiscoveryFixtureNames(normalizedQuery: string) {
+  if (/\bseafood\b/.test(normalizedQuery)) {
+    return [
+      { name: "The White Whale", evidence: "seafood and raw bar dishes" },
+      { name: "Anchor Down Dockside", evidence: "seafood by the water" },
+      { name: "Cardoon Mediterranean Grill", evidence: "fish and seafood specials" }
+    ];
+  }
+
+  if (/\bsushi\b/.test(normalizedQuery)) {
+    return [
+      { name: "Kashi Japanese", evidence: "sushi and Japanese food" },
+      { name: "Umami Japan", evidence: "sushi rolls and sashimi" },
+      { name: "Sushi Day", evidence: "sushi and Japanese lunch specials" }
+    ];
+  }
+
+  if (/\bdelray\b/.test(normalizedQuery)) {
+    return [
+      { name: "Elisabetta's Ristorante", evidence: "Italian pasta and pizza" },
+      { name: "Tramonti", evidence: "Italian restaurant classics" },
+      { name: "Vic & Angelo's", evidence: "Italian dining and pasta" }
+    ];
+  }
+
+  return [
+    { name: "Gusto Divino Trattoria", evidence: "Italian food and trattoria dishes" },
+    { name: "Cara Mia", evidence: "Italian restaurant recommendations" },
+    { name: "Il Bacetto", evidence: "Italian food in Seaford" },
+    { name: "Gino's of Seaford", evidence: "pizzeria and Italian cuisine" }
+  ];
+}
+
+function localDebugSignal({ source, contenderName, reason, themes }: { source: VeraSource; contenderName: string; reason: string; themes: string[] }): SourceSignal {
+  const sourceType = inferSourceType(source);
+  const sourceQuality = inferSourceQuality(source, sourceType);
+
+  return {
+    sourceUrl: source.url,
+    sourceTitle: source.title,
+    domain: source.domain,
+    sourceType,
+    sourceWeight: sourceTypeWeight(sourceType, "local_recommendation"),
+    sourceQuality,
+    sourceQualityWeight: sourceQualityWeightFor(sourceQuality),
+    queryVariant: source.queryVariant,
+    contenderName,
+    sentiment: "positive",
+    mentionStrength: "strong",
+    positiveMention: reason,
+    extractedReason: reason,
+    themes
+  };
+}
+
 export async function analyzeConsensusWithDebug(query: string, sources: VeraSource[], callCounts?: ExternalCallCounts) {
   const key = process.env.OPENAI_API_KEY;
 
@@ -835,13 +1022,35 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
 
   const qualityFilteredContenders =
     queryEvidenceType === "local_recommendation"
-      ? contendersBeforeFiltering.filter((contender) => !isWeakLocalContender(contender) && localSpecificIntentAllowsContender(query, contender, byName.get(contender.name) ?? []))
+      ? contendersBeforeFiltering.filter((contender) => localCandidatePassesDiscovery(query, contender, byName.get(contender.name) ?? []))
       : queryEvidenceType === "product_recommendation" && isBroadExploratoryQuery(query)
         ? contendersBeforeFiltering.filter((contender) => !isWeakBroadProductContender(contender, query))
         : contendersBeforeFiltering;
   const { contenders, removed } = filterContendersByCategory(qualityFilteredContenders, intendedCategory);
   const contenderNames = new Set(contenders.map((contender) => contender.name));
   const filteredSignals = aggregationSignals.filter((signal) => contenderNames.has(signal.contenderName));
+  if (queryEvidenceType === "local_recommendation") {
+    console.log(
+      "LOCAL_RAW_EXTRACTED_CANDIDATES",
+      contendersBeforeFiltering.map((contender) => ({
+        name: contender.name,
+        sourceCount: contender.sourceCount,
+        positiveMentionCount: contender.positiveMentionCount,
+        netWeightedScore: contender.netWeightedScore
+      }))
+    );
+    console.log(
+      "LOCAL_FINAL_VALID_CANDIDATES",
+      contenders.map((contender, index) => ({
+        rank: index + 1,
+        name: contender.name,
+        sourceCount: contender.sourceCount,
+        positiveMentionCount: contender.positiveMentionCount,
+        netWeightedScore: contender.netWeightedScore,
+        localRanking: contender.localRanking
+      }))
+    );
+  }
   console.log("INTENDED_CATEGORY", intendedCategory);
   console.log(
     "CONTENDER_CATEGORY",
@@ -1357,6 +1566,7 @@ function localLocationMatchScore(query: string, contenderName: string, signals: 
   if (/\baustin\b/.test(queryText) && /\b(round rock|dallas|houston|san antonio)\b/.test(evidenceText)) score -= 3;
   if (/\bseaford\b/.test(queryText) && /\b(brooklyn|manhattan|nyc|new york city|soho|williamsburg|queens|bronx)\b/.test(evidenceText) && !/\bseaford\b/.test(evidenceText)) score -= 10;
   if (/\bhuntington\b/.test(queryText) && /\b(brooklyn|manhattan|nyc|new york city|soho|williamsburg|queens|bronx)\b/.test(evidenceText) && !/\bhuntington\b/.test(evidenceText)) score -= 10;
+  if (/\bdelray beach\b/.test(queryText) && /\b(miami|fort lauderdale|orlando|tampa|jacksonville|new york|nyc|manhattan|brooklyn)\b/.test(evidenceText) && !/\bdelray beach\b/.test(evidenceText)) score -= 10;
   if (/\bmassapequa\b/.test(queryText) && /\b(new york city|manhattan|brooklyn|catskills)\b/.test(evidenceText)) score -= 6;
   if (/\blos angeles\b/.test(queryText) && /\b(instant noodles|consumer reports|wirecutter)\b/.test(evidenceText)) score -= 8;
 
@@ -1375,6 +1585,10 @@ function localLocationTokens(normalizedQuery: string) {
     "massapequa",
     "seaford",
     "huntington",
+    "delray beach",
+    "delray",
+    "florida",
+    "fl",
     "los angeles",
     "long island",
     "chicago",
@@ -1498,6 +1712,17 @@ function localSpecificIntentText(contenderName: string, signals: SourceSignal[])
   );
 }
 
+function localCandidateEvidenceText(contenderName: string, signals: SourceSignal[]) {
+  return normalizeQuery(
+    [
+      contenderName,
+      ...signals.map((signal) =>
+        [signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? "", signal.themes.join(" ")].join(" ")
+      )
+    ].join(" ")
+  );
+}
+
 function localSpecificIntentEvidence(query: string, contenderName: string, signals: SourceSignal[]): LocalSpecificIntentEvidence {
   const intent = localSpecificIntentForQuery(query);
 
@@ -1538,21 +1763,124 @@ function localSpecificIntentPenalty(evidence: LocalSpecificIntentEvidence) {
   return evidence.conflict ? 15 : 11;
 }
 
-function localSpecificIntentAllowsContender(query: string, contender: ContenderMetrics, signals: SourceSignal[]) {
-  const evidence = localSpecificIntentEvidence(query, contender.name, signals);
+function localCandidatePassesDiscovery(query: string, contender: ContenderMetrics, signals: SourceSignal[]) {
+  const rejectionReason = localCandidateDiscoveryRejectionReason(query, contender, signals);
 
-  if (!evidence.intent || evidence.matched) return true;
+  if (!rejectionReason) return true;
 
-  console.log("LOCAL_SPECIFIC_INTENT_FILTERED", {
+  console.log("LOCAL_CANDIDATE_DISCOVERY_REJECTED", {
     name: contender.name,
-    intent: evidence.intent.key,
-    label: evidence.intent.label,
-    conflict: evidence.conflict,
+    reason: rejectionReason,
     sourceCount: contender.sourceCount,
-    positiveMentionCount: contender.positiveMentionCount
+    positiveMentionCount: contender.positiveMentionCount,
+    localRanking: contender.localRanking
   });
 
   return false;
+}
+
+function localCandidateDiscoveryRejectionReason(query: string, contender: ContenderMetrics, signals: SourceSignal[]) {
+  const name = localBusinessDisplayName(contender.name);
+  const normalizedName = normalizeQuery(name || contender.name);
+  const evidenceText = localCandidateEvidenceText(contender.name, signals);
+  const specificIntentEvidence = localSpecificIntentEvidence(query, contender.name, signals);
+
+  if (!signals.length) return "no_source_evidence";
+  if (!name || !looksLikeNamedPlace(name)) return "not_business_name";
+  if (isGenericLocalContender(query, name) || isGenericLocalContender(query, contender.name)) return "generic_or_non_business";
+  if (isLocalCandidateControlText(normalizedName)) return "page_control_or_generic_text";
+  if (isWeakLocalContender(contender)) return "weak_local_contender";
+  if (!localCandidateHasLocationEvidence(query, contender.name, signals)) return "missing_location_evidence";
+  if (localCandidateHasLocationLeakage(query, evidenceText)) return "wrong_location_evidence";
+  if (!localCandidateHasCategoryEvidence(query, contender.name, signals)) return "missing_category_evidence";
+
+  if (specificIntentEvidence.intent && !specificIntentEvidence.matched) {
+    return specificIntentEvidence.conflict ? `wrong_${specificIntentEvidence.intent.key}_conflict` : `missing_${specificIntentEvidence.intent.key}_evidence`;
+  }
+
+  return null;
+}
+
+function isLocalCandidateControlText(normalizedName: string) {
+  return (
+    /^(?:to go|delivery|order online|reservations?|menu|catering|hours|directions|reviews?|near me|best|restaurants?|food|official website|tripadvisor|yelp|doordash|ubereats|grubhub)$/.test(
+      normalizedName
+    ) ||
+    /\b(?:to go|delivery|order online|reservations?|menu|catering|hours|directions|near me|official website|tripadvisor|yelp|doordash|ubereats|grubhub)\b/.test(
+      normalizedName
+    )
+  );
+}
+
+function localCandidateHasLocationEvidence(query: string, contenderName: string, signals: SourceSignal[]) {
+  const terms = localRequestedLocationTerms(query);
+
+  if (!terms.length) return true;
+
+  return signals.some((signal) => {
+    const text = normalizeQuery([contenderName, signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? ""].join(" "));
+    return terms.some((term) => text.includes(term));
+  });
+}
+
+function localRequestedLocationTerms(query: string) {
+  const normalized = normalizeQuery(query);
+  const terms = new Set<string>();
+
+  const add = (value: string) => {
+    const normalizedValue = normalizeQuery(value);
+    if (normalizedValue.length >= 3) terms.add(normalizedValue);
+  };
+
+  const explicitLocation = normalized
+    .match(/\b(?:in|near|around)\s+(.+?)$/)?.[1]
+    ?.replace(/\b(?:ny|new york|fl|florida|ca|california|tx|texas|best|top|restaurants?|restaurant|seafood|italian|sushi|pizza|brunch|coffee|bar|bars|mexican|steakhouse)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (explicitLocation) add(explicitLocation);
+  if (/\bseaford\b/.test(normalized)) add("seaford");
+  if (/\bhuntington\b/.test(normalized)) add("huntington");
+  if (/\bmassapequa\b/.test(normalized)) add("massapequa");
+  if (/\bdelray beach\b/.test(normalized)) {
+    add("delray beach");
+    add("delray");
+  }
+  if (/\bwilliamsburg\b/.test(normalized)) add("williamsburg");
+  if (/\bbrooklyn\b/.test(normalized)) add("brooklyn");
+  if (/\bmanhattan\b/.test(normalized)) add("manhattan");
+  if (/\bnyc|new york city\b/.test(normalized)) add("new york");
+
+  return Array.from(terms);
+}
+
+function localCandidateHasLocationLeakage(query: string, evidenceText: string) {
+  const queryText = normalizeQuery(query);
+  const leakagePatterns: Array<[RegExp, RegExp]> = [
+    [/\bseaford\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island)\b/],
+    [/\bhuntington\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island)\b/],
+    [/\bdelray beach\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island)\b/]
+  ];
+
+  return leakagePatterns.some(([queryPattern, leakagePattern]) => queryPattern.test(queryText) && !leakagePattern.test(queryText) && leakagePattern.test(evidenceText));
+}
+
+function localCandidateHasCategoryEvidence(query: string, contenderName: string, signals: SourceSignal[]) {
+  const category = localCategoryForQuery(query);
+  const specificIntent = localSpecificIntentForQuery(query);
+
+  if (specificIntent) {
+    return localSpecificIntentEvidence(query, contenderName, signals).matched;
+  }
+
+  if (category === "local_business") return true;
+
+  return signals.some((signal) =>
+    localCandidateHasCategorySignal(
+      category,
+      normalizeQuery([contenderName, signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? ""].join(" "))
+    )
+  );
 }
 
 function localCategoryMatchScore(query: string, contenderName: string, signals: SourceSignal[]) {
@@ -3992,7 +4320,7 @@ function buildConsensus(
   const id = crypto.randomUUID();
   const normalizedQuery = normalizeQuery(query);
   const mode = structuredConsensus.consensusClassification;
-  const contenders = structuredConsensus.contenders.slice(0, 5);
+  const contenders = mode === "no_reliable_consensus" ? [] : structuredConsensus.contenders.slice(0, 5);
   const createdAt = new Date().toISOString();
 
   return {
@@ -4191,6 +4519,10 @@ function classifyLocalConsensus(contenders: ContenderMetrics[]): ConsensusMode {
   const top = contenders[0];
   const second = contenders[1];
 
+  if (contenders.length < 3) {
+    return "no_reliable_consensus";
+  }
+
   if (!top || top.positiveMentionCount === 0) {
     return "no_reliable_consensus";
   }
@@ -4331,6 +4663,10 @@ function consensusScore(contender: ContenderMetrics) {
 function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], intent: ConsensusResponse["intent"], evidenceType?: QueryEvidenceType) {
   const winner = contenders[0];
 
+  if (evidenceType === "local_recommendation" && mode === "no_reliable_consensus") {
+    return "No reliable local consensus found.";
+  }
+
   if (evidenceType === "local_recommendation" && mode === "split_consensus") {
     return `Top 5 local consensus for ${decisionSubject(intent)}.`;
   }
@@ -4358,6 +4694,10 @@ function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[
   const winner = contenders[0];
   const second = contenders[1];
   const criteria = intent.optimizeFor.slice(0, 4);
+
+  if (evidenceType === "local_recommendation" && mode === "no_reliable_consensus") {
+    return "Vera did not find enough real local businesses with matching location and category evidence to rank this confidently.";
+  }
 
   if (evidenceType === "local_recommendation" && mode === "split_consensus") {
     return "Several local businesses have credible support. Vera ranks the top options by source support, review-platform evidence, local coverage, and community mentions without forcing a single winner.";
@@ -4409,6 +4749,14 @@ function confidenceReasoning(contenders: ContenderMetrics[], mode: ConsensusMode
 
 function summaryForContender(contender: ContenderMetrics) {
   const themes = contender.themeCounts.slice(0, 3).map((theme) => humanizeTheme(theme.theme).toLowerCase());
+
+  if (contender.localRanking) {
+    const hasReviewSupport = contender.sourceTypes.includes("review_site");
+    const hasEditorialSupport = contender.sourceTypes.some((type) => type === "editorial" || type === "local_guide" || type === "professional_review");
+    const support = hasReviewSupport && hasEditorialSupport ? "local review and editorial sources" : hasReviewSupport ? "local review sources" : "retrieved local sources";
+
+    return `Recommended across ${support} with matching local category evidence.`;
+  }
 
   if (themes.length) {
     return `${contender.name} is supported most often for ${criteriaPhrase(themes)}.`;
