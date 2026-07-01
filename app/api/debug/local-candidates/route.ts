@@ -5,6 +5,9 @@ const defaultQueries = [
   "Best Italian restaurant in Seaford NY",
   "Best seafood restaurant in Seaford NY",
   "Best sushi in Huntington NY",
+  "Best brunch in Huntington NY",
+  "Best coffee in Delray Beach FL",
+  "Best pizza in Massapequa NY",
   "Best Italian restaurant in Delray Beach FL"
 ];
 

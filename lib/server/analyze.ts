@@ -342,10 +342,22 @@ export function debugLocalCandidateDiscovery(query: string) {
 
 function localCandidateDiscoveryDebugFixture(query: string) {
   const normalized = normalizeQuery(query);
-  const location = normalized.includes("delray") ? "Delray Beach FL" : normalized.includes("huntington") ? "Huntington NY" : "Seaford NY";
+  const location = normalized.includes("delray")
+    ? "Delray Beach FL"
+    : normalized.includes("huntington")
+      ? "Huntington NY"
+      : normalized.includes("massapequa")
+        ? "Massapequa NY"
+        : "Seaford NY";
   const cuisine = localSpecificIntentForQuery(query)?.label ?? localCategoryForQuery(query);
   const validNames = localCandidateDiscoveryFixtureNames(normalized);
   const invalidNames = [
+    {
+      name: "Italian Food and Pizza",
+      title: "Best Italian Food and Pizza in Seaford NY",
+      domain: "local-list.example",
+      text: "Italian food and pizza restaurant guide for Seaford NY."
+    },
     {
       name: "TO GO AND DELIVERY",
       title: "Pasta Eater: Authentic Italian Restaurant in New York",
@@ -414,6 +426,30 @@ function localCandidateDiscoveryFixtureNames(normalizedQuery: string) {
     ];
   }
 
+  if (/\bbrunch\b/.test(normalizedQuery)) {
+    return [
+      { name: "Hatch", evidence: "brunch and breakfast dishes" },
+      { name: "Toast & Co.", evidence: "brunch staples and coffee" },
+      { name: "Besito Mexican", evidence: "weekend brunch in Huntington" }
+    ];
+  }
+
+  if (/\bcoffee\b/.test(normalizedQuery)) {
+    return [
+      { name: "Subculture Coffee", evidence: "coffee and espresso drinks" },
+      { name: "The Seed Coffee", evidence: "local coffee and cafe seating" },
+      { name: "Carmela Coffee Company", evidence: "coffee shop and pastries" }
+    ];
+  }
+
+  if (/\bpizza\b/.test(normalizedQuery)) {
+    return [
+      { name: "Phil's Pizzeria", evidence: "pizza and pizzeria slices" },
+      { name: "Saverio's Authentic Pizza Napoletana", evidence: "pizza and Neapolitan pies" },
+      { name: "Calda Pizzeria", evidence: "pizza and pizzeria dishes in Massapequa" }
+    ];
+  }
+
   if (/\bdelray\b/.test(normalizedQuery)) {
     return [
       { name: "Elisabetta's Ristorante", evidence: "Italian pasta and pizza" },
@@ -425,7 +461,8 @@ function localCandidateDiscoveryFixtureNames(normalizedQuery: string) {
   return [
     { name: "Gusto Divino Trattoria", evidence: "Italian food and trattoria dishes" },
     { name: "Cara Mia", evidence: "Italian restaurant recommendations" },
-    { name: "Il Bacetto", evidence: "Italian food in Seaford" },
+    { name: "Il Bacetto Restaurant", evidence: "Italian food in Seaford" },
+    { name: "IL BACETTO ITALIAN", evidence: "Italian restaurant in Seaford" },
     { name: "Gino's of Seaford", evidence: "pizzeria and Italian cuisine" }
   ];
 }
@@ -1365,6 +1402,10 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
   const sourceAgreementScore = round1(Math.min(Math.max(crossSourceAgreementCount - 1, 0), 4) * 3.4 + Math.min(Math.max(metrics.sourceCount - 1, 0), 5) * 1.2);
   const mentionFrequencyScore = round1(Math.min(metrics.positiveMentionCount, 6) * 0.75 + Math.min(metrics.strongMentionCount, 4) * 0.8);
   const locationMatchScore = localLocationMatchScore(query, metrics.name, signals);
+  const geographicPrecision = localGeographicPrecision(
+    normalizeQuery(query),
+    normalizeQuery([metrics.name, ...signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""}`)].join(" "))
+  );
   const categoryMatchScore = localCategoryMatchScore(query, metrics.name, signals);
   const extractionConfidence = localExtractionConfidence(signals);
   const extractionConfidenceScore = round1((extractionConfidence - 0.62) * 8);
@@ -1422,6 +1463,7 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
     sourceAgreementScore,
     mentionFrequencyScore,
     locationMatchScore,
+    geographicPrecision,
     categoryMatchScore,
     extractionConfidenceScore,
     sourceSpecificConfidence,
@@ -1500,6 +1542,7 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
     baseScore: metrics.netWeightedScore,
     finalScore: netWeightedScore,
     locationMatchScore,
+    geographicPrecision,
     categoryMatchScore,
     sourceAuthorityScore,
     sourceAgreementScore,
@@ -1526,6 +1569,7 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
       baseScore: metrics.netWeightedScore,
       finalScore: netWeightedScore,
       locationMatchScore,
+      geographicPrecision,
       categoryMatchScore,
       sourceAuthorityScore,
       sourceAgreementScore,
@@ -1553,12 +1597,15 @@ function localLocationMatchScore(query: string, contenderName: string, signals: 
   const queryText = normalizeQuery(query);
   const evidenceText = normalizeQuery([contenderName, ...signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""}`)].join(" "));
   const tokens = localLocationTokens(queryText);
+  const precision = localGeographicPrecision(queryText, evidenceText);
   let score = 0;
 
   if (tokens.length) {
     const matches = tokens.filter((token) => evidenceText.includes(token)).length;
     score += Math.min(matches, 3) * 1.4;
   }
+
+  score += precision.score;
 
   if (/\bwilliamsburg\b/.test(queryText) && /\b(colonial williamsburg|williamsburg va|virginia|va 23185|richmond rd)\b/.test(evidenceText)) score -= 16;
   if (/\bnyc|new york|brooklyn|manhattan|williamsburg\b/.test(queryText) && /\b(las vegas|atlanta|williamsburg va|colonial williamsburg|virginia|richmond rd)\b/.test(evidenceText)) score -= 9;
@@ -1571,6 +1618,43 @@ function localLocationMatchScore(query: string, contenderName: string, signals: 
   if (/\blos angeles\b/.test(queryText) && /\b(instant noodles|consumer reports|wirecutter)\b/.test(evidenceText)) score -= 8;
 
   return round1(Math.max(-20, Math.min(score, 7)));
+}
+
+function localGeographicPrecision(queryText: string, evidenceText: string) {
+  const tiers: Array<{ query: RegExp; exact: RegExp; adjacent: RegExp; nearby: RegExp }> = [
+    {
+      query: /\bseaford\b/,
+      exact: /\bseaford\b/,
+      adjacent: /\b(wantagh|massapequa|bellmore|merrick|levittown)\b/,
+      nearby: /\b(farmingdale|amityville|freeport|hicksville|long island|nassau)\b/
+    },
+    {
+      query: /\bmassapequa\b/,
+      exact: /\bmassapequa\b/,
+      adjacent: /\b(seaford|wantagh|amityville|farmingdale|bellmore)\b/,
+      nearby: /\b(merrick|freeport|hicksville|long island|nassau)\b/
+    },
+    {
+      query: /\bhuntington\b/,
+      exact: /\bhuntington\b/,
+      adjacent: /\b(huntington station|greenlawn|centerport|cold spring harbor|northport|melville)\b/,
+      nearby: /\b(syosset|woodbury|commack|long island|suffolk)\b/
+    },
+    {
+      query: /\bdelray beach\b/,
+      exact: /\bdelray beach\b/,
+      adjacent: /\b(boca raton|boynton beach|highland beach|gulf stream)\b/,
+      nearby: /\b(palm beach|deerfield beach|lake worth|south florida)\b/
+    }
+  ];
+
+  const tier = tiers.find((candidate) => candidate.query.test(queryText));
+
+  if (!tier) return { tier: "unspecified", score: 0 };
+  if (tier.exact.test(evidenceText)) return { tier: "exact", score: 5.2 };
+  if (tier.adjacent.test(evidenceText)) return { tier: "adjacent", score: 2.1 };
+  if (tier.nearby.test(evidenceText)) return { tier: "nearby", score: 0.6 };
+  return { tier: "missing", score: -3.8 };
 }
 
 function localLocationTokens(normalizedQuery: string) {
@@ -1807,6 +1891,9 @@ function isLocalCandidateControlText(normalizedName: string) {
       normalizedName
     ) ||
     /\b(?:to go|delivery|order online|reservations?|menu|catering|hours|directions|near me|official website|tripadvisor|yelp|doordash|ubereats|grubhub)\b/.test(
+      normalizedName
+    ) ||
+    /^(?:italian|seafood|sushi|pizza|brunch|coffee|mexican|steakhouse|bar|restaurant)\s+(?:food|restaurants?|places?|spots?|food\s+and|and\s+)?\s*(?:pizza|sushi|seafood|brunch|coffee|bars?|restaurants?)?$/.test(
       normalizedName
     )
   );
@@ -3007,7 +3094,7 @@ function localCandidateNormalizedName(value: string) {
 
   normalized = normalized
     .replace(
-      /\s+\b(?:restaurant|restaurants|bar|cafe|coffee shop|hotel|inn|golf course|course|dentist|dental|plumber|plumbing|bakery|pizzeria)\b$/g,
+      /\s+\b(?:restaurant|restaurants|bar|cafe|coffee shop|hotel|inn|golf course|course|dentist|dental|plumber|plumbing|bakery|pizzeria|italian|seafood|sushi|brunch)\b$/g,
       ""
     )
     .replace(
@@ -3070,6 +3157,7 @@ function localBusinessDisplayName(value: string) {
     .replace(/\s+\d{4,}$/g, "")
     .replace(/\s+(?:carmine st|carmine street|bleecker st|bleecker street|bedford ave|bedford avenue|kent ave|kent avenue|wythe ave|wythe avenue|grand st|grand street)$/i, "")
     .replace(/\b(?:restaurant|bar|hotel|golf course)\s*$/i, "")
+    .replace(/\b(?:italian|seafood|sushi|brunch)\s*$/i, "")
     .replace(/\s+/g, " ")
     .replace(/[.,;:]+$/g, "")
     .trim();
@@ -3131,6 +3219,13 @@ function isLocalSentenceOrEditorialFragment(generic: string) {
     return true;
   }
   if (/^(?:most affordable|most luxurious|best overall|best value|editors? pick)\b/.test(generic)) {
+    return true;
+  }
+  if (
+    /^(?:italian|seafood|sushi|pizza|brunch|coffee|mexican|steakhouse|bar|restaurant)\s+(?:food|restaurants?|places?|spots?|food\s+and|and\s+)?\s*(?:pizza|sushi|seafood|brunch|coffee|bars?|restaurants?)?$/.test(
+      generic
+    )
+  ) {
     return true;
   }
   if (/\b(?:xtnahgrcizx|[a-z]*[0-9][a-z0-9]{7,})\b/i.test(generic)) {
@@ -4539,8 +4634,14 @@ function classifyLocalConsensus(contenders: ContenderMetrics[]): ConsensusMode {
     top.positiveMentionCount >= second.positiveMentionCount + 3 &&
     scoreGap >= 24 &&
     weightedGap >= 10;
+  const significantlyStronger =
+    top.sourceCount >= 3 &&
+    top.sourceDiversityScore >= 2.4 &&
+    top.positiveMentionCount >= second.positiveMentionCount + 2 &&
+    scoreGap >= 18 &&
+    weightedGap >= 14;
 
-  return overwhelming ? "strong_consensus" : "split_consensus";
+  return overwhelming || significantlyStronger ? "strong_consensus" : "split_consensus";
 }
 
 function logConsensusDiagnostics(contenders: ContenderMetrics[], sourceCount: number, classification: ConsensusMode) {
@@ -4751,11 +4852,7 @@ function summaryForContender(contender: ContenderMetrics) {
   const themes = contender.themeCounts.slice(0, 3).map((theme) => humanizeTheme(theme.theme).toLowerCase());
 
   if (contender.localRanking) {
-    const hasReviewSupport = contender.sourceTypes.includes("review_site");
-    const hasEditorialSupport = contender.sourceTypes.some((type) => type === "editorial" || type === "local_guide" || type === "professional_review");
-    const support = hasReviewSupport && hasEditorialSupport ? "local review and editorial sources" : hasReviewSupport ? "local review sources" : "retrieved local sources";
-
-    return `Recommended across ${support} with matching local category evidence.`;
+    return localSummaryForContender(contender);
   }
 
   if (themes.length) {
@@ -4763,6 +4860,40 @@ function summaryForContender(contender: ContenderMetrics) {
   }
 
   return `${contender.name} appears repeatedly in the recommendation evidence.`;
+}
+
+function localSummaryForContender(contender: ContenderMetrics) {
+  const themes = contender.themeCounts
+    .map((theme) => humanizeTheme(theme.theme).toLowerCase())
+    .filter((theme) => theme && !/^(local source support|recurring recommendation|recommendation)$/.test(theme))
+    .slice(0, 2);
+  const hasReviewSupport = contender.sourceTypes.includes("review_site");
+  const hasEditorialSupport = contender.sourceTypes.some((type) => type === "editorial" || type === "local_guide" || type === "professional_review");
+  const hasCommunitySupport = contender.sourceTypes.some((type) => type === "reddit" || type === "forum");
+  const support =
+    hasReviewSupport && hasEditorialSupport
+      ? "local review and editorial sources"
+      : hasEditorialSupport
+        ? "local editorial sources"
+        : hasReviewSupport
+          ? "local review sources"
+          : hasCommunitySupport
+            ? "community discussions"
+            : "local sources";
+
+  if (themes.length >= 2) {
+    return `Frequently mentioned for ${criteriaPhrase(themes)} across ${support}.`;
+  }
+
+  if (themes.length === 1) {
+    return `Known locally for ${themes[0]}, with support across ${support}.`;
+  }
+
+  if (contender.sourceCount >= 3) {
+    return `Appears consistently across ${contender.sourceCount} local sources with matching category and location evidence.`;
+  }
+
+  return `Supported by local evidence that matches the requested category and location.`;
 }
 
 function decisionSubject(intent: ConsensusResponse["intent"]) {

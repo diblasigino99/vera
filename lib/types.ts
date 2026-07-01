@@ -95,6 +95,10 @@ export type ContenderMetrics = {
     baseScore: number;
     finalScore: number;
     locationMatchScore: number;
+    geographicPrecision?: {
+      tier: string;
+      score: number;
+    };
     categoryMatchScore: number;
     sourceAuthorityScore: number;
     sourceAgreementScore: number;
