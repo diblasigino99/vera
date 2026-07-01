@@ -889,7 +889,7 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
 
   const themeCounts = aggregateThemeCounts(filteredSignals);
   const sourceBreakdown = aggregateSourceBreakdown(sources, filteredSignals);
-  const consensusClassification = classifyFromMetrics(contenders, sources.length, queryEvidenceType);
+  const consensusClassification = classifyFromMetrics(contenders, sources.length, queryEvidenceType, query);
   logConsensusDiagnostics(contenders, sources.length, consensusClassification);
   console.log(
     "FINAL_CONTENDERS",
@@ -3868,7 +3868,7 @@ function notEnoughData(query: string, sources: VeraSource[], explanation: string
   };
 }
 
-function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number, evidenceType: QueryEvidenceType): ConsensusMode {
+function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number, evidenceType: QueryEvidenceType, query = ""): ConsensusMode {
   if (sourceCount < classificationThresholds.minimumSourceCount || contenders.length === 0) {
     return "no_reliable_consensus";
   }
@@ -3885,9 +3885,11 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
     Boolean(top) &&
     top.sourceCount >= classificationThresholds.minimumTopSourceCount &&
     top.netWeightedScore >= 12;
+  const hasMatureCategoryEvidence = Boolean(top) && matureCategoryEvidenceSupportsConsensus(top, contenders, evidenceType, query, positiveSourceCount);
 
   if (
     !hasDominantPlatformEvidence &&
+    !hasMatureCategoryEvidence &&
     (totalPositiveMentions < classificationThresholds.minimumTotalPositiveMentions ||
       positiveSourceCount < classificationThresholds.minimumPositiveSourceCount)
   ) {
@@ -3900,13 +3902,17 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
     return "no_reliable_consensus";
   }
 
-  if (top.positiveMentionCount < classificationThresholds.minimumTopPositiveMentions || top.sourceCount < classificationThresholds.minimumTopSourceCount) {
+  const topHasEnoughEvidence =
+    hasMatureCategoryEvidence ||
+    (top.positiveMentionCount >= classificationThresholds.minimumTopPositiveMentions && top.sourceCount >= classificationThresholds.minimumTopSourceCount);
+
+  if (!topHasEnoughEvidence) {
     return "split_consensus";
   }
 
   if (!second) {
-    return top.sourceCount >= classificationThresholds.moderateSourceCount &&
-      top.positiveMentionCount >= classificationThresholds.minimumTotalPositiveMentions
+    return (hasMatureCategoryEvidence || top.sourceCount >= classificationThresholds.moderateSourceCount) &&
+      top.positiveMentionCount >= (hasMatureCategoryEvidence ? 2 : classificationThresholds.minimumTotalPositiveMentions)
       ? "moderate_consensus"
       : "no_reliable_consensus";
   }
@@ -3934,7 +3940,7 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
     topScore >= classificationThresholds.strongScore &&
     gap >= classificationThresholds.strongGapPoints &&
     weightedGap >= classificationThresholds.strongWeightedGap &&
-    top.sourceCount >= classificationThresholds.strongSourceCount
+    top.sourceCount >= (hasMatureCategoryEvidence ? 3 : classificationThresholds.strongSourceCount)
   ) {
     return "strong_consensus";
   }
@@ -3942,12 +3948,42 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
   if (
     topScore >= classificationThresholds.moderateScore &&
     gap >= classificationThresholds.moderateGapPoints &&
-    top.sourceCount >= classificationThresholds.moderateSourceCount
+    (top.sourceCount >= classificationThresholds.moderateSourceCount || hasMatureCategoryEvidence)
   ) {
     return "moderate_consensus";
   }
 
   return "split_consensus";
+}
+
+function matureCategoryEvidenceSupportsConsensus(
+  top: ContenderMetrics,
+  contenders: ContenderMetrics[],
+  evidenceType: QueryEvidenceType,
+  query: string,
+  positiveSourceCount: number
+) {
+  if (evidenceType !== "software_tool" && evidenceType !== "product_recommendation") {
+    return false;
+  }
+
+  if (evidenceType === "product_recommendation" && isBroadExploratoryQuery(query)) {
+    return false;
+  }
+
+  if (top.sourceCount < 2 || top.positiveMentionCount < 2 || positiveSourceCount < 2) {
+    return false;
+  }
+
+  if (top.sourceDiversityScore < 2.4 || top.sourceQualityScore < 2.4) {
+    return false;
+  }
+
+  const topScore = consensusScore(top);
+  const second = contenders[1];
+  const weightedGap = second ? top.netWeightedScore - second.netWeightedScore : top.netWeightedScore;
+
+  return topScore >= 60 && weightedGap >= 3;
 }
 
 function classifyLocalConsensus(contenders: ContenderMetrics[]): ConsensusMode {
