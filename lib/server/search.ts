@@ -615,7 +615,7 @@ function localRetrievalCategory(normalized: string) {
   if (/\b(plumber|plumbers|plumbing)\b/.test(normalized)) return "plumber";
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
   if (/\b(golf course|golf club)\b/.test(normalized)) return "golf_course";
-  if (/\b(restaurant|restaurants|place to eat|dinner|lunch|ramen|sushi|tacos)\b/.test(normalized)) return "restaurant";
+  if (/\b(restaurant|restaurants|place to eat|dinner|lunch|ramen|sushi|tacos|italian|mexican|seafood|steakhouse|steak house)\b/.test(normalized)) return "restaurant";
   return "local_business";
 }
 
@@ -750,9 +750,13 @@ function expandLocalLocation(location: string) {
 }
 
 function localRecoveryCategoryLabel(category: string, normalizedQuery: string) {
+  if (category === "restaurant" && /\bitalian\b/.test(normalizedQuery)) return "Italian restaurant";
+  if (category === "restaurant" && /\bseafood\b/.test(normalizedQuery)) return "seafood restaurant";
   if (category === "restaurant" && /\bsushi\b/.test(normalizedQuery)) return "sushi";
   if (category === "restaurant" && /\bramen\b/.test(normalizedQuery)) return "ramen";
   if (category === "restaurant" && /\btacos?\b/.test(normalizedQuery)) return "tacos";
+  if (category === "restaurant" && /\b(mexican|taqueria)\b/.test(normalizedQuery)) return "Mexican restaurant";
+  if (category === "restaurant" && /\b(steakhouse|steak house|steak)\b/.test(normalizedQuery)) return "steakhouse";
   if (category === "restaurant") return "restaurant";
   if (category === "coffee") return "coffee shop";
   if (category === "bar" && /\bespresso martini\b/.test(normalizedQuery)) return "espresso martini bar";

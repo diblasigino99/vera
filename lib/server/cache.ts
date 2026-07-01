@@ -9,6 +9,7 @@ const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
 const localCacheVersion = 73;
+const localSpecificIntentCacheVersion = 74;
 const canUseLocalJsonFallback = !process.env.VERCEL && process.env.NODE_ENV !== "production";
 
 type LocalCacheEntry = {
@@ -56,9 +57,21 @@ export function getCacheVersion() {
   return localCacheVersion;
 }
 
+function cacheVersionForQuery(query: string) {
+  const normalized = normalizeQuery(query);
+  const hasSpecificLocalIntent =
+    /\b(italian|mexican|seafood|sushi|pizza|pizzeria|brunch|coffee|cafe|bar|cocktail|espresso martini|steakhouse|steak house|live music)\b/.test(normalized);
+  const hasLocalLocation =
+    /\b(?:in|near|around)\b/.test(normalized) ||
+    /\b(seaford|huntington|massapequa|williamsburg|brooklyn|manhattan|nyc|new york|long island|seattle|austin)\b/.test(normalized);
+
+  return hasSpecificLocalIntent && hasLocalLocation ? localSpecificIntentCacheVersion : localCacheVersion;
+}
+
 export async function getCachedConsensus(query: string, callCounts?: ExternalCallCounts) {
   const normalizedQuery = normalizeQuery(query);
   const canonicalQuery = canonicalizeQuery(query);
+  const cacheVersion = cacheVersionForQuery(query);
   const supabase = getSupabaseAdmin();
   console.log("ORIGINAL_QUERY", query);
   console.log("NORMALIZED_QUERY", normalizedQuery);
@@ -68,11 +81,11 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
     console.log("[vera:cache] cache lookup started", {
       normalizedQuery,
       canonicalQuery,
-      cacheVersion: localCacheVersion,
+      cacheVersion,
       store: "supabase"
     });
 
-    const supabaseHit = await getSupabaseCachedConsensus(canonicalQuery, normalizedQuery, callCounts);
+    const supabaseHit = await getSupabaseCachedConsensus(canonicalQuery, normalizedQuery, cacheVersion, callCounts);
 
     if (supabaseHit) {
       memorySearches.set(normalizedQuery, supabaseHit);
@@ -80,7 +93,7 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
       console.log("[vera:cache] cache hit", {
         normalizedQuery,
         canonicalQuery,
-        cacheVersion: localCacheVersion,
+        cacheVersion,
         store: "supabase",
         searchId: supabaseHit.id
       });
@@ -90,7 +103,7 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
     console.log("[vera:cache] cache miss", {
       normalizedQuery,
       canonicalQuery,
-      cacheVersion: localCacheVersion,
+      cacheVersion,
       store: "supabase"
     });
   } else {
@@ -108,12 +121,12 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
 
   const local = memorySearches.get(canonicalQuery) ?? memorySearches.get(normalizedQuery);
 
-  if (local) {
+  if (local && local.cacheVersion === cacheVersion) {
     console.log("CACHE_HIT_TYPE", memorySearches.has(canonicalQuery) ? "canonical" : "normalized");
     console.log("[vera:cache] cache hit", {
       normalizedQuery,
       canonicalQuery,
-      cacheVersion: localCacheVersion,
+      cacheVersion,
       store: "memory",
       searchId: local.id
     });
@@ -123,14 +136,14 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
   const localFileCache = await readLocalCache();
   const localFileHit = localFileCache[canonicalQuery] ?? localFileCache[normalizedQuery];
 
-  if (localFileHit?.result && localFileHit.cache_version === localCacheVersion) {
+  if (localFileHit?.result && localFileHit.cache_version === cacheVersion) {
     memorySearches.set(normalizedQuery, localFileHit.result);
     memorySearches.set(canonicalQuery, localFileHit.result);
     console.log("CACHE_HIT_TYPE", localFileCache[canonicalQuery] ? "canonical" : "normalized");
     console.log("[vera:cache] cache hit", {
       normalizedQuery,
       canonicalQuery,
-      cacheVersion: localCacheVersion,
+      cacheVersion,
       store: "local-json",
       searchId: localFileHit.result.id
     });
@@ -140,7 +153,7 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
   console.log("[vera:cache] cache miss", {
     normalizedQuery,
     canonicalQuery,
-    cacheVersion: localCacheVersion,
+    cacheVersion,
     store: supabase ? "memory/local-json-after-supabase" : "memory/local-json"
   });
   console.log("CACHE_HIT_TYPE", "miss");
@@ -273,10 +286,11 @@ export async function getConsensusById(searchId: string) {
 
 export async function cacheConsensus(consensus: ConsensusResponse, callCounts?: ExternalCallCounts) {
   const canonicalQuery = consensus.canonicalQuery ?? canonicalizeQuery(consensus.query);
+  const cacheVersion = cacheVersionForQuery(consensus.query);
   let versionedConsensus: ConsensusResponse = {
     ...consensus,
     canonicalQuery,
-    cacheVersion: localCacheVersion,
+    cacheVersion,
     sources: annotateSources(consensus)
   };
 
@@ -306,7 +320,7 @@ function annotateSources(consensus: ConsensusResponse) {
   });
 }
 
-async function getSupabaseCachedConsensus(canonicalQuery: string, normalizedQuery: string, callCounts?: ExternalCallCounts) {
+async function getSupabaseCachedConsensus(canonicalQuery: string, normalizedQuery: string, cacheVersion: number, callCounts?: ExternalCallCounts) {
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
@@ -336,7 +350,7 @@ async function getSupabaseCachedConsensus(canonicalQuery: string, normalizedQuer
       .from("search_cache")
       .select("id, original_query, normalized_query, canonical_query, result_json, sources_json, cache_version, updated_at")
       .or(`canonical_query.eq.${escapePostgrestValue(canonicalQuery)},normalized_query.eq.${escapePostgrestValue(normalizedQuery)}`)
-      .eq("cache_version", localCacheVersion)
+      .eq("cache_version", cacheVersion)
       .limit(2);
   } catch (error) {
     console.log("CACHE_LOOKUP_EXCEPTION", {
@@ -398,7 +412,7 @@ async function getSupabaseCachedConsensus(canonicalQuery: string, normalizedQuer
 
   console.log("[vera:cache] cache lookup failed", {
     normalizedQuery,
-    cacheVersion: localCacheVersion,
+    cacheVersion,
     store: "supabase",
     error
   });
@@ -419,6 +433,7 @@ async function getSupabaseCachedConsensus(canonicalQuery: string, normalizedQuer
 
 async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?: ExternalCallCounts) {
   const supabase = getSupabaseAdmin();
+  const cacheVersion = consensus.cacheVersion ?? cacheVersionForQuery(consensus.query);
 
   if (!supabase) {
     return consensus;
@@ -438,7 +453,7 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
   if (existingLookupError) {
     console.log("[vera:cache] cache write preflight failed", {
       normalizedQuery: consensus.normalizedQuery,
-      cacheVersion: localCacheVersion,
+      cacheVersion,
       store: "supabase",
       error: existingLookupError
     });
@@ -472,7 +487,7 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
         result: stableConsensus,
         result_json: stableConsensus,
         sources_json: stableConsensus.sources,
-        cache_version: localCacheVersion,
+        cache_version: cacheVersion,
         updated_at: now
       })
       .eq("id", existingRow.id);
@@ -480,7 +495,7 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
     if (error) {
       console.log("[vera:cache] cache write failed", {
         normalizedQuery: stableConsensus.normalizedQuery,
-        cacheVersion: localCacheVersion,
+        cacheVersion,
         store: "supabase",
         rowId: existingRow.id,
         error
@@ -506,7 +521,7 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
     });
     console.log("[vera:cache] cache write success", {
       normalizedQuery: stableConsensus.normalizedQuery,
-      cacheVersion: localCacheVersion,
+      cacheVersion,
       store: "supabase",
       searchId: existingRow.id,
       writeMode: "update"
@@ -523,7 +538,7 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
     result: stableConsensus,
     result_json: stableConsensus,
     sources_json: stableConsensus.sources,
-    cache_version: localCacheVersion,
+    cache_version: cacheVersion,
     created_at: stableConsensus.createdAt,
     updated_at: now
   });
@@ -538,7 +553,7 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
     });
     console.log("[vera:cache] cache write success", {
       normalizedQuery: stableConsensus.normalizedQuery,
-      cacheVersion: localCacheVersion,
+      cacheVersion,
       store: "supabase",
       searchId: stableConsensus.id,
       writeMode: "insert"
@@ -548,7 +563,7 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
 
   console.log("[vera:cache] cache write failed", {
     normalizedQuery: stableConsensus.normalizedQuery,
-    cacheVersion: localCacheVersion,
+    cacheVersion,
     store: "supabase",
     rowId: stableConsensus.id,
     error
@@ -698,7 +713,7 @@ async function writeLocalCacheEntry(consensus: ConsensusResponse) {
     sources_used: consensus.sources,
     created_at: existing?.created_at ?? consensus.createdAt,
     updated_at: now,
-    cache_version: localCacheVersion
+    cache_version: consensus.cacheVersion ?? cacheVersionForQuery(consensus.query)
   };
   cache[canonicalQuery] = entry;
   cache[consensus.normalizedQuery] = entry;

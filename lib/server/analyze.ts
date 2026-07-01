@@ -835,7 +835,7 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
 
   const qualityFilteredContenders =
     queryEvidenceType === "local_recommendation"
-      ? contendersBeforeFiltering.filter((contender) => !isWeakLocalContender(contender))
+      ? contendersBeforeFiltering.filter((contender) => !isWeakLocalContender(contender) && localSpecificIntentAllowsContender(query, contender, byName.get(contender.name) ?? []))
       : queryEvidenceType === "product_recommendation" && isBroadExploratoryQuery(query)
         ? contendersBeforeFiltering.filter((contender) => !isWeakBroadProductContender(contender, query))
         : contendersBeforeFiltering;
@@ -1167,6 +1167,9 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
   const bodyMatchScore = localBodyMatchScore(signals);
   const candidateConfidenceScore = localCandidateConfidenceScore(signals);
   const contextQualityScore = localContextQualityScore(signals);
+  const specificIntentEvidence = localSpecificIntentEvidence(query, metrics.name, signals);
+  const specificIntentScore = localSpecificIntentScore(specificIntentEvidence);
+  const specificIntentPenalty = localSpecificIntentPenalty(specificIntentEvidence);
   const wrongCategoryPenalty = localWrongCategoryPenalty(query, metrics.name, signals);
   const weakSingleSourcePenalty = localWeakSingleSourcePenalty(metrics, signals);
   const urlOnlyPenalty = localUrlOnlyPenalty(signals);
@@ -1185,7 +1188,9 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
       bodyMatchScore +
       candidateConfidenceScore +
       contextQualityScore +
+      specificIntentScore +
       ratingBoost -
+      specificIntentPenalty -
       wrongCategoryPenalty -
       weakSingleSourcePenalty -
       urlOnlyPenalty
@@ -1218,6 +1223,8 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
     bodyMatchScore,
     candidateConfidenceScore,
     contextQualityScore,
+    specificIntentScore,
+    specificIntentPenalty,
     wrongCategoryPenalty,
     ratingBoost,
     weakSingleSourcePenalty,
@@ -1245,6 +1252,8 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
     bodyMatchScore,
     candidateConfidenceScore,
     contextQualityScore,
+    specificIntentScore,
+    specificIntentPenalty,
     wrongCategoryPenalty,
     weakSingleSourcePenalty,
     urlOnlyPenalty
@@ -1252,12 +1261,26 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
   console.log("LOCAL_CATEGORY_MATCH_SCORE", {
     name: metrics.name,
     category: localCategoryForQuery(query),
+    specificIntent: specificIntentEvidence.intent?.key ?? null,
+    specificIntentMatched: specificIntentEvidence.matched,
     score: categoryMatchScore
   });
   console.log("LOCAL_WRONG_CATEGORY_PENALTY", {
     name: metrics.name,
     category: localCategoryForQuery(query),
-    penalty: wrongCategoryPenalty
+    specificIntent: specificIntentEvidence.intent?.key ?? null,
+    penalty: wrongCategoryPenalty,
+    specificIntentPenalty
+  });
+  console.log("LOCAL_SPECIFIC_INTENT", {
+    name: metrics.name,
+    intent: specificIntentEvidence.intent?.key ?? null,
+    label: specificIntentEvidence.intent?.label ?? null,
+    matched: specificIntentEvidence.matched,
+    conflict: specificIntentEvidence.conflict,
+    score: specificIntentScore,
+    penalty: specificIntentPenalty,
+    matchedSignals: specificIntentEvidence.matchedSignals
   });
   console.log("LOCAL_CONTEXT_QUALITY_SCORE", {
     name: metrics.name,
@@ -1276,6 +1299,8 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
     extractionConfidenceScore,
     candidateConfidenceScore,
     contextQualityScore,
+    specificIntentScore,
+    specificIntentPenalty,
     wrongCategoryPenalty,
     weakSingleSourcePenalty,
     urlOnlyPenalty,
@@ -1317,7 +1342,7 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
 
 function localLocationMatchScore(query: string, contenderName: string, signals: SourceSignal[]) {
   const queryText = normalizeQuery(query);
-  const evidenceText = normalizeQuery([contenderName, ...signals.map((signal) => `${signal.sourceTitle} ${signal.queryVariant ?? ""} ${signal.extractedReason}`)].join(" "));
+  const evidenceText = normalizeQuery([contenderName, ...signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""}`)].join(" "));
   const tokens = localLocationTokens(queryText);
   let score = 0;
 
@@ -1330,6 +1355,8 @@ function localLocationMatchScore(query: string, contenderName: string, signals: 
   if (/\bnyc|new york|brooklyn|manhattan|williamsburg\b/.test(queryText) && /\b(las vegas|atlanta|williamsburg va|colonial williamsburg|virginia|richmond rd)\b/.test(evidenceText)) score -= 9;
   if (/\bseattle\b/.test(queryText) && /\b(seatac|bellevue|tacoma)\b/.test(evidenceText)) score -= 1.5;
   if (/\baustin\b/.test(queryText) && /\b(round rock|dallas|houston|san antonio)\b/.test(evidenceText)) score -= 3;
+  if (/\bseaford\b/.test(queryText) && /\b(brooklyn|manhattan|nyc|new york city|soho|williamsburg|queens|bronx)\b/.test(evidenceText) && !/\bseaford\b/.test(evidenceText)) score -= 10;
+  if (/\bhuntington\b/.test(queryText) && /\b(brooklyn|manhattan|nyc|new york city|soho|williamsburg|queens|bronx)\b/.test(evidenceText) && !/\bhuntington\b/.test(evidenceText)) score -= 10;
   if (/\bmassapequa\b/.test(queryText) && /\b(new york city|manhattan|brooklyn|catskills)\b/.test(evidenceText)) score -= 6;
   if (/\blos angeles\b/.test(queryText) && /\b(instant noodles|consumer reports|wirecutter)\b/.test(evidenceText)) score -= 8;
 
@@ -1346,12 +1373,186 @@ function localLocationTokens(normalizedQuery: string) {
     "seattle",
     "austin",
     "massapequa",
+    "seaford",
+    "huntington",
     "los angeles",
     "long island",
     "chicago",
     "san francisco"
   ];
   return known.filter((token) => normalizedQuery.includes(token));
+}
+
+type LocalSpecificIntent = {
+  key: string;
+  label: string;
+  supportPattern: RegExp;
+  conflictPattern?: RegExp;
+};
+
+type LocalSpecificIntentEvidence = {
+  intent: LocalSpecificIntent | null;
+  matched: boolean;
+  conflict: boolean;
+  matchedSignals: number;
+};
+
+function localSpecificIntentForQuery(query: string): LocalSpecificIntent | null {
+  const normalized = normalizeQuery(query);
+
+  if (/\bespresso martini\b/.test(normalized)) {
+    return {
+      key: "cocktail",
+      label: "cocktail",
+      supportPattern: /\b(bar|cocktail|drinks?|pub|tavern|lounge|martini|speakeasy)\b/,
+      conflictPattern: /\b(hotel|museum|dentist|plumber|gym)\b/
+    };
+  }
+
+  const intents: LocalSpecificIntent[] = [
+    {
+      key: "italian",
+      label: "Italian",
+      supportPattern: /\b(italian|pasta|trattoria|osteria|ristorante|pizzeria|pizza|parm|parmigiana|red sauce|bolognese|carbonara|gnocchi|ravioli|lasagna|risotto)\b/,
+      conflictPattern: /\b(seafood|fish|oyster|clam|lobster|crab|sushi|ramen|taqueria|taco|tacos|barbecue|bbq|steakhouse|burger)\b/
+    },
+    {
+      key: "seafood",
+      label: "seafood",
+      supportPattern: /\b(seafood|fish|oyster|clam|lobster|crab|shrimp|scallop|raw bar|catch|shellfish|coastal)\b/,
+      conflictPattern: /\b(italian|trattoria|osteria|pasta|ramen|taqueria|taco|tacos|steakhouse|burger)\b/
+    },
+    {
+      key: "sushi",
+      label: "sushi",
+      supportPattern: /\b(sushi|omakase|sashimi|nigiri|handroll|hand roll|izakaya|yakitori|japanese)\b/,
+      conflictPattern: /\b(italian|trattoria|pasta|pizza|taqueria|taco|tacos|steakhouse|burger)\b/
+    },
+    {
+      key: "pizza",
+      label: "pizza",
+      supportPattern: /\b(pizza|pizzeria|slice|slices|neapolitan|sicilian|grandma pie|wood fired|coal fired)\b/,
+      conflictPattern: /\b(sushi|ramen|seafood|oyster|steakhouse|burger|hotel)\b/
+    },
+    {
+      key: "mexican",
+      label: "Mexican",
+      supportPattern: /\b(mexican|taco|tacos|taqueria|burrito|quesadilla|tostada|mezcal|mole|al pastor|birria)\b/,
+      conflictPattern: /\b(italian|trattoria|pasta|pizza|sushi|ramen|steakhouse|burger)\b/
+    },
+    {
+      key: "steakhouse",
+      label: "steakhouse",
+      supportPattern: /\b(steakhouse|steak house|steak|chophouse|prime rib|porterhouse|ribeye|filet mignon)\b/,
+      conflictPattern: /\b(sushi|ramen|taqueria|taco|tacos|pizzeria|pizza|coffee|cafe)\b/
+    },
+    {
+      key: "brunch",
+      label: "brunch",
+      supportPattern: /\b(brunch|breakfast|pancake|waffle|eggs benedict|bloody mary|mimosa)\b/,
+      conflictPattern: /\b(hotel|museum|attraction|dentist|plumber)\b/
+    },
+    {
+      key: "coffee",
+      label: "coffee",
+      supportPattern: /\b(coffee|cafe|café|espresso|latte|cappuccino|roaster|roastery|cold brew)\b/,
+      conflictPattern: /\b(hotel|museum|attraction|dentist|plumber|steakhouse|sushi)\b/
+    },
+    {
+      key: "bar",
+      label: "bar",
+      supportPattern: /\b(bar|cocktail|drinks?|pub|tavern|lounge|brewery|taproom|wine bar|speakeasy)\b/,
+      conflictPattern: /\b(hotel|museum|dentist|plumber|gym)\b/
+    },
+    {
+      key: "live_music",
+      label: "live music",
+      supportPattern: /\b(live music|music venue|jazz|band|concert|performance|stage|venue)\b/,
+      conflictPattern: /\b(hotel|dentist|plumber|gym)\b/
+    }
+  ];
+
+  return (
+    intents.find((intent) => {
+      if (intent.key === "bar" && /\blive music\b/.test(normalized)) return false;
+      return intent.supportPattern.test(normalized);
+    }) ?? null
+  );
+}
+
+function localSpecificIntentText(contenderName: string, signals: SourceSignal[]) {
+  return normalizeQuery(
+    [
+      contenderName,
+      ...signals.map((signal) =>
+        [
+          signal.sourceTitle,
+          signal.queryVariant ?? "",
+          signal.extractedReason,
+          signal.positiveMention ?? "",
+          signal.negativeMention ?? "",
+          signal.themes.join(" ")
+        ].join(" ")
+      )
+    ].join(" ")
+  );
+}
+
+function localSpecificIntentEvidence(query: string, contenderName: string, signals: SourceSignal[]): LocalSpecificIntentEvidence {
+  const intent = localSpecificIntentForQuery(query);
+
+  if (!intent) {
+    return { intent: null, matched: true, conflict: false, matchedSignals: 0 };
+  }
+
+  const nameText = normalizeQuery(contenderName);
+  const matchedSignals = signals.filter((signal) =>
+    intent.supportPattern.test(
+      normalizeQuery(
+        [
+          signal.sourceTitle,
+          signal.queryVariant ?? "",
+          signal.extractedReason,
+          signal.positiveMention ?? "",
+          signal.negativeMention ?? "",
+          signal.themes.join(" ")
+        ].join(" ")
+      )
+    )
+  ).length;
+  const evidenceText = localSpecificIntentText(contenderName, signals);
+  const matched = intent.supportPattern.test(nameText) || matchedSignals > 0;
+  const conflict = Boolean(intent.conflictPattern?.test(evidenceText));
+
+  return { intent, matched, conflict, matchedSignals };
+}
+
+function localSpecificIntentScore(evidence: LocalSpecificIntentEvidence) {
+  if (!evidence.intent) return 0;
+  if (evidence.matched) return round1(Math.min(5.5, 3.5 + evidence.matchedSignals * 0.8));
+  return -7;
+}
+
+function localSpecificIntentPenalty(evidence: LocalSpecificIntentEvidence) {
+  if (!evidence.intent || evidence.matched) return 0;
+  return evidence.conflict ? 15 : 11;
+}
+
+function localSpecificIntentAllowsContender(query: string, contender: ContenderMetrics, signals: SourceSignal[]) {
+  const evidence = localSpecificIntentEvidence(query, contender.name, signals);
+
+  if (!evidence.intent || evidence.matched) return true;
+
+  console.log("LOCAL_SPECIFIC_INTENT_FILTERED", {
+    name: contender.name,
+    intent: evidence.intent.key,
+    label: evidence.intent.label,
+    conflict: evidence.conflict,
+    sourceCount: contender.sourceCount,
+    positiveMentionCount: contender.positiveMentionCount
+  });
+
+  return false;
 }
 
 function localCategoryMatchScore(query: string, contenderName: string, signals: SourceSignal[]) {
@@ -1586,7 +1787,7 @@ function localCategoryForQuery(query: string) {
   if (/\b(hotel|motel|inn|resort|lodging|place to stay)\b/.test(normalized)) return "hotel";
   if (/\b(coffee shop|coffee shops|coffee|cafe|cafes|café)\b/.test(normalized)) return "coffee";
   if (/\b(pizza|pizzeria)\b/.test(normalized)) return "pizza";
-  if (/\b(sushi|ramen|taco|tacos|taqueria|espresso martini)\b/.test(normalized)) return "restaurant";
+  if (/\b(sushi|ramen|taco|tacos|taqueria|italian|mexican|seafood|steakhouse|steak house|espresso martini)\b/.test(normalized)) return "restaurant";
   if (/\b(brunch)\b/.test(normalized)) return "brunch";
   if (/\b(bakery|bakeries)\b/.test(normalized)) return "bakery";
   if (/\b(bar|bars|pub|cocktail|brewery|taproom)\b/.test(normalized)) return "bar";
