@@ -64,10 +64,36 @@ create unique index if not exists saved_results_profile_search_result_idx
 create index if not exists search_cache_canonical_query_idx
   on public.search_cache(canonical_query, cache_version);
 
+create table if not exists public.places_validation_cache (
+  cache_key text primary key,
+  input_name text not null,
+  normalized_input_name text not null,
+  status text not null,
+  canonical_name text,
+  place_id text,
+  formatted_address text,
+  latitude double precision,
+  longitude double precision,
+  types text[],
+  business_status text,
+  location_confidence double precision,
+  category_confidence double precision,
+  name_confidence double precision,
+  overall_confidence double precision,
+  rejection_reason text,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists places_validation_cache_expires_idx
+  on public.places_validation_cache(expires_at);
+
 alter table public.search_cache enable row level security;
 alter table public.profiles enable row level security;
 alter table public.saved_searches enable row level security;
 alter table public.saved_results enable row level security;
+alter table public.places_validation_cache enable row level security;
 
 create policy "Public can read cached consensus"
   on public.search_cache for select
@@ -83,4 +109,8 @@ create policy "Public can read saved searches"
 
 create policy "Public can read saved results"
   on public.saved_results for select
+  using (true);
+
+create policy "Public can read places validation cache"
+  on public.places_validation_cache for select
   using (true);

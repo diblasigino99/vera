@@ -20,6 +20,7 @@ import {
   slugify
 } from "@/lib/utils";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
+import { validateLocalSignalsWithPlaces } from "@/lib/server/places";
 import type { QueryEvidenceType } from "@/lib/utils";
 
 const sourceTypes = [
@@ -48,6 +49,7 @@ const localRecoveryOpenAITimeoutMs = 6500;
 const maxLocalRecoverySources = 10;
 const maxLocalRecoverySnippetChars = 180;
 const maxLocalRecoveryCompletionTokens = 700;
+const maxOpenAICallsPerRequest = 3;
 
 const SignalSchema = z.object({
   extractions: z.array(
@@ -233,11 +235,11 @@ export function buildProductFallbackConsensus(
   };
 }
 
-export function buildLocalFallbackConsensus(
+export async function buildLocalFallbackConsensus(
   query: string,
   sources: VeraSource[],
   explanation = "Vera found local sources, but could not confidently separate one clear favorite from several local contenders."
-): ConsensusResponse | null {
+): Promise<ConsensusResponse | null> {
   const evidenceType = inferQueryEvidenceType(query);
 
   if (evidenceType !== "local_recommendation" || sources.length < 3) {
@@ -250,7 +252,7 @@ export function buildLocalFallbackConsensus(
     return null;
   }
 
-  const structuredConsensus = aggregateSignals(fallbackSignals, sources, query);
+  const structuredConsensus = await aggregateSignals(fallbackSignals, sources, query);
 
   if (structuredConsensus.contenders.length < 1) {
     return null;
@@ -265,7 +267,7 @@ export function buildLocalFallbackConsensus(
   };
 }
 
-export function debugLocalCandidateDiscovery(query: string) {
+export async function debugLocalCandidateDiscovery(query: string) {
   const { sources, signals } = localCandidateDiscoveryDebugFixture(query);
   const intendedCategory = inferIntendedCategory(query);
   const queryEvidenceType = inferQueryEvidenceType(query);
@@ -304,12 +306,12 @@ export function debugLocalCandidateDiscovery(query: string) {
   });
   const discoveredCandidates = rawCandidates.filter((candidate) => localCandidatePassesDiscovery(query, candidate, byName.get(candidate.name) ?? []));
   const { contenders } = filterContendersByCategory(discoveredCandidates, intendedCategory);
-  const structuredConsensus = aggregateSignals(signals, sources, query);
+  const structuredConsensus = await aggregateSignals(signals, sources, query);
   const finalResult = buildConsensus(query, sources, intentFromQuery(query), structuredConsensus);
   const thinSignals = signals.filter((signal) => !["TO GO AND DELIVERY", "Keens Steakhouse"].includes(signal.contenderName)).slice(0, 2);
   const thinSourceUrls = new Set(thinSignals.map((signal) => signal.sourceUrl));
   const thinSources = sources.filter((source) => thinSourceUrls.has(source.url));
-  const thinConsensus = buildConsensus(query, thinSources, intentFromQuery(query), aggregateSignals(thinSignals, thinSources, query));
+  const thinConsensus = buildConsensus(query, thinSources, intentFromQuery(query), await aggregateSignals(thinSignals, thinSources, query));
 
   return {
     query,
@@ -540,7 +542,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   const recoveredSignals =
     evidenceType === "local_recommendation" ? await recoverSparseLocalBusinessNames(query, modelSources, sourceSignals.signals, key, callCounts) : [];
   const allSignals = recoveredSignals.length ? dedupeSignals([...sourceSignals.signals, ...recoveredSignals]) : sourceSignals.signals;
-  const structuredConsensus = aggregateSignals(allSignals, modelSources, query);
+  const structuredConsensus = await aggregateSignals(allSignals, modelSources, query, callCounts);
 
   if (structuredConsensus.contenders.length === 0) {
     const consensus = notEnoughData(query, sources, "Not enough reliable data to form a consensus.");
@@ -607,6 +609,16 @@ async function recoverSparseLocalBusinessNames(query: string, sources: VeraSourc
   }
 
   try {
+    if (!canMakeOpenAICall(callCounts, "local_recommendation", "local_business_name_recovery")) {
+      console.warn("OPENAI_CALL_CEILING_REACHED", {
+        query,
+        phase: "local_business_name_recovery",
+        currentCalls: callCounts?.openAiCalls ?? null,
+        maxOpenAICallsPerRequest
+      });
+      return [];
+    }
+
     const openai = new OpenAI({ apiKey: key, timeout: localRecoveryOpenAITimeoutMs, maxRetries: 0 });
     const sourceByUrl = new Map(recoverySources.map((source) => [source.url, source]));
     const sourceText = recoverySources
@@ -622,13 +634,7 @@ async function recoverSparseLocalBusinessNames(query: string, sources: VeraSourc
       )
       .join("\n\n");
 
-    if (callCounts) {
-      callCounts.openAiCalls += 1;
-      callCounts.openAiCallReasons.push({
-        evidenceType: "local_recommendation",
-        phase: "local_business_name_recovery"
-      });
-    }
+    recordOpenAICall(callCounts, "local_recommendation", "local_business_name_recovery");
     console.log("OPENAI_CALL_COUNT", {
       evidenceType: "local_recommendation",
       phase: "local_business_name_recovery",
@@ -794,13 +800,23 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     })
     .join("\n\n");
 
-  if (callCounts) {
-    callCounts.openAiCalls += 1;
-    callCounts.openAiCallReasons.push({
+  if (!canMakeOpenAICall(callCounts, evidenceType, "source_signal_extraction")) {
+    console.warn("OPENAI_CALL_CEILING_REACHED", {
+      query,
+      phase: "source_signal_extraction",
       evidenceType,
-      phase: "source_signal_extraction"
+      currentCalls: callCounts?.openAiCalls ?? null,
+      maxOpenAICallsPerRequest
     });
+    return {
+      rawOpenAIContent: null,
+      parsedOpenAIAnalysis: null,
+      intent: intentFromQuery(query),
+      signals: []
+    };
   }
+
+  recordOpenAICall(callCounts, evidenceType, "source_signal_extraction");
   console.log("OPENAI_CALL_COUNT", {
     evidenceType,
     phase: "source_signal_extraction",
@@ -878,6 +894,27 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     intent: intentFromQuery(query),
     signals
   };
+}
+
+function canMakeOpenAICall(callCounts: ExternalCallCounts | undefined, evidenceType: QueryEvidenceType, phase: string) {
+  if (!callCounts) return true;
+  if (callCounts.openAiCalls < maxOpenAICallsPerRequest) return true;
+
+  callCounts.openAiCallReasons.push({
+    evidenceType,
+    phase: `${phase}_skipped_ceiling`
+  });
+  return false;
+}
+
+function recordOpenAICall(callCounts: ExternalCallCounts | undefined, evidenceType: QueryEvidenceType, phase: string) {
+  if (!callCounts) return;
+
+  callCounts.openAiCalls += 1;
+  callCounts.openAiCallReasons.push({
+    evidenceType,
+    phase
+  });
 }
 
 function prepareSourcesForOpenAI(sources: VeraSource[], evidenceType: QueryEvidenceType) {
@@ -1049,7 +1086,7 @@ function signalPower(signal: SourceSignal) {
   return sentimentWeight(signal.sentiment) + mentionStrengthWeight(signal.mentionStrength) + signal.sourceQualityWeight + signal.sourceWeight;
 }
 
-function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query: string): StructuredConsensus {
+async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query: string, callCounts?: ExternalCallCounts): Promise<StructuredConsensus> {
   const intendedCategory = inferIntendedCategory(query);
   const queryEvidenceType = inferQueryEvidenceType(query);
   const evidenceStrategy = evidenceStrategyFor(queryEvidenceType);
@@ -1063,7 +1100,7 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
     queryEvidenceType === "dominant_platform"
       ? evidenceSignals.filter((signal) => !isGenericDominantPlatformContender(signal.contenderName))
       : evidenceSignals;
-  const scoringSignals =
+  const preValidationScoringSignals =
     queryEvidenceType === "product_recommendation"
       ? dominantFilteredSignals.filter(
           (signal) => !isGenericProductContender(query, signal.contenderName) && !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
@@ -1071,8 +1108,18 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
       : queryEvidenceType === "local_recommendation"
         ? dominantFilteredSignals.filter(
             (signal) => !isRejectableLocalSignalName(query, signal.contenderName) && !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
-          )
-        : dominantFilteredSignals.filter((signal) => !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason));
+        )
+      : dominantFilteredSignals.filter((signal) => !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason));
+  const rankedLocalCandidateNames =
+    queryEvidenceType === "local_recommendation"
+      ? rankedLocalCandidateNamesForPlaces(query, preValidationScoringSignals, intendedCategory, specializedDominantPlatformQuery, softwarePrior, productPrior)
+      : [];
+  if (queryEvidenceType === "local_recommendation") {
+    console.log("LOCAL_CANDIDATES_EXTRACTED", new Set(preValidationScoringSignals.map((signal) => localBusinessKey(signal.contenderName)).filter(Boolean)).size);
+    console.log("LOCAL_CANDIDATES_AFTER_FILTERS", rankedLocalCandidateNames.length);
+  }
+  const scoringSignals =
+    queryEvidenceType === "local_recommendation" ? await validateLocalSignalsWithPlaces(query, preValidationScoringSignals, rankedLocalCandidateNames, callCounts) : preValidationScoringSignals;
   const aggregationSignals = queryEvidenceType === "local_recommendation" ? mergeLocalBusinessSignalNames(scoringSignals) : scoringSignals;
   const byName = new Map<string, SourceSignal[]>();
 
@@ -1283,6 +1330,45 @@ function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query:
           }
         : undefined
   };
+}
+
+function rankedLocalCandidateNamesForPlaces(
+  query: string,
+  signals: SourceSignal[],
+  intendedCategory: VeraEntityCategory,
+  specializedDominantPlatformQuery: boolean,
+  softwarePrior: ReturnType<typeof softwareToolPrior>,
+  productPrior: ReturnType<typeof productRecommendationPrior>
+) {
+  const aggregationSignals = mergeLocalBusinessSignalNames(signals);
+  const byName = new Map<string, SourceSignal[]>();
+
+  for (const signal of aggregationSignals) {
+    const existing = byName.get(signal.contenderName) ?? [];
+    existing.push(signal);
+    byName.set(signal.contenderName, existing);
+  }
+
+  const rankedCandidates = Array.from(byName.entries())
+    .map(([name, contenderSignals]) =>
+      applyEvidenceStrategy(
+        applyDominantPlatformCategory(
+          applyCategoryRelevanceForEvidenceType(buildContenderMetrics(name, contenderSignals, "local_recommendation"), intendedCategory, contenderSignals, "local_recommendation"),
+          "local_recommendation"
+        ),
+        query,
+        "local_recommendation",
+        specializedDominantPlatformQuery,
+        contenderSignals,
+        softwarePrior,
+        productPrior
+      )
+    )
+    .filter((contender) => !localCandidateDiscoveryRejectionReason(query, contender, byName.get(contender.name) ?? []))
+    .sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount);
+  const { contenders } = filterContendersByCategory(rankedCandidates, intendedCategory);
+
+  return contenders.map((contender) => contender.name);
 }
 
 function buildContenderMetrics(name: string, signals: SourceSignal[], evidenceType: QueryEvidenceType): ContenderMetrics {

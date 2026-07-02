@@ -186,11 +186,11 @@ export async function POST(request: Request) {
           sources,
           "Vera found product-review sources, but not enough clean agreement to make a confident recommendation."
         ) ??
-        buildLocalFallbackConsensus(
+        (await buildLocalFallbackConsensus(
           body.data.query,
           sources,
           "Vera could not confidently separate one clear favorite from several local contenders."
-        ) ??
+        )) ??
         buildNoReliableConsensus(
           body.data.query,
           sources,
@@ -209,11 +209,11 @@ export async function POST(request: Request) {
     }
     if (evidenceType === "local_recommendation" && consensus.results.length < 3) {
       consensus =
-        buildLocalFallbackConsensus(
+        (await buildLocalFallbackConsensus(
           body.data.query,
           sources,
           "Vera found local sources, but not enough clean business-specific agreement to rank confidently."
-        ) ?? consensus;
+        )) ?? consensus;
     }
     if (evidenceType === "local_recommendation" && validLocalResultCount(consensus) < 3) {
       const recoveryStartedAt = Date.now();
@@ -253,11 +253,11 @@ export async function POST(request: Request) {
             stage: "local_sparse_recovery"
           });
           consensus =
-            buildLocalFallbackConsensus(
+            (await buildLocalFallbackConsensus(
               body.data.query,
               sources,
               "Vera found additional local evidence, but still could not confidently separate the strongest local contenders."
-            ) ?? consensus;
+            )) ?? consensus;
         }
       }
     }
@@ -590,10 +590,16 @@ function logSearchCostAudit({
       supabaseReads: externalCallCounts.supabaseReads,
       tavilyCalls: externalCallCounts.tavilyCalls,
       openAiCalls: externalCallCounts.openAiCalls,
+      placesApiCalls: externalCallCounts.placesApiCalls,
+      placesCacheHits: externalCallCounts.placesCacheHits,
+      placesValidationAttempts: externalCallCounts.placesValidationAttempts,
+      placesValidationsSucceeded: externalCallCounts.placesValidationsSucceeded,
+      placesValidationsRejected: externalCallCounts.placesValidationsRejected,
       supabaseWrites: externalCallCounts.supabaseWrites
     },
     tavilyCallReasons: externalCallCounts.tavilyCallReasons,
     openAiCallReasons: externalCallCounts.openAiCallReasons,
+    finalVerifiedPlacesContenders: externalCallCounts.finalVerifiedPlacesContenders,
     timings: {
       cacheMs: cacheElapsedMs,
       tavilyMs: tavilyElapsedMs,

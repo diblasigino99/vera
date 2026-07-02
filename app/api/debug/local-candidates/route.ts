@@ -16,12 +16,13 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim();
   const queries = query ? [query] : defaultQueries;
+  const results = await Promise.all(queries.map((item) => debugLocalCandidateDiscovery(item)));
 
   return NextResponse.json({
     ok: true,
     mode: "local_candidate_discovery_debug",
     usesOpenAI: false,
     usesTavily: false,
-    results: queries.map((item) => debugLocalCandidateDiscovery(item))
+    results
   });
 }
