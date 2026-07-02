@@ -27,6 +27,22 @@ type PlacesValidation = {
   expiresAt: string;
 };
 
+export type PlacesValidationSnapshot = Pick<
+  PlacesValidation,
+  | "status"
+  | "canonicalName"
+  | "formattedAddress"
+  | "latitude"
+  | "longitude"
+  | "types"
+  | "businessStatus"
+  | "locationConfidence"
+  | "categoryConfidence"
+  | "nameConfidence"
+  | "overallConfidence"
+  | "rejectionReason"
+>;
+
 type PlacesApiPlace = {
   id?: string;
   displayName?: {
@@ -313,6 +329,30 @@ async function validateCandidateWithPlaces(query: string, inputName: string, api
   memoryPlacesCache.set(cacheKey, validation);
 
   return validation;
+}
+
+export function getCachedPlacesValidationSnapshot(query: string, inputName: string): PlacesValidationSnapshot | null {
+  const cacheKey = placesCacheKey(query, inputName);
+  const validation = memoryPlacesCache.get(cacheKey);
+
+  if (!validation || new Date(validation.expiresAt).getTime() <= Date.now()) {
+    return null;
+  }
+
+  return {
+    status: validation.status,
+    canonicalName: validation.canonicalName,
+    formattedAddress: validation.formattedAddress,
+    latitude: validation.latitude,
+    longitude: validation.longitude,
+    types: validation.types,
+    businessStatus: validation.businessStatus,
+    locationConfidence: validation.locationConfidence,
+    categoryConfidence: validation.categoryConfidence,
+    nameConfidence: validation.nameConfidence,
+    overallConfidence: validation.overallConfidence,
+    rejectionReason: validation.rejectionReason
+  };
 }
 
 async function fetchPlacesValidation(query: string, inputName: string, apiKey: string, cacheKey: string, callCounts?: ExternalCallCounts): Promise<PlacesValidation> {

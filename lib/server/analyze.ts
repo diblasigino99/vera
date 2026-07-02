@@ -20,7 +20,7 @@ import {
   slugify
 } from "@/lib/utils";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
-import { validateLocalSignalsWithPlaces } from "@/lib/server/places";
+import { getCachedPlacesValidationSnapshot, validateLocalSignalsWithPlaces } from "@/lib/server/places";
 import type { QueryEvidenceType } from "@/lib/utils";
 
 const sourceTypes = [
@@ -1529,11 +1529,8 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
   const crossSourceAgreementCount = sourceDomains.length;
   const sourceAgreementScore = round1(Math.min(Math.max(crossSourceAgreementCount - 1, 0), 4) * 3.4 + Math.min(Math.max(metrics.sourceCount - 1, 0), 5) * 1.2);
   const mentionFrequencyScore = round1(Math.min(metrics.positiveMentionCount, 6) * 0.75 + Math.min(metrics.strongMentionCount, 4) * 0.8);
-  const locationMatchScore = localLocationMatchScore(query, metrics.name, signals);
-  const geographicPrecision = localGeographicPrecision(
-    normalizeQuery(query),
-    normalizeQuery([metrics.name, ...signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""}`)].join(" "))
-  );
+  const geographicPrecision = localBestGeographicPrecision(query, metrics.name, signals);
+  const locationMatchScore = localLocationMatchScore(query, metrics.name, signals, geographicPrecision);
   const categoryMatchScore = localCategoryMatchScore(query, metrics.name, signals);
   const extractionConfidence = localExtractionConfidence(signals);
   const extractionConfidenceScore = round1((extractionConfidence - 0.62) * 8);
@@ -1721,11 +1718,15 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
   };
 }
 
-function localLocationMatchScore(query: string, contenderName: string, signals: SourceSignal[]) {
+type LocalGeographicPrecision = {
+  tier: string;
+  score: number;
+};
+
+function localLocationMatchScore(query: string, contenderName: string, signals: SourceSignal[], precision = localBestGeographicPrecision(query, contenderName, signals)) {
   const queryText = normalizeQuery(query);
   const evidenceText = normalizeQuery([contenderName, ...signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""}`)].join(" "));
   const tokens = localLocationTokens(queryText);
-  const precision = localGeographicPrecision(queryText, evidenceText);
   let score = 0;
 
   if (tokens.length) {
@@ -1748,45 +1749,169 @@ function localLocationMatchScore(query: string, contenderName: string, signals: 
   return round1(Math.max(-20, Math.min(score, 7)));
 }
 
-function localGeographicPrecision(queryText: string, evidenceText: string) {
-  const tiers: Array<{ query: RegExp; exact: RegExp; adjacent: RegExp; nearby: RegExp }> = [
+function localBestGeographicPrecision(query: string, contenderName: string, signals: SourceSignal[]): LocalGeographicPrecision {
+  const placesPrecision = localPlacesGeographicPrecision(query, contenderName);
+
+  if (placesPrecision) {
+    return placesPrecision;
+  }
+
+  return localGeographicPrecisionFromText(
+    normalizeQuery(query),
+    normalizeQuery([contenderName, ...signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""}`)].join(" "))
+  );
+}
+
+function localGeographicPrecisionFromText(queryText: string, evidenceText: string): LocalGeographicPrecision {
+  const tiers: Array<{ query: RegExp; exact: RegExp; adjacent: RegExp; nearby: RegExp; reject?: RegExp }> = [
+    {
+      query: /\bwantagh\b/,
+      exact: /\bwantagh\b/,
+      adjacent: /\b(seaford|bellmore|massapequa|levittown)\b/,
+      nearby: /\b(farmingdale|hicksville|merrick|long island|nassau)\b/,
+      reject: /\b(whitestone|queens|brooklyn|manhattan|bronx|staten island|westchester|connecticut|new jersey|new york city|nyc)\b/
+    },
     {
       query: /\bseaford\b/,
       exact: /\bseaford\b/,
       adjacent: /\b(wantagh|massapequa|bellmore|merrick|levittown)\b/,
-      nearby: /\b(farmingdale|amityville|freeport|hicksville|long island|nassau)\b/
+      nearby: /\b(farmingdale|amityville|freeport|hicksville|long island|nassau)\b/,
+      reject: /\b(whitestone|queens|brooklyn|manhattan|bronx|staten island|westchester|connecticut|new jersey|new york city|nyc)\b/
     },
     {
       query: /\bmassapequa\b/,
       exact: /\bmassapequa\b/,
       adjacent: /\b(seaford|wantagh|amityville|farmingdale|bellmore)\b/,
-      nearby: /\b(merrick|freeport|hicksville|long island|nassau)\b/
+      nearby: /\b(merrick|freeport|hicksville|long island|nassau)\b/,
+      reject: /\b(whitestone|queens|brooklyn|manhattan|bronx|staten island|westchester|connecticut|new jersey|new york city|nyc)\b/
     },
     {
       query: /\bhuntington\b/,
-      exact: /\bhuntington\b/,
+      exact: /\bhuntington\b(?!\s+beach)/,
       adjacent: /\b(huntington station|greenlawn|centerport|cold spring harbor|northport|melville)\b/,
-      nearby: /\b(syosset|woodbury|commack|long island|suffolk)\b/
+      nearby: /\b(syosset|woodbury|commack|long island|suffolk)\b/,
+      reject: /\b(huntington beach|orange county|california|ca|queens|brooklyn|manhattan|bronx|staten island|westchester|connecticut|new jersey|new york city|nyc)\b/
     },
     {
       query: /\bdelray beach\b/,
       exact: /\bdelray beach\b/,
       adjacent: /\b(boca raton|boynton beach|highland beach|gulf stream)\b/,
-      nearby: /\b(palm beach|deerfield beach|lake worth|south florida)\b/
+      nearby: /\b(palm beach|deerfield beach|lake worth|south florida)\b/,
+      reject: /\b(new york|nyc|manhattan|brooklyn|queens|bronx|staten island|orlando|tampa|jacksonville)\b/
+    },
+    {
+      query: /\bnyc|new york city\b/,
+      exact: /\b(nyc|new york city|new york|manhattan|brooklyn|queens|bronx|staten island)\b/,
+      adjacent: /\b(williamsburg|soho|west village|east village|upper east side|lower east side|greenwich village|tribeca|chelsea|midtown|downtown|uptown)\b/,
+      nearby: /\b(jersey city|hoboken|long island|westchester)\b/
+    },
+    {
+      query: /\bmanhattan\b/,
+      exact: /\bmanhattan\b/,
+      adjacent: /\b(soho|west village|east village|upper east side|lower east side|greenwich village|tribeca|chelsea|midtown|downtown|uptown)\b/,
+      nearby: /\b(brooklyn|queens|new york city|nyc)\b/
+    },
+    {
+      query: /\bbrooklyn\b/,
+      exact: /\bbrooklyn\b/,
+      adjacent: /\b(williamsburg|greenpoint|bushwick|park slope|dumbo|cobble hill|carroll gardens|fort greene|bed stuy)\b/,
+      nearby: /\b(manhattan|queens|new york city|nyc)\b/
+    },
+    {
+      query: /\bwilliamsburg\b/,
+      exact: /\bwilliamsburg\b/,
+      adjacent: /\b(greenpoint|bushwick|east williamsburg|brooklyn)\b/,
+      nearby: /\b(manhattan|queens|new york city|nyc)\b/,
+      reject: /\b(colonial williamsburg|williamsburg va|virginia|richmond rd)\b/
     }
   ];
 
   const tier = tiers.find((candidate) => candidate.query.test(queryText));
 
   if (!tier) return { tier: "unspecified", score: 0 };
-  if (tier.exact.test(evidenceText)) return { tier: "exact", score: 5.2 };
-  if (tier.adjacent.test(evidenceText)) return { tier: "adjacent", score: 2.1 };
-  if (tier.nearby.test(evidenceText)) return { tier: "nearby", score: 0.6 };
-  return { tier: "missing", score: -3.8 };
+  if (tier.reject?.test(evidenceText) && !tier.exact.test(evidenceText) && !tier.adjacent.test(evidenceText)) return { tier: "far_rejected", score: -18 };
+  if (tier.exact.test(evidenceText)) return { tier: "exact", score: 6 };
+  if (tier.adjacent.test(evidenceText)) return { tier: "adjacent", score: 1 };
+  if (tier.nearby.test(evidenceText)) return { tier: "nearby", score: -2.5 };
+  return { tier: "missing", score: -4.5 };
+}
+
+function localPlacesGeographicPrecision(query: string, contenderName: string): LocalGeographicPrecision | null {
+  const validation = getCachedPlacesValidationSnapshot(query, contenderName);
+
+  if (!validation || validation.status !== "verified") {
+    return null;
+  }
+
+  const queryText = normalizeQuery(query);
+  const address = normalizeQuery(validation.formattedAddress ?? "");
+  const coordinatePrecision =
+    typeof validation.latitude === "number" && typeof validation.longitude === "number"
+      ? localCoordinateGeographicPrecision(queryText, validation.latitude, validation.longitude)
+      : null;
+  const textPrecision = address ? localGeographicPrecisionFromText(queryText, address) : null;
+
+  if (!coordinatePrecision) return textPrecision;
+  if (!textPrecision) return coordinatePrecision;
+
+  if (coordinatePrecision.score <= -10 || textPrecision.score <= -10) {
+    return coordinatePrecision.score <= textPrecision.score ? coordinatePrecision : textPrecision;
+  }
+
+  return coordinatePrecision.score >= textPrecision.score ? coordinatePrecision : textPrecision;
+}
+
+function localCoordinateGeographicPrecision(queryText: string, latitude: number, longitude: number): LocalGeographicPrecision | null {
+  const requested = localRequestedGeoCenter(queryText);
+
+  if (!requested) return null;
+
+  const distanceMiles = distanceMilesBetween(latitude, longitude, requested.latitude, requested.longitude);
+
+  if (requested.scope === "metro") {
+    if (distanceMiles <= requested.exactMiles) return { tier: "places_exact_metro", score: 5 };
+    if (distanceMiles <= requested.nearbyMiles) return { tier: "places_nearby_metro", score: 0.5 };
+    return { tier: "places_far_rejected", score: -18 };
+  }
+
+  if (distanceMiles <= requested.exactMiles) return { tier: "places_exact", score: 6.5 };
+  if (distanceMiles <= requested.adjacentMiles) return { tier: "places_adjacent", score: 1.2 };
+  if (distanceMiles <= requested.nearbyMiles) return { tier: "places_nearby", score: -2.4 };
+  return { tier: "places_far_rejected", score: -18 };
+}
+
+function localRequestedGeoCenter(queryText: string) {
+  const centers = [
+    { pattern: /\bwantagh\b/, latitude: 40.6837, longitude: -73.5101, exactMiles: 2.5, adjacentMiles: 6.5, nearbyMiles: 13, scope: "town" as const },
+    { pattern: /\bseaford\b/, latitude: 40.6659, longitude: -73.4882, exactMiles: 2.5, adjacentMiles: 6.5, nearbyMiles: 13, scope: "town" as const },
+    { pattern: /\bmassapequa\b/, latitude: 40.6807, longitude: -73.4743, exactMiles: 2.8, adjacentMiles: 7, nearbyMiles: 14, scope: "town" as const },
+    { pattern: /\bhuntington\b/, latitude: 40.8682, longitude: -73.4257, exactMiles: 3, adjacentMiles: 7.5, nearbyMiles: 15, scope: "town" as const },
+    { pattern: /\bdelray beach\b/, latitude: 26.4615, longitude: -80.0728, exactMiles: 3.5, adjacentMiles: 8, nearbyMiles: 16, scope: "town" as const },
+    { pattern: /\bnyc|new york city\b/, latitude: 40.7128, longitude: -74.006, exactMiles: 16, adjacentMiles: 0, nearbyMiles: 26, scope: "metro" as const },
+    { pattern: /\bmanhattan\b/, latitude: 40.7831, longitude: -73.9712, exactMiles: 7, adjacentMiles: 0, nearbyMiles: 14, scope: "metro" as const },
+    { pattern: /\bbrooklyn\b/, latitude: 40.6782, longitude: -73.9442, exactMiles: 9, adjacentMiles: 0, nearbyMiles: 16, scope: "metro" as const },
+    { pattern: /\bwilliamsburg\b/, latitude: 40.7081, longitude: -73.9571, exactMiles: 2.4, adjacentMiles: 5.5, nearbyMiles: 10, scope: "town" as const }
+  ];
+
+  return centers.find((center) => center.pattern.test(queryText)) ?? null;
+}
+
+function distanceMilesBetween(latitudeA: number, longitudeA: number, latitudeB: number, longitudeB: number) {
+  const radiusMiles = 3958.8;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const deltaLatitude = toRadians(latitudeB - latitudeA);
+  const deltaLongitude = toRadians(longitudeB - longitudeA);
+  const a =
+    Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2) +
+    Math.cos(toRadians(latitudeA)) * Math.cos(toRadians(latitudeB)) * Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return radiusMiles * c;
 }
 
 function localLocationTokens(normalizedQuery: string) {
   const known = [
+    "wantagh",
     "williamsburg",
     "brooklyn",
     "manhattan",
@@ -2143,6 +2268,7 @@ function localRequestedLocationTerms(query: string) {
 
   if (explicitLocation) add(explicitLocation);
   if (/\bseaford\b/.test(normalized)) add("seaford");
+  if (/\bwantagh\b/.test(normalized)) add("wantagh");
   if (/\bhuntington\b/.test(normalized)) add("huntington");
   if (/\bmassapequa\b/.test(normalized)) add("massapequa");
   if (/\bdelray beach\b/.test(normalized)) {
@@ -2160,8 +2286,9 @@ function localRequestedLocationTerms(query: string) {
 function localCandidateHasLocationLeakage(query: string, evidenceText: string) {
   const queryText = normalizeQuery(query);
   const leakagePatterns: Array<[RegExp, RegExp]> = [
+    [/\bwantagh\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island|whitestone|westchester|connecticut|new jersey)\b/],
     [/\bseaford\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island)\b/],
-    [/\bhuntington\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island)\b/],
+    [/\bhuntington\b/, /\b(huntington beach|orange county|california|nyc|new york city|manhattan|brooklyn|queens|bronx|staten island)\b/],
     [/\bdelray beach\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island)\b/]
   ];
 
