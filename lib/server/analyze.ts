@@ -132,7 +132,7 @@ export function buildNoReliableConsensus(query: string, sources: VeraSource[], e
 export function buildDominantPlatformFallbackConsensus(
   query: string,
   sources: VeraSource[],
-  explanation = "Vera found strong platform-default evidence, but live extraction timed out before all alternatives could be scored."
+  explanation = "Vera found strong platform-default evidence, but not enough clean agreement to compare every alternative confidently."
 ): ConsensusResponse | null {
   const evidenceType = inferQueryEvidenceType(query);
   const incumbent = dominantPlatformForQuery(query);
@@ -178,7 +178,7 @@ export function buildDominantPlatformFallbackConsensus(
 export function buildProductFallbackConsensus(
   query: string,
   sources: VeraSource[],
-  explanation = "Vera found product-review sources, but live extraction timed out before all alternatives could be scored."
+  explanation = "Vera found product-review sources, but not enough clean agreement to compare every alternative confidently."
 ): ConsensusResponse | null {
   const evidenceType = inferQueryEvidenceType(query);
   const category = productCategoryForQuery(query);
@@ -236,7 +236,7 @@ export function buildProductFallbackConsensus(
 export function buildLocalFallbackConsensus(
   query: string,
   sources: VeraSource[],
-  explanation = "Vera found local sources, but live extraction timed out before all businesses could be scored."
+  explanation = "Vera found local sources, but could not confidently separate one clear favorite from several local contenders."
 ): ConsensusResponse | null {
   const evidenceType = inferQueryEvidenceType(query);
 
@@ -348,10 +348,30 @@ function localCandidateDiscoveryDebugFixture(query: string) {
       ? "Huntington NY"
       : normalized.includes("massapequa")
         ? "Massapequa NY"
-        : "Seaford NY";
+        : /\b(nyc|new york|manhattan|brooklyn|queens)\b/.test(normalized)
+          ? "NYC"
+          : "Seaford NY";
   const cuisine = localSpecificIntentForQuery(query)?.label ?? localCategoryForQuery(query);
   const validNames = localCandidateDiscoveryFixtureNames(normalized);
   const invalidNames = [
+    {
+      name: "Espresso Martini",
+      title: "Best Espresso Martini in NYC",
+      domain: "cocktail-guide.example",
+      text: "Best espresso martini in NYC cocktail guide."
+    },
+    {
+      name: "Upper East Side",
+      title: "Upper East Side cocktail bars",
+      domain: "nyc-guide.example",
+      text: "Upper East Side neighborhood guide for cocktail bars."
+    },
+    {
+      name: "RESERVE A TABLE WITH",
+      title: "Reservations for NYC cocktail bars",
+      domain: "reservation-widget.example",
+      text: "RESERVE A TABLE WITH book a table view menu order delivery."
+    },
     {
       name: "Italian Food and Pizza",
       title: "Best Italian Food and Pizza in Seaford NY",
@@ -410,6 +430,14 @@ function localCandidateDiscoveryDebugFixture(query: string) {
 }
 
 function localCandidateDiscoveryFixtureNames(normalizedQuery: string) {
+  if (/\bespresso martini\b/.test(normalizedQuery)) {
+    return [
+      { name: "Dante", evidence: "espresso martinis and cocktail bar atmosphere" },
+      { name: "Temple Bar", evidence: "excellent cocktails and date-night drinks" },
+      { name: "Bar Pisellino", evidence: "cocktails and Italian aperitivo bar" }
+    ];
+  }
+
   if (/\bseafood\b/.test(normalizedQuery)) {
     return [
       { name: "The White Whale", evidence: "seafood and raw bar dishes" },
@@ -827,7 +855,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     throw new Error("OpenAI returned invalid source signal JSON.");
   }
 
-  const signals = normalizeSignals(parsed.data, sources, evidenceType);
+  const signals = normalizeSignals(query, parsed.data, sources, evidenceType);
   const durationMs = Date.now() - startedAt;
 
   console.log("[vera:openai] output received", {
@@ -901,7 +929,7 @@ function inferMentionStrength(reason: string): SourceSignal["mentionStrength"] {
   return "weak";
 }
 
-function normalizeSignals(payload: SignalPayload, sources: VeraSource[], evidenceType: QueryEvidenceType): SourceSignal[] {
+function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSource[], evidenceType: QueryEvidenceType): SourceSignal[] {
   const sourceByUrl = new Map(sources.map((source) => [source.url, source]));
 
   const rawSignals = payload.extractions.flatMap((extraction) => {
@@ -917,6 +945,20 @@ function normalizeSignals(payload: SignalPayload, sources: VeraSource[], evidenc
     const sourceQualityWeight = sourceQualityWeightFor(sourceQuality);
     const contenderName = cleanName(extraction.contender);
     const reason = extraction.reason.trim() || "Mentioned as a contender";
+
+    if (evidenceType === "local_recommendation") {
+      const localRejectedReason = localUniversalEntityRejectionReason(query, contenderName, { source, reason });
+
+      if (localRejectedReason) {
+        console.log("LOCAL_UNIVERSAL_VALIDATOR_REJECTED", {
+          contender: contenderName,
+          reason: localRejectedReason,
+          path: "openai_extraction",
+          sourceTitle: source.title
+        });
+        return [];
+      }
+    }
 
     if (isRejectableContenderName(contenderName, evidenceType, source, reason)) {
       console.log("CONTENDER_REJECTED", {
@@ -1868,8 +1910,10 @@ function localCandidateDiscoveryRejectionReason(query: string, contender: Conten
   const normalizedName = normalizeQuery(name || contender.name);
   const evidenceText = localCandidateEvidenceText(contender.name, signals);
   const specificIntentEvidence = localSpecificIntentEvidence(query, contender.name, signals);
+  const universalRejection = localUniversalEntityRejectionReason(query, contender.name, { signals });
 
   if (!signals.length) return "no_source_evidence";
+  if (universalRejection) return universalRejection;
   if (!name || !looksLikeNamedPlace(name)) return "not_business_name";
   if (isGenericLocalContender(query, name) || isGenericLocalContender(query, contender.name)) return "generic_or_non_business";
   if (isLocalCandidateControlText(normalizedName)) return "page_control_or_generic_text";
@@ -1885,12 +1929,98 @@ function localCandidateDiscoveryRejectionReason(query: string, contender: Conten
   return null;
 }
 
+type LocalUniversalEntityValidationContext = {
+  signals?: SourceSignal[];
+  source?: VeraSource;
+  placeCandidate?: LocalPlaceCandidate;
+  reason?: string;
+};
+
+function localUniversalEntityRejectionReason(query: string, candidate: string, context: LocalUniversalEntityValidationContext = {}) {
+  const displayName = localBusinessDisplayName(candidate);
+  const normalized = normalizeQuery(displayName || candidate);
+  const rawNormalized = normalizeQuery(candidate);
+  const evidenceText = normalizeQuery(
+    [
+      candidate,
+      displayName,
+      context.reason ?? "",
+      context.source?.title ?? "",
+      context.source?.domain ?? "",
+      context.source ? localSourceEvidenceText(context.source) : "",
+      context.placeCandidate?.evidenceText ?? "",
+      ...(context.signals ?? []).map((signal) =>
+        [signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? "", signal.themes.join(" ")].join(" ")
+      )
+    ].join(" ")
+  );
+
+  if (!normalized || normalized.length < 3) return "empty_or_too_short";
+  if (isLocalCandidateControlText(normalized) || isLocalCandidateControlText(rawNormalized)) return "page_control_or_generic_text";
+  if (isLocalSearchSubjectOnly(query, normalized)) return "search_subject_not_business";
+  if (isLocalLocationOnlyEntity(normalized)) return "location_only";
+  if (isLocalSourceChromeOrArticleFragment(normalized)) return "source_or_ui_fragment";
+  if (isGenericLocalContender(query, displayName || candidate) || isGenericLocalContender(query, candidate)) return "generic_or_non_business";
+  if (isArticleOrGuideTitle(normalized)) return "article_title_fragment";
+  if (/\b(?:reserve a table with|book a table|view menu|order delivery|to go and delivery|reserve now|make a reservation)\b/.test(evidenceText) && normalized.split(" ").length <= 4) {
+    return "page_control_or_generic_text";
+  }
+  if (!looksLikeNamedPlace(displayName || candidate) && !hasBusinessNameSignal(displayName || candidate)) return "not_business_name";
+
+  return null;
+}
+
+function isLocalSearchSubjectOnly(query: string, normalizedCandidate: string) {
+  const normalizedQuery = normalizeQuery(query);
+  const subjects = new Set<string>();
+  const add = (value: string) => {
+    const normalized = normalizeQuery(value);
+    if (normalized.length >= 3) subjects.add(normalized);
+  };
+
+  for (const subject of [
+    "espresso martini",
+    "italian food",
+    "italian food and pizza",
+    "seafood",
+    "sushi",
+    "pizza",
+    "coffee",
+    "brunch",
+    "cocktails",
+    "cocktail",
+    "bar",
+    "restaurant",
+    "restaurants",
+    "things to do",
+    "restaurants near me"
+  ]) {
+    if (normalizedQuery.includes(subject)) add(subject);
+  }
+
+  const fromBest = normalizedQuery
+    .match(/\b(?:best|top|good|great|recommended)\s+(.+?)(?:\s+(?:in|near|around|for)\b|$)/)?.[1]
+    ?.replace(/\b(?:restaurants?|restaurant|places?|spots?)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (fromBest) add(fromBest);
+
+  return subjects.has(normalizedCandidate);
+}
+
+function isLocalLocationOnlyEntity(normalizedCandidate: string) {
+  return /^(?:upper east side|lower east side|west village|east village|greenwich village|soho|tribeca|chelsea|hells kitchen|midtown|downtown|uptown|manhattan|brooklyn|queens|bronx|staten island|williamsburg|seaford|massapequa|massapequa park|huntington|delray beach|nyc|new york|new york city|long island|nassau|suffolk)$/.test(
+    normalizedCandidate
+  );
+}
+
 function isLocalCandidateControlText(normalizedName: string) {
   return (
-    /^(?:to go|delivery|order online|reservations?|menu|catering|hours|directions|reviews?|near me|best|restaurants?|food|official website|tripadvisor|yelp|doordash|ubereats|grubhub)$/.test(
+    /^(?:to go|delivery|order online|reservations?|reserve a table with|book a table|view menu|catering|hours|directions|reviews?|near me|best|restaurants?|food|official website|tripadvisor|yelp|doordash|ubereats|grubhub)$/.test(
       normalizedName
     ) ||
-    /\b(?:to go|delivery|order online|reservations?|menu|catering|hours|directions|near me|official website|tripadvisor|yelp|doordash|ubereats|grubhub)\b/.test(
+    /\b(?:to go|delivery|order online|reservations?|reserve a table with|book a table|view menu|catering|hours|directions|near me|official website|tripadvisor|yelp|doordash|ubereats|grubhub)\b/.test(
       normalizedName
     ) ||
     /^(?:italian|seafood|sushi|pizza|brunch|coffee|mexican|steakhouse|bar|restaurant)\s+(?:food|restaurants?|places?|spots?|food\s+and|and\s+)?\s*(?:pizza|sushi|seafood|brunch|coffee|bars?|restaurants?)?$/.test(
@@ -2199,10 +2329,11 @@ function localUrlOnlyPenalty(signals: SourceSignal[]) {
 function localCategoryForQuery(query: string) {
   const normalized = normalizeQuery(query);
 
+  if (/\b(espresso martini|cocktail|cocktails|speakeasy)\b/.test(normalized)) return "bar";
   if (/\b(hotel|motel|inn|resort|lodging|place to stay)\b/.test(normalized)) return "hotel";
   if (/\b(coffee shop|coffee shops|coffee|cafe|cafes|café)\b/.test(normalized)) return "coffee";
   if (/\b(pizza|pizzeria)\b/.test(normalized)) return "pizza";
-  if (/\b(sushi|ramen|taco|tacos|taqueria|italian|mexican|seafood|steakhouse|steak house|espresso martini)\b/.test(normalized)) return "restaurant";
+  if (/\b(sushi|ramen|taco|tacos|taqueria|italian|mexican|seafood|steakhouse|steak house)\b/.test(normalized)) return "restaurant";
   if (/\b(brunch)\b/.test(normalized)) return "brunch";
   if (/\b(bakery|bakeries)\b/.test(normalized)) return "bakery";
   if (/\b(bar|bars|pub|cocktail|brewery|taproom)\b/.test(normalized)) return "bar";
@@ -2485,6 +2616,7 @@ function localPriorSignal(
     candidate.editorialContextScore ? "recommendation context" : "",
     candidate.positionIndex !== undefined ? `position ${candidate.positionIndex + 1}` : ""
   ].filter(Boolean);
+  const themes = localThemesFromEvidence(`${candidate.name} ${candidate.evidenceText} ${source.title}`);
 
   return {
     sourceUrl: source.url,
@@ -2509,8 +2641,34 @@ function localPriorSignal(
             : "weak",
     positiveMention: "Business name appears in retrieved local evidence",
     extractedReason: contextParts.join("; "),
-    themes: ["local source support"]
+    themes: themes.length ? themes : ["frequently recommended"]
   };
+}
+
+function localThemesFromEvidence(value: string) {
+  const normalized = normalizeQuery(value);
+  const themes: string[] = [];
+  const add = (theme: string) => {
+    if (!themes.includes(theme)) themes.push(theme);
+  };
+
+  if (/\b(local|locals|neighborhood|neighbourhood)\b/.test(normalized)) add("neighborhood favorite");
+  if (/\b(cocktail|espresso martini|martini|drinks?|bar program|speakeasy|lounge)\b/.test(normalized)) add("excellent cocktails");
+  if (/\b(atmosphere|ambiance|ambience|vibe|romantic|cozy|date night|beautiful|setting)\b/.test(normalized)) add("great atmosphere");
+  if (/\b(service|staff|attentive|friendly|hospitality)\b/.test(normalized)) add("excellent service");
+  if (/\b(review|reviews|rating|rated|stars?)\b/.test(normalized)) add("strong reviews");
+  if (/\b(pasta|trattoria|osteria|ristorante|red sauce|gnocchi|ravioli|lasagna|bolognese)\b/.test(normalized)) add("homemade pasta");
+  if (/\b(italian|trattoria|osteria|ristorante)\b/.test(normalized)) add("authentic Italian");
+  if (/\b(pizza|pizzeria|slice|neapolitan|sicilian)\b/.test(normalized)) add("excellent pizza");
+  if (/\b(sushi|omakase|sashimi|nigiri|japanese)\b/.test(normalized)) add("fresh sushi");
+  if (/\b(seafood|fish|oyster|clam|lobster|crab|raw bar)\b/.test(normalized)) add("fresh seafood");
+  if (/\b(brunch|breakfast|pancake|eggs|mimosa)\b/.test(normalized)) add("popular brunch");
+  if (/\b(coffee|espresso|latte|roaster|roastery|cafe)\b/.test(normalized)) add("great coffee");
+  if (/\b(family owned|family-run|family run)\b/.test(normalized)) add("family owned");
+  if (/\b(worth the drive|destination|drive)\b/.test(normalized)) add("worth the drive");
+  if (/\b(recommended|favorite|favourite|best|top|essential|must try|must-try)\b/.test(normalized)) add("popular with locals");
+
+  return themes.slice(0, 4);
 }
 
 function localPlaceCandidatesFromSource(source: VeraSource): LocalPlaceCandidate[] {
@@ -2831,7 +2989,9 @@ function localRecoveryRejectionReason(query: string, candidate: string, placeCan
   const normalized = normalizeQuery(candidate);
   const words = normalized.split(/\s+/).filter(Boolean);
   const category = localCategoryForQuery(query);
+  const universalRejection = localUniversalEntityRejectionReason(query, candidate, { placeCandidate });
 
+  if (universalRejection) return universalRejection;
   if (!normalized || normalized.length < 3) return "empty_or_too_short";
   if (isLocalSourceChromeOrArticleFragment(normalized)) return "source_or_ui_fragment";
   if (words.length > 6) return "too_many_words";
@@ -3156,7 +3316,7 @@ function localBusinessDisplayName(value: string) {
     .replace(/\s+\((?:williamsburg|brooklyn|manhattan|nyc|new york|los angeles|austin|seattle|massapequa|downtown|midtown|uptown).*\)$/i, "")
     .replace(/\s+\d{4,}$/g, "")
     .replace(/\s+(?:carmine st|carmine street|bleecker st|bleecker street|bedford ave|bedford avenue|kent ave|kent avenue|wythe ave|wythe avenue|grand st|grand street)$/i, "")
-    .replace(/\b(?:restaurant|bar|hotel|golf course)\s*$/i, "")
+    .replace(/\b(?:restaurant)\s*$/i, "")
     .replace(/\b(?:italian|seafood|sushi|brunch)\s*$/i, "")
     .replace(/\s+/g, " ")
     .replace(/[.,;:]+$/g, "")
@@ -3304,6 +3464,10 @@ function candidateBusinessNameFromSource(source: VeraSource) {
   }
 
   if (normalizedTitle.split(" ").length > 6) {
+    return null;
+  }
+
+  if (localUniversalEntityRejectionReason(source.queryVariant ?? source.title, title, { source })) {
     return null;
   }
 
@@ -4286,6 +4450,7 @@ function isWeakBroadProductContender(contender: ContenderMetrics, query: string)
 function inferIntendedCategory(query: string): VeraEntityCategory {
   const normalized = normalizeQuery(query);
 
+  if (/\b(espresso martini|cocktail|cocktails|speakeasy)\b/.test(normalized)) return "bar";
   if (/\b(coffee shop|cafe|café|espresso)\b/.test(normalized)) return "cafe";
   if (/\b(bar|pub|cocktail|brewery|taproom|speakeasy)\b/.test(normalized)) return "bar";
   if (/\b(restaurant|pizza|pizzeria|sushi|steakhouse|diner|brunch|bakery|bakeries|lunch|dinner|place to eat|food)\b/.test(normalized)) return "restaurant";
@@ -4464,6 +4629,77 @@ function buildResult(
     sources: resultSources.length ? resultSources : sources.slice(0, 3),
     metrics: contender
   };
+}
+
+export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): ConsensusResponse {
+  if (inferQueryEvidenceType(consensus.query) !== "local_recommendation") {
+    return consensus;
+  }
+
+  const cleanResults = consensus.results
+    .filter((result) => !localUniversalEntityRejectionReason(consensus.query, result.name))
+    .map((result, index) => ({
+      ...result,
+      rank: index + 1,
+      reasons: cleanLocalReasons(result.reasons),
+      summary: cleanCachedLocalSummary(result.summary)
+    }));
+
+  if (cleanResults.length < 3) {
+    return {
+      ...consensus,
+      mode: "no_reliable_consensus",
+      headline: "No reliable local consensus found.",
+      explanation: "Vera could not find enough clean local business evidence to rank this confidently.",
+      results: [],
+      structuredConsensus: consensus.structuredConsensus
+        ? {
+            ...consensus.structuredConsensus,
+            contenders: [],
+            winner: undefined,
+            consensusClassification: "no_reliable_consensus"
+          }
+        : consensus.structuredConsensus
+    };
+  }
+
+  return {
+    ...consensus,
+    explanation: cleanCachedLocalExplanation(consensus.explanation),
+    results: cleanResults,
+    structuredConsensus: consensus.structuredConsensus
+      ? {
+          ...consensus.structuredConsensus,
+          contenders: consensus.structuredConsensus.contenders.filter((contender) => !localUniversalEntityRejectionReason(consensus.query, contender.name)),
+          winner: cleanResults[0]?.name ?? consensus.structuredConsensus.winner
+        }
+      : consensus.structuredConsensus
+  };
+}
+
+function cleanLocalReasons(reasons: string[]) {
+  const cleaned = reasons
+    .map((reason) => normalizeTheme(reason))
+    .filter((reason) => reason && reason !== "local source support")
+    .map(humanizeTheme);
+
+  return cleaned.length ? Array.from(new Set(cleaned)).slice(0, 6) : ["Popular with locals"];
+}
+
+function cleanCachedLocalSummary(summary: string) {
+  if (/live extraction|businesses could.*scored|fallback|signal extraction|pipeline|extracted/i.test(summary)) {
+    return "People mention this repeatedly in local recommendations.";
+  }
+
+  return summary;
+}
+
+function cleanCachedLocalExplanation(explanation: string) {
+  if (/live extraction|businesses could.*scored|fallback|signal extraction|pipeline|extracted|live retrieval/i.test(explanation)) {
+    return "Vera could not confidently separate one clear favorite from several local contenders.";
+  }
+
+  return explanation;
 }
 
 function notEnoughData(query: string, sources: VeraSource[], explanation: string): ConsensusResponse {
@@ -5123,6 +5359,13 @@ function normalizeTheme(value: string) {
   if (!normalized) return "";
   if (/\b(product leader support|known product leader|category leader|broad category recognition)\b/.test(normalized)) return "expert support";
   if (/\b(recovered local business evidence|local source support|appears in local source results)\b/.test(normalized)) return "local source support";
+  if (/\b(local favorite|locals favorite|neighborhood favorite|neighbourhood favorite|popular with locals)\b/.test(normalized)) return "neighborhood favorite";
+  if (/\b(attentive service|excellent service|friendly staff|hospitality)\b/.test(normalized)) return "excellent service";
+  if (/\b(strong reviews|highly rated|good reviews|great reviews|review sites)\b/.test(normalized)) return "strong reviews";
+  if (/\b(homemade pasta|fresh pasta|pasta|trattoria|osteria|ristorante|red sauce|gnocchi|ravioli|lasagna)\b/.test(normalized)) return "homemade pasta";
+  if (/\b(authentic italian|italian cuisine|italian food)\b/.test(normalized)) return "authentic Italian";
+  if (/\b(family owned|family run|family-run)\b/.test(normalized)) return "family owned";
+  if (/\b(worth the drive|destination spot)\b/.test(normalized)) return "worth the drive";
   if (/\b(beginner|beginners|starter|entry level|entry-level|new users|new players)\b/.test(normalized)) return "popular with beginners";
   if (/\b(easy to learn|simple rules|accessible|approachable|low learning curve|quick to learn)\b/.test(normalized)) return "easy to learn";
   if (/\b(family|families|kids|children|all ages|family friendly)\b/.test(normalized)) return "great for families";

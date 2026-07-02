@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { debugLocalCandidateDiscovery } from "@/lib/server/analyze";
 
 const defaultQueries = [
+  "Best espresso martini in NYC",
   "Best Italian restaurant in Seaford NY",
   "Best seafood restaurant in Seaford NY",
   "Best sushi in Huntington NY",

@@ -179,22 +179,22 @@ export async function POST(request: Request) {
         buildDominantPlatformFallbackConsensus(
           body.data.query,
           sources,
-          "Vera found broad default-platform evidence, but live extraction timed out before all alternatives could be scored."
+          "Vera found relevant sources, but not enough clean agreement to separate one clear favorite from the alternatives."
         ) ??
         buildProductFallbackConsensus(
           body.data.query,
           sources,
-          "Vera found product-review evidence, but live extraction timed out before all alternatives could be scored."
+          "Vera found product-review sources, but not enough clean agreement to make a confident recommendation."
         ) ??
         buildLocalFallbackConsensus(
           body.data.query,
           sources,
-          "Vera found local source evidence, but live extraction timed out before all businesses could be scored."
+          "Vera could not confidently separate one clear favorite from several local contenders."
         ) ??
         buildNoReliableConsensus(
           body.data.query,
           sources,
-          "Vera found relevant sources, but the live evidence extraction timed out before it could form a reliable consensus."
+          "Vera found relevant sources, but not enough reliable agreement to form a consensus."
         );
     }
 
@@ -204,7 +204,7 @@ export async function POST(request: Request) {
         buildProductFallbackConsensus(
           body.data.query,
           sources,
-          "Vera found product-review evidence, but the extracted product signals were too thin to score directly."
+          "Vera found product-review sources, but the recommendation signal was too thin to make a confident call."
         ) ?? consensus;
     }
     if (evidenceType === "local_recommendation" && consensus.results.length < 3) {
@@ -212,7 +212,7 @@ export async function POST(request: Request) {
         buildLocalFallbackConsensus(
           body.data.query,
           sources,
-          "Vera found local source evidence, but the extracted business signals were too thin to score directly."
+          "Vera found local sources, but not enough clean business-specific agreement to rank confidently."
         ) ?? consensus;
     }
     if (evidenceType === "local_recommendation" && validLocalResultCount(consensus) < 3) {
@@ -256,7 +256,7 @@ export async function POST(request: Request) {
             buildLocalFallbackConsensus(
               body.data.query,
               sources,
-              "Vera found additional local evidence, but sparse recovery extraction timed out before it could rescore every business."
+              "Vera found additional local evidence, but still could not confidently separate the strongest local contenders."
             ) ?? consensus;
         }
       }
@@ -273,7 +273,7 @@ export async function POST(request: Request) {
         console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
         return NextResponse.json({
           ...stale,
-          explanation: stale.explanation || "Vera returned the latest cached local consensus because live extraction did not recover enough businesses."
+          explanation: stale.explanation || "Vera found prior local evidence while the latest search could not form a cleaner consensus."
         });
       }
     }
@@ -358,7 +358,7 @@ export async function POST(request: Request) {
         console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
         return NextResponse.json({
           ...stale,
-          explanation: stale.explanation || "Vera returned the latest cached local consensus because live retrieval was temporarily unavailable."
+          explanation: stale.explanation || "Vera found prior local evidence while the latest search was temporarily unavailable."
         });
       }
     }

@@ -1,6 +1,7 @@
 import type { ConsensusResponse, ProfileSnapshot } from "@/lib/types";
 import { canonicalizeQuery, normalizeQuery } from "@/lib/utils";
 import { getSupabaseAdmin, getSupabaseConfigSnapshot } from "@/lib/server/supabase";
+import { sanitizeCachedLocalConsensus } from "@/lib/server/analyze";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
@@ -9,7 +10,7 @@ const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
 const localCacheVersion = 73;
-const localSpecificIntentCacheVersion = 75;
+const localSpecificIntentCacheVersion = 76;
 const canUseLocalJsonFallback = !process.env.VERCEL && process.env.NODE_ENV !== "production";
 
 type LocalCacheEntry = {
@@ -88,8 +89,9 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
     const supabaseHit = await getSupabaseCachedConsensus(canonicalQuery, normalizedQuery, cacheVersion, callCounts);
 
     if (supabaseHit) {
-      memorySearches.set(normalizedQuery, supabaseHit);
-      memorySearches.set(canonicalQuery, supabaseHit);
+      const sanitizedHit = sanitizeCachedLocalConsensus(supabaseHit);
+      memorySearches.set(normalizedQuery, sanitizedHit);
+      memorySearches.set(canonicalQuery, sanitizedHit);
       console.log("[vera:cache] cache hit", {
         normalizedQuery,
         canonicalQuery,
@@ -97,7 +99,7 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
         store: "supabase",
         searchId: supabaseHit.id
       });
-      return { ...supabaseHit, cached: true };
+      return { ...sanitizedHit, cached: true };
     }
 
     console.log("[vera:cache] cache miss", {
@@ -130,15 +132,16 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
       store: "memory",
       searchId: local.id
     });
-    return { ...local, cached: true };
+    return { ...sanitizeCachedLocalConsensus(local), cached: true };
   }
 
   const localFileCache = await readLocalCache();
   const localFileHit = localFileCache[canonicalQuery] ?? localFileCache[normalizedQuery];
 
   if (localFileHit?.result && localFileHit.cache_version === cacheVersion) {
-    memorySearches.set(normalizedQuery, localFileHit.result);
-    memorySearches.set(canonicalQuery, localFileHit.result);
+    const sanitizedHit = sanitizeCachedLocalConsensus(localFileHit.result);
+    memorySearches.set(normalizedQuery, sanitizedHit);
+    memorySearches.set(canonicalQuery, sanitizedHit);
     console.log("CACHE_HIT_TYPE", localFileCache[canonicalQuery] ? "canonical" : "normalized");
     console.log("[vera:cache] cache hit", {
       normalizedQuery,
@@ -147,7 +150,7 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
       store: "local-json",
       searchId: localFileHit.result.id
     });
-    return { ...localFileHit.result, cached: true };
+    return { ...sanitizedHit, cached: true };
   }
 
   console.log("[vera:cache] cache miss", {
@@ -173,15 +176,16 @@ export async function getStaleCachedConsensus(query: string, callCounts?: Extern
       searchId: local.id,
       cacheVersion: local.cacheVersion ?? null
     });
-    return { ...local, cached: true };
+    return { ...sanitizeCachedLocalConsensus(local), cached: true };
   }
 
   const localFileCache = await readLocalCache();
   const localFileHit = localFileCache[canonicalQuery] ?? localFileCache[normalizedQuery];
 
   if (localFileHit?.result) {
-    memorySearches.set(normalizedQuery, localFileHit.result);
-    memorySearches.set(canonicalQuery, localFileHit.result);
+    const sanitizedHit = sanitizeCachedLocalConsensus(localFileHit.result);
+    memorySearches.set(normalizedQuery, sanitizedHit);
+    memorySearches.set(canonicalQuery, sanitizedHit);
     console.log("[vera:cache] stale cache hit", {
       normalizedQuery,
       canonicalQuery,
@@ -189,7 +193,7 @@ export async function getStaleCachedConsensus(query: string, callCounts?: Extern
       searchId: localFileHit.result.id,
       cacheVersion: localFileHit.cache_version ?? null
     });
-    return { ...localFileHit.result, cached: true };
+    return { ...sanitizedHit, cached: true };
   }
 
   const supabase = getSupabaseAdmin();
@@ -235,7 +239,7 @@ export async function getStaleCachedConsensus(query: string, callCounts?: Extern
     searchId: hit.id,
     cacheVersion: row?.cache_version ?? hit.cacheVersion ?? null
   });
-  return { ...hit, cached: true };
+  return { ...sanitizeCachedLocalConsensus(hit), cached: true };
 }
 
 export async function getConsensusById(searchId: string) {
@@ -250,7 +254,7 @@ export async function getConsensusById(searchId: string) {
 
   if (localFileHit?.result) {
     memorySearches.set(localFileHit.result.normalizedQuery, localFileHit.result);
-    return localFileHit.result;
+    return sanitizeCachedLocalConsensus(localFileHit.result);
   }
 
   const supabase = getSupabaseAdmin();
@@ -269,7 +273,7 @@ export async function getConsensusById(searchId: string) {
     const legacyResult = legacy.data?.result as ConsensusResponse | undefined;
 
     if (!legacy.error && legacyResult) {
-      return legacyResult;
+      return sanitizeCachedLocalConsensus(legacyResult);
     }
 
     return null;
@@ -281,7 +285,7 @@ export async function getConsensusById(searchId: string) {
     return null;
   }
 
-  return result;
+  return sanitizeCachedLocalConsensus(result);
 }
 
 export async function cacheConsensus(consensus: ConsensusResponse, callCounts?: ExternalCallCounts) {
@@ -592,12 +596,12 @@ function consensusFromSupabaseRow(row?: SupabaseSearchCacheRow | null): Consensu
     return null;
   }
 
-  return {
+  return sanitizeCachedLocalConsensus({
     ...result,
     canonicalQuery: row.canonical_query ?? result.canonicalQuery,
     cacheVersion: row.cache_version ?? result.cacheVersion,
     sources: row.sources_json ?? result.sources
-  } satisfies ConsensusResponse;
+  } satisfies ConsensusResponse);
 }
 
 function escapePostgrestValue(value: string) {
