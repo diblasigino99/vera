@@ -3252,17 +3252,30 @@ function localCandidateNormalizedName(value: string) {
     .replace(/\s+/g, " ")
     .trim();
 
+  const hasNamedOfLocationSuffix = /\bof\s+(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|massapequa|seaford|huntington|delray beach|delray)\b$/.test(
+    normalized
+  );
+
   normalized = normalized
+    .replace(/\s+\b(?:restaurateurs?|owners?|chef|founder|team|group)\b$/g, "")
     .replace(
-      /\s+\b(?:restaurant|restaurants|bar|cafe|coffee shop|hotel|inn|golf course|course|dentist|dental|plumber|plumbing|bakery|pizzeria|italian|seafood|sushi|brunch)\b$/g,
+      /\s+\b(?:restaurant|restaurants|cafe|coffee shop|golf course|course|dentist|dental|plumber|plumbing|bakery|pizzeria|italian|seafood|sushi|brunch)\b$/g,
       ""
     )
-    .replace(
-      /\s+\b(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|los angeles|austin|seattle|massapequa|san francisco|downtown|midtown|uptown|greenwich village|carmine st|street|st|avenue|ave|road|rd|drive|dr|boulevard|blvd|location|branch)\b$/g,
-      ""
-    )
+    .replace(/\s+\b(?:restaurateurs?|owners?|chef|founder|team|group)\b$/g, "")
     .replace(/\s+/g, " ")
     .trim();
+
+  if (!hasNamedOfLocationSuffix) {
+    normalized = normalized
+      .replace(
+        /\s+\b(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|los angeles|austin|seattle|massapequa|san francisco|downtown|midtown|uptown|greenwich village|carmine st|street|st|avenue|ave|road|rd|drive|dr|boulevard|blvd|location|branch)\b$/g,
+        ""
+      )
+      .replace(/\s+\b(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|massapequa|seaford|huntington|delray beach|delray)\b$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
   return normalized;
 }
@@ -3302,7 +3315,8 @@ function diceCoefficient(a: string, b: string) {
 }
 
 function localBusinessDisplayName(value: string) {
-  const cleaned = cleanName(value)
+  const preservesOfLocationSuffix = /\bof\s+(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|massapequa|seaford|huntington|delray beach|delray)\b$/i.test(value);
+  let cleaned = cleanName(value)
     .replace(/[’]/g, "'")
     .replace(/^(?:an?|the)?\s*(?:excellent|superb|great|favorite|favourite|must-try|must try|most affordable|most luxurious|best overall|best value|editors?'? pick|where to go for)(?:\s+[^:]{0,42})?:\s+/i, "")
     .replace(/\s+by\s+null$/i, "")
@@ -3313,6 +3327,8 @@ function localBusinessDisplayName(value: string) {
     .replace(/\s+[-–—|:]\s+(?:williamsburg|brooklyn|manhattan|nyc|new york|los angeles|austin|seattle|massapequa|downtown|midtown|uptown|san francisco|greenwich village).*$/i, "")
     .replace(/\s+[-–—|:]\s+.*$/g, "")
     .replace(/,\s*(?:williamsburg|brooklyn|manhattan|nyc|new york|los angeles|austin|seattle|massapequa|downtown|midtown|uptown|san francisco).*$/i, "")
+    .replace(/\s+\b(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|massapequa|seaford|huntington|delray beach|delray)\s+(?:restaurateurs?|owners?|chef|founder|team|group)\b$/i, "")
+    .replace(/\s+\b(?:restaurateurs?|owners?|chef|founder|team|group)\b$/i, "")
     .replace(/\s+\((?:williamsburg|brooklyn|manhattan|nyc|new york|los angeles|austin|seattle|massapequa|downtown|midtown|uptown).*\)$/i, "")
     .replace(/\s+\d{4,}$/g, "")
     .replace(/\s+(?:carmine st|carmine street|bleecker st|bleecker street|bedford ave|bedford avenue|kent ave|kent avenue|wythe ave|wythe avenue|grand st|grand street)$/i, "")
@@ -3321,6 +3337,13 @@ function localBusinessDisplayName(value: string) {
     .replace(/\s+/g, " ")
     .replace(/[.,;:]+$/g, "")
     .trim();
+
+  if (!preservesOfLocationSuffix) {
+    cleaned = cleaned
+      .replace(/\s+\b(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|massapequa|seaford|huntington|delray beach|delray)\b$/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
   return collapseRepeatedLocalName(cleaned);
 }
@@ -4611,6 +4634,7 @@ function buildResult(
   const resultSources = sources.filter((source) => contender.sourceUrls.includes(source.url));
   const contenderSignals = structuredConsensus.signals.filter((signal) => signal.contenderName === contender.name);
   const reasons = contender.themeCounts.slice(0, 6).map((theme) => humanizeTheme(theme.theme));
+  const cleanReasons = contender.localRanking ? cleanLocalReasons(reasons) : reasons;
   const downsides = contenderSignals.map((signal) => signal.negativeMention).filter((item): item is string => Boolean(item)).slice(0, 5);
   const evidence = contenderSignals
     .map((signal) => signal.positiveMention)
@@ -4623,7 +4647,7 @@ function buildResult(
     name: contender.name,
     consensusPercentage: consensusScore(contender),
     summary: summaryForContender(contender),
-    reasons: reasons.length ? reasons : ["Recurring recommendation"],
+    reasons: cleanReasons.length ? cleanReasons : ["Recurring recommendation"],
     downsides,
     evidence,
     sources: resultSources.length ? resultSources : sources.slice(0, 3),
@@ -4680,10 +4704,43 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
 function cleanLocalReasons(reasons: string[]) {
   const cleaned = reasons
     .map((reason) => normalizeTheme(reason))
-    .filter((reason) => reason && reason !== "local source support")
+    .map((reason) => localEditorialTheme(reason))
+    .map((reason) => localReasonChip(reason))
+    .filter((reason) => reason && !/^(local source support|reliable performance|recommendation evidence|category match|business evidence)$/i.test(reason))
     .map(humanizeTheme);
 
   return cleaned.length ? Array.from(new Set(cleaned)).slice(0, 6) : ["Popular with locals"];
+}
+
+function localReasonChip(reason: string) {
+  const normalized = normalizeQuery(reason);
+
+  if (!normalized) return "";
+  if (normalized === "great drinks") return "excellent cocktails";
+  if (normalized === "good atmosphere") return "great atmosphere";
+  if (normalized === "strong food") return "creative menu";
+  if (normalized === "frequently recommended" || normalized === "community support") return "popular with locals";
+  if (normalized === "expert support") return "strong reviews";
+  return reason;
+}
+
+function localEditorialTheme(theme: string) {
+  const normalized = normalizeQuery(theme);
+
+  if (!normalized) return "";
+  if (/\b(espresso martini|cocktail|drinks?|bar menu|aperitivo)\b/.test(normalized)) return "excellent cocktails";
+  if (/\b(homemade pasta|fresh pasta|pasta)\b/.test(normalized)) return "homemade pasta";
+  if (/\b(italian|trattoria|pizzeria|red sauce)\b/.test(normalized)) return "authentic Italian food";
+  if (/\b(seafood|fish|raw bar|oyster)\b/.test(normalized)) return "fresh seafood";
+  if (/\b(sushi|japanese|omakase)\b/.test(normalized)) return "sushi";
+  if (/\b(pizza|slice|pizzeria)\b/.test(normalized)) return "pizza";
+  if (/\b(brunch|breakfast)\b/.test(normalized)) return "brunch";
+  if (/\b(coffee|espresso|cafe|roaster)\b/.test(normalized)) return "coffee";
+  if (/\b(service|staff|hospitality)\b/.test(normalized)) return "excellent service";
+  if (/\b(atmosphere|ambiance|ambience|vibe|date night)\b/.test(normalized)) return "great atmosphere";
+  if (/\b(local|locals|neighborhood|community)\b/.test(normalized)) return "popular with locals";
+  if (/\b(review|reviews|rating|ratings)\b/.test(normalized)) return "strong reviews";
+  return theme;
 }
 
 function cleanCachedLocalSummary(summary: string) {
@@ -5100,36 +5157,31 @@ function summaryForContender(contender: ContenderMetrics) {
 
 function localSummaryForContender(contender: ContenderMetrics) {
   const themes = contender.themeCounts
-    .map((theme) => humanizeTheme(theme.theme).toLowerCase())
+    .map((theme) => localSummaryThemePhrase(theme.theme))
     .filter((theme) => theme && !/^(local source support|recurring recommendation|recommendation)$/.test(theme))
+    .filter((theme, index, all) => all.indexOf(theme) === index)
     .slice(0, 2);
-  const hasReviewSupport = contender.sourceTypes.includes("review_site");
-  const hasEditorialSupport = contender.sourceTypes.some((type) => type === "editorial" || type === "local_guide" || type === "professional_review");
-  const hasCommunitySupport = contender.sourceTypes.some((type) => type === "reddit" || type === "forum");
-  const support =
-    hasReviewSupport && hasEditorialSupport
-      ? "local review and editorial sources"
-      : hasEditorialSupport
-        ? "local editorial sources"
-        : hasReviewSupport
-          ? "local review sources"
-          : hasCommunitySupport
-            ? "community discussions"
-            : "local sources";
 
   if (themes.length >= 2) {
-    return `Frequently mentioned for ${criteriaPhrase(themes)} across ${support}.`;
+    return `People consistently recommend it for ${criteriaPhrase(themes)}.`;
   }
 
   if (themes.length === 1) {
-    return `Known locally for ${themes[0]}, with support across ${support}.`;
+    return `Frequently praised for ${themes[0]}.`;
   }
 
   if (contender.sourceCount >= 3) {
-    return `Appears consistently across ${contender.sourceCount} local sources with matching category and location evidence.`;
+    return "Appears repeatedly in local recommendations.";
   }
 
-  return `Supported by local evidence that matches the requested category and location.`;
+  return "Frequently recommended, though opinions are mixed.";
+}
+
+function localSummaryThemePhrase(theme: string) {
+  const editorialTheme = localEditorialTheme(theme);
+  const phrase = editorialTheme === theme ? humanizeTheme(editorialTheme).toLowerCase() : editorialTheme;
+
+  return phrase.replace(/\bitalian\b/g, "Italian").replace(/\bnyc\b/g, "NYC");
 }
 
 function decisionSubject(intent: ConsensusResponse["intent"]) {
