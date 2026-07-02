@@ -189,7 +189,8 @@ export async function POST(request: Request) {
         (await buildLocalFallbackConsensus(
           body.data.query,
           sources,
-          "Vera could not confidently separate one clear favorite from several local contenders."
+          "Vera could not confidently separate one clear favorite from several local contenders.",
+          externalCallCounts
         )) ??
         buildNoReliableConsensus(
           body.data.query,
@@ -212,7 +213,8 @@ export async function POST(request: Request) {
         (await buildLocalFallbackConsensus(
           body.data.query,
           sources,
-          "Vera found local sources, but not enough clean business-specific agreement to rank confidently."
+          "Vera found local sources, but not enough clean business-specific agreement to rank confidently.",
+          externalCallCounts
         )) ?? consensus;
     }
     if (evidenceType === "local_recommendation" && validLocalResultCount(consensus) < 3) {
@@ -256,7 +258,8 @@ export async function POST(request: Request) {
             (await buildLocalFallbackConsensus(
               body.data.query,
               sources,
-              "Vera found additional local evidence, but still could not confidently separate the strongest local contenders."
+              "Vera found additional local evidence, but still could not confidently separate the strongest local contenders.",
+              externalCallCounts
             )) ?? consensus;
         }
       }

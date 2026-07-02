@@ -90,7 +90,7 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
 
   let namedDiscoveryResponses: VeraSource[][] = [];
 
-  if (evidenceType === "local_recommendation") {
+  if (evidenceType === "local_recommendation" && shouldRunLocalNamedCandidateDiscovery(query, responses.flat())) {
     namedDiscoveryResponses = await runLocalNamedCandidateDiscovery(query, key, callCounts);
   }
 
@@ -136,6 +136,7 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
 async function enrichLocalAuthoritySources(query: string, sources: VeraSource[]) {
   const candidates = sources
     .filter(isHighAuthorityLocalPage)
+    .filter((source) => localSourceMatchesRequestedGeography(query, source))
     .sort((a, b) => localEnrichmentSourceScore(b) - localEnrichmentSourceScore(a))
     .slice(0, maxLocalEnrichmentPages);
 
@@ -329,6 +330,35 @@ function isHighAuthorityLocalPage(source: VeraSource) {
   );
 }
 
+function localSourceMatchesRequestedGeography(query: string, source: VeraSource) {
+  const context = localRetrievalContext(query);
+  const location = context.location.toLowerCase();
+
+  if (!location) return true;
+
+  const text = `${source.domain} ${source.title} ${source.url} ${source.snippet ?? ""}`.toLowerCase();
+  const normalizedText = text.replace(/[^a-z0-9\s]/g, " ");
+
+  const outsidePatterns = localOutsideGeographyPatterns(location);
+  const insidePatterns = localInsideGeographyPatterns(location);
+
+  if (!outsidePatterns.length) return true;
+  if (insidePatterns.some((pattern) => pattern.test(normalizedText))) return true;
+
+  const outsideMatch = outsidePatterns.some((pattern) => pattern.test(normalizedText));
+
+  if (outsideMatch) {
+    console.log("LOCAL_CONTENT_ENRICHMENT_SKIPPED_GEOGRAPHY", {
+      query,
+      url: source.url,
+      title: source.title,
+      location: context.location
+    });
+  }
+
+  return !outsideMatch;
+}
+
 function localEnrichmentSourceScore(source: VeraSource) {
   const value = `${source.domain} ${source.title} ${source.url}`.toLowerCase();
   const editorialBoost = /\b(eater|infatuation|thevendry|timeout|time.?out|michelin|cntraveler|conde.?nast|travelandleisure|travel.?leisure|seattlemet|nymag|new.?york.?magazine|golfdigest|golfweek)\b/.test(
@@ -440,6 +470,102 @@ async function runLocalNamedCandidateDiscovery(query: string, key: string, callC
   }
 
   return settledResponses.flatMap((response) => (response.status === "fulfilled" ? [response.value] : []));
+}
+
+function shouldRunLocalNamedCandidateDiscovery(query: string, initialSources: VeraSource[]) {
+  const context = localRetrievalContext(query);
+  const cleanCandidateCount = countCleanLocalCandidateSources(query, initialSources);
+  const majorMarket = isMajorEditorialLocalMarket(context.location);
+  const shouldRun = majorMarket || cleanCandidateCount < 3;
+
+  console.log("LOCAL_NAMED_CANDIDATE_DISCOVERY_DECISION", {
+    query,
+    location: context.location,
+    majorMarket,
+    cleanCandidateCount,
+    shouldRun
+  });
+
+  return shouldRun;
+}
+
+function countCleanLocalCandidateSources(query: string, sources: VeraSource[]) {
+  const keys = new Set<string>();
+
+  for (const source of sources) {
+    const candidates = [
+      localSourceBusinessNameFromUrl(source.url),
+      localSourceBusinessNameFromTitle(source.title)
+    ].filter((candidate): candidate is string => Boolean(candidate));
+
+    for (const candidate of candidates) {
+      const key = cheapLocalBusinessKey(candidate);
+
+      if (!key || isCheapLocalGenericCandidate(query, key)) continue;
+      keys.add(key);
+    }
+  }
+
+  return keys.size;
+}
+
+function localSourceBusinessNameFromUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    const bizIndex = segments.findIndex((segment) => segment.toLowerCase() === "biz");
+    const selected = bizIndex >= 0 ? segments[bizIndex + 1] : segments.at(-1);
+
+    if (!selected) return "";
+
+    return decodeURIComponent(selected)
+      .replace(/\.(html?|php)$/i, "")
+      .replace(/[-_+]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  } catch {
+    return "";
+  }
+}
+
+function localSourceBusinessNameFromTitle(title: string) {
+  return title
+    .replace(/\s+[-–—|:]\s+.*$/g, "")
+    .replace(/\b(?:updated|reviewed)\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)?\s*\d{4}\b/gi, "")
+    .replace(/\b(?:reviews?|reservations?|menu|photos?|ratings?|near me|official site|comments?|threads?)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cheapLocalBusinessKey(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(
+      /\b(?:restaurant|restaurants|cafe|coffee shop|hotel|inn|pizzeria|pizza|italian|seafood|sushi|brunch|bar|reviews?|review|menu|reservations?|official|site|wantagh|seaford|massapequa|huntington|delray|beach|ny|new york|long island)\b/g,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isCheapLocalGenericCandidate(query: string, key: string) {
+  const normalizedQuery = query.toLowerCase();
+
+  if (!key || key.length < 3) return true;
+  if (/^(?:best|top|where|guide|local|near|food|restaurant|restaurants|pizza|sushi|coffee|bar|hotel|reddit|yelp|tripadvisor|google|maps|eater|infatuation)$/.test(key)) return true;
+  if (normalizedQuery.includes(key) && key.split(/\s+/).length <= 2) return true;
+  return false;
+}
+
+function isMajorEditorialLocalMarket(location: string) {
+  const normalized = location.toLowerCase();
+
+  return /\b(nyc|new york city|new york|manhattan|brooklyn|williamsburg|los angeles|san francisco|chicago|seattle|austin|miami|boston|washington dc|philadelphia|new orleans|las vegas)\b/.test(
+    normalized
+  );
 }
 
 async function searchVariantWithRetry(
@@ -633,21 +759,17 @@ function localRetrievalLanes(category: string) {
 
   if (category === "coffee") {
     return [
-      "Reddit local coffee recommendations",
       "Google Maps coffee shop reviews",
       "Yelp coffee shops",
-      "local coffee guide",
-      "best specialty coffee local publication"
+      "Reddit local coffee recommendations"
     ];
   }
 
   if (category === "bar") {
     return [
+      "Yelp cocktail bar reviews",
+      "Google Maps bar reviews",
       "Reddit local bar recommendations",
-      "Infatuation best bars",
-      "Time Out cocktail bars",
-      "Eater best bars",
-      "Yelp cocktail bar reviews"
     ];
   }
 
@@ -674,11 +796,11 @@ function localRetrievalLanes(category: string) {
   }
 
   if (category === "pizza") {
-    return ["Reddit local pizza recommendations", "Eater best pizza", "Infatuation best pizza", "Yelp pizzeria reviews", "Google Maps pizza reviews"];
+    return ["Yelp pizzeria reviews", "Google Maps pizza reviews", "Reddit local pizza recommendations"];
   }
 
   if (category === "brunch") {
-    return ["Reddit local brunch recommendations", "OpenTable brunch", "Resy brunch", "Eater best brunch", "Infatuation best brunch", "Yelp brunch reviews"];
+    return ["Yelp brunch reviews", "Google Maps brunch reviews", "Reddit local brunch recommendations"];
   }
 
   if (category === "bakery") {
@@ -691,13 +813,9 @@ function localRetrievalLanes(category: string) {
 
   if (category === "restaurant") {
     return [
-      "Reddit local restaurant recommendations",
       "Yelp restaurant reviews",
       "Google Maps restaurant reviews",
-      "Eater best restaurants",
-      "Infatuation best restaurants",
-      "OpenTable restaurant reviews",
-      "local publication restaurant guide"
+      "Reddit local restaurant recommendations"
     ];
   }
 
@@ -747,6 +865,31 @@ function expandLocalLocation(location: string) {
   if (/\bnyc\b/.test(normalized)) return normalized.replace(/\bnyc\b/g, "New York City");
   if (/\bbrooklyn\b/.test(normalized) && !/\bny|new york|nyc\b/.test(normalized)) return `${location} NY`;
   return location;
+}
+
+function localInsideGeographyPatterns(location: string) {
+  if (/\bwantagh\b/.test(location)) return [/\bwantagh\b/, /\bseaford\b/, /\bbellmore\b/, /\bmassapequa\b/, /\blevittown\b/];
+  if (/\bseaford\b/.test(location)) return [/\bseaford\b/, /\bwantagh\b/, /\bmassapequa\b/, /\bbellmore\b/, /\bmerrick\b/, /\blevittown\b/];
+  if (/\bmassapequa\b/.test(location)) return [/\bmassapequa\b/, /\bseaford\b/, /\bwantagh\b/, /\bamityville\b/, /\bfarmingdale\b/, /\bbellmore\b/];
+  if (/\bhuntington\b/.test(location)) return [/\bhuntington\b(?!\s+beach)/, /\bhuntington station\b/, /\bgreenlawn\b/, /\bcenterport\b/, /\bnorthport\b/, /\bmelville\b/];
+  if (/\bdelray beach\b/.test(location)) return [/\bdelray beach\b/, /\bboca raton\b/, /\bboynton beach\b/, /\bhighland beach\b/];
+  return [];
+}
+
+function localOutsideGeographyPatterns(location: string) {
+  if (/\b(wantagh|seaford|massapequa)\b/.test(location)) {
+    return [/\bnyc\b/, /\bnew york city\b/, /\bmanhattan\b/, /\bbrooklyn\b/, /\bqueens\b/, /\bbronx\b/, /\bstaten island\b/, /\bchicago\b/, /\bseattle\b/, /\bbeverly hills\b/, /\bsan francisco\b/, /\blos angeles\b/];
+  }
+
+  if (/\bhuntington\b/.test(location)) {
+    return [/\bhuntington beach\b/, /\borange county\b/, /\bcalifornia\b/, /\bmanhattan\b/, /\bbrooklyn\b/, /\bqueens\b/, /\bbronx\b/, /\bstaten island\b/];
+  }
+
+  if (/\bdelray beach\b/.test(location)) {
+    return [/\bnyc\b/, /\bnew york city\b/, /\bmanhattan\b/, /\bbrooklyn\b/, /\borlando\b/, /\btampa\b/, /\bjacksonville\b/];
+  }
+
+  return [];
 }
 
 function localRecoveryCategoryLabel(category: string, normalizedQuery: string) {

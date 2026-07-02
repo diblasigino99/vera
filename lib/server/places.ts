@@ -79,8 +79,9 @@ type PlacesCacheRow = {
   expires_at?: string | null;
 };
 
-const maxVerifiedPlacesContenders = 5;
+const targetVerifiedPlacesContenders = 3;
 const maxPlacesValidationAttempts = 10;
+const placesValidationConcurrency = 3;
 const placesTimeoutMs = 1800;
 const verifiedCacheTtlMs = 90 * 24 * 60 * 60 * 1000;
 const rejectedCacheTtlMs = 30 * 24 * 60 * 60 * 1000;
@@ -121,31 +122,53 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
   const verifiedNames = new Set<string>();
   let attempted = 0;
   let rejected = 0;
+  const paidCallsBeforeBatch = callCounts?.placesApiCalls ?? 0;
 
-  for (const group of groups) {
-    if (verifiedNames.size >= maxVerifiedPlacesContenders || attempted >= maxPlacesValidationAttempts) {
+  for (let index = 0; index < groups.length; ) {
+    if (verifiedNames.size >= targetVerifiedPlacesContenders || attempted >= maxPlacesValidationAttempts) {
       break;
     }
 
-    try {
-      const validation = await validateCandidateWithPlaces(query, group.displayName, key, callCounts);
+    const remainingAttempts = maxPlacesValidationAttempts - attempted;
+    const remainingVerifiedSlots = targetVerifiedPlacesContenders - verifiedNames.size;
+    const batchSize = Math.min(placesValidationConcurrency, remainingAttempts, remainingVerifiedSlots);
+    const batch = groups.slice(index, index + batchSize);
+    index += batchSize;
+
+    const settled = await Promise.allSettled(batch.map((group) => validateCandidateWithPlaces(query, group.displayName, key, callCounts)));
+
+    for (const [batchIndex, response] of settled.entries()) {
+      const group = batch[batchIndex];
       attempted += 1;
-      validations.set(group.normalizedName, validation);
-      if (validation.status === "verified") {
-        verifiedNames.add(group.normalizedName);
+
+      if (!group) {
+        rejected += 1;
+        continue;
+      }
+
+      if (response.status === "fulfilled") {
+        const validation = response.value;
+        validations.set(group.normalizedName, validation);
+        for (const alias of group.aliases) {
+          validations.set(alias, validation);
+        }
+        if (validation.status === "verified") {
+          verifiedNames.add(group.normalizedName);
+        } else {
+          rejected += 1;
+        }
       } else {
         rejected += 1;
+        console.warn("PLACES_VALIDATION_FAILED_SOFT", {
+          query,
+          candidate: group.displayName,
+          error: response.reason instanceof Error ? response.reason.message : String(response.reason)
+        });
       }
-    } catch (error) {
-      attempted += 1;
-      rejected += 1;
-      console.warn("PLACES_VALIDATION_FAILED_SOFT", {
-        query,
-        candidate: group.displayName,
-        error: error instanceof Error ? error.message : String(error)
-      });
     }
   }
+
+  const paidCallsDuringValidation = (callCounts?.placesApiCalls ?? paidCallsBeforeBatch) - paidCallsBeforeBatch;
 
   if (!validations.size) {
     console.log("PLACES_COST_AUDIT", {
@@ -156,7 +179,7 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
       verifiedContenders: 0,
       rejectedSignals: 0,
       canonicalizedSignals: 0,
-      estimatedPlacesCalls: attempted
+      estimatedPlacesCalls: paidCallsDuringValidation
     });
     console.log("PLACES_API_CALL_COUNT", callCounts?.placesApiCalls ?? 0);
     console.log("PLACES_CACHE_HITS", callCounts?.placesCacheHits ?? 0);
@@ -220,8 +243,8 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
     validationsReturned: validations.size,
     verifiedContenders: verifiedNames.size,
     rejectedSignals,
-    canonicalizedSignals,
-    estimatedPlacesCalls: attempted
+      canonicalizedSignals,
+      estimatedPlacesCalls: paidCallsDuringValidation
   });
   console.log("PLACES_VALIDATIONS_ATTEMPTED", attempted);
   console.log("PLACES_API_CALL_COUNT", callCounts?.placesApiCalls ?? 0);
@@ -241,26 +264,29 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
 }
 
 function groupSignalsForPlacesValidation(query: string, signals: SourceSignal[], rankedCandidateNames: string[]) {
-  const byName = new Map<string, { normalizedName: string; displayName: string; signalCount: number; sourceCount: number }>();
+  const byName = new Map<string, { normalizedName: string; displayName: string; signalCount: number; sourceCount: number; aliases: Set<string> }>();
 
   for (const signal of signals) {
     const normalizedName = placesCandidateKey(signal.contenderName);
 
     if (!normalizedName) continue;
 
-    const existing = byName.get(normalizedName);
+    const existingKey = Array.from(byName.keys()).find((candidateKey) => placesCandidateKeysAreDuplicate(candidateKey, normalizedName));
+    const existing = existingKey ? byName.get(existingKey) : undefined;
     if (!existing) {
       byName.set(normalizedName, {
         normalizedName,
         displayName: cleanPlacesInputName(signal.contenderName),
         signalCount: 1,
-        sourceCount: 1
+        sourceCount: 1,
+        aliases: new Set([normalizedName])
       });
       continue;
     }
 
     existing.signalCount += 1;
     existing.sourceCount += 1;
+    existing.aliases.add(normalizedName);
     if (cleanPlacesInputName(signal.contenderName).length < existing.displayName.length) {
       existing.displayName = cleanPlacesInputName(signal.contenderName);
     }
@@ -275,6 +301,7 @@ function groupSignalsForPlacesValidation(query: string, signals: SourceSignal[],
       const candidateTokens = group.normalizedName.split(/\s+/).filter(Boolean);
       return candidateTokens.some((token) => !queryTokens.has(token));
     })
+    .map((group) => ({ ...group, aliases: Array.from(group.aliases) }))
     .sort((a, b) => {
       const aRank = rankedIndex.get(a.normalizedName) ?? Number.POSITIVE_INFINITY;
       const bRank = rankedIndex.get(b.normalizedName) ?? Number.POSITIVE_INFINITY;
@@ -641,19 +668,57 @@ function placesCandidateKey(value: string) {
     .replace(/[’']/g, "")
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9\s]/gi, " ")
-    .replace(/\b(?:restaurant|restaurants|bar|cafe|coffee shop|hotel|inn|pizzeria|italian|seafood|sushi|brunch|nyc|ny|new york|brooklyn|manhattan|williamsburg|seaford|massapequa|huntington|delray beach|restaurateurs?|owners?|chef|founder)\b$/gi, "")
+    .replace(/\b([a-z]{3,})\s+s\b/gi, "$1s")
+    .replace(/\bof\s+(?:wantagh|seaford|massapequa|huntington|delray beach|nyc|ny|new york|brooklyn|manhattan|williamsburg)\b/gi, " ")
+    .replace(/\b(?:restaurant|restaurants|bar|cafe|coffee shop|hotel|inn|pizzeria|pizza|italian|seafood|sushi|brunch|nyc|ny|new york|brooklyn|manhattan|williamsburg|wantagh|seaford|massapequa|huntington|delray beach|restaurateurs?|owners?|chef|founder)\b$/gi, "")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
 }
 
+function placesCandidateKeysAreDuplicate(a: string, b: string) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.length < 4 || b.length < 4) return false;
+  if (a.includes(b) || b.includes(a)) {
+    const shorter = Math.min(a.length, b.length);
+    const longer = Math.max(a.length, b.length);
+    return shorter / longer >= 0.62;
+  }
+
+  return placesDiceCoefficient(a, b) >= 0.88;
+}
+
+function placesDiceCoefficient(a: string, b: string) {
+  const bigrams = (value: string) => {
+    const compact = value.replace(/\s+/g, "");
+    const grams = new Map<string, number>();
+    for (let index = 0; index < compact.length - 1; index += 1) {
+      const gram = compact.slice(index, index + 2);
+      grams.set(gram, (grams.get(gram) ?? 0) + 1);
+    }
+    return grams;
+  };
+  const aGrams = bigrams(a);
+  const bGrams = bigrams(b);
+  const total = Array.from(aGrams.values()).reduce((sum, count) => sum + count, 0) + Array.from(bGrams.values()).reduce((sum, count) => sum + count, 0);
+  let overlap = 0;
+
+  for (const [gram, count] of aGrams.entries()) {
+    overlap += Math.min(count, bGrams.get(gram) ?? 0);
+  }
+
+  return total > 0 ? (2 * overlap) / total : 0;
+}
+
 function cleanPlacesInputName(value: string) {
   return value
     .replace(/[’]/g, "'")
-    .replace(/\s+\b(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|massapequa|seaford|huntington|delray beach|delray)\s+(?:restaurateurs?|owners?|chef|founder|team|group)\b$/i, "")
+    .replace(/\s+\b(?:ny|nyc|new york|brooklyn|manhattan|williamsburg|wantagh|massapequa|seaford|huntington|delray beach|delray)\s+(?:restaurateurs?|owners?|chef|founder|team|group)\b$/i, "")
     .replace(/\s+\b(?:restaurateurs?|owners?|chef|founder|team|group)\b$/i, "")
     .replace(/\s+[-–—|:]\s+.*$/g, "")
     .replace(/\b(?:restaurant)\s*$/i, "")
+    .replace(/\s+\b(?:wantagh|seaford|massapequa|huntington|delray beach|delray|ny|new york)\b$/i, "")
     .replace(/\s+/g, " ")
     .trim();
 }

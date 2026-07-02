@@ -37,7 +37,7 @@ const sourceTypes = [
 const openAIModel = "gpt-4.1-mini";
 const openAITimeoutMs = 12000;
 const dominantPlatformOpenAITimeoutMs = 12000;
-const localRecommendationOpenAITimeoutMs = 9000;
+const localRecommendationOpenAITimeoutMs = 5500;
 const maxOpenAISources = 8;
 const maxLocalOpenAISources = 8;
 const maxOpenAISnippetChars = 150;
@@ -238,7 +238,8 @@ export function buildProductFallbackConsensus(
 export async function buildLocalFallbackConsensus(
   query: string,
   sources: VeraSource[],
-  explanation = "Vera found local sources, but could not confidently separate one clear favorite from several local contenders."
+  explanation = "Vera found local sources, but could not confidently separate one clear favorite from several local contenders.",
+  callCounts?: ExternalCallCounts
 ): Promise<ConsensusResponse | null> {
   const evidenceType = inferQueryEvidenceType(query);
 
@@ -252,7 +253,7 @@ export async function buildLocalFallbackConsensus(
     return null;
   }
 
-  const structuredConsensus = await aggregateSignals(fallbackSignals, sources, query);
+  const structuredConsensus = await aggregateSignals(fallbackSignals, sources, query, callCounts);
 
   if (structuredConsensus.contenders.length < 1) {
     return null;
@@ -538,10 +539,27 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     };
   }
 
-  const sourceSignals = await extractSourceSignals(query, modelSources, key, evidenceType, callCounts);
+  const deterministicLocalSignals =
+    evidenceType === "local_recommendation" ? deterministicLocalSignalsForOpenAISkip(query, modelSources, evidenceType) : [];
+  const skipLocalOpenAI = evidenceType === "local_recommendation" && countCleanLocalSignalCandidates(query, deterministicLocalSignals) >= 5;
+  const sourceSignals = skipLocalOpenAI
+    ? {
+        rawOpenAIContent: null,
+        parsedOpenAIAnalysis: null,
+        intent: intentFromQuery(query),
+        signals: deterministicLocalSignals
+      }
+    : await extractSourceSignals(query, modelSources, key, evidenceType, callCounts);
+  if (skipLocalOpenAI) {
+    console.log("LOCAL_OPENAI_SKIPPED", {
+      query,
+      reason: "deterministic_extraction_found_enough_clean_candidates",
+      cleanCandidateCount: countCleanLocalSignalCandidates(query, deterministicLocalSignals)
+    });
+  }
   const recoveredSignals =
-    evidenceType === "local_recommendation" ? await recoverSparseLocalBusinessNames(query, modelSources, sourceSignals.signals, key, callCounts) : [];
-  const allSignals = recoveredSignals.length ? dedupeSignals([...sourceSignals.signals, ...recoveredSignals]) : sourceSignals.signals;
+    evidenceType === "local_recommendation" && !skipLocalOpenAI ? await recoverSparseLocalBusinessNames(query, modelSources, sourceSignals.signals, key, callCounts) : [];
+  const allSignals = skipLocalOpenAI ? deterministicLocalSignals : recoveredSignals.length ? dedupeSignals([...sourceSignals.signals, ...recoveredSignals]) : sourceSignals.signals;
   const structuredConsensus = await aggregateSignals(allSignals, modelSources, query, callCounts);
 
   if (structuredConsensus.contenders.length === 0) {
@@ -562,6 +580,37 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     parsedOpenAIAnalysis: sourceSignals.parsedOpenAIAnalysis,
     consensus
   };
+}
+
+function deterministicLocalSignalsForOpenAISkip(query: string, sources: VeraSource[], evidenceType: QueryEvidenceType) {
+  if (evidenceType !== "local_recommendation") return [];
+
+  return dedupeSignals([...localFallbackSignals(query, sources), ...localRecommendationPrior(query, sources, [], evidenceType).signals]);
+}
+
+function countCleanLocalSignalCandidates(query: string, signals: SourceSignal[]) {
+  const byName = new Map<string, SourceSignal[]>();
+
+  for (const signal of signals) {
+    const key = localBusinessKey(signal.contenderName);
+
+    if (!key) continue;
+    const existing = byName.get(key) ?? [];
+    existing.push(signal);
+    byName.set(key, existing);
+  }
+
+  let count = 0;
+
+  for (const [key, candidateSignals] of byName.entries()) {
+    const displayName = candidateSignals[0]?.contenderName ?? key;
+
+    if (!localUniversalEntityRejectionReason(query, displayName, { signals: candidateSignals })) {
+      count += 1;
+    }
+  }
+
+  return count;
 }
 
 async function recoverSparseLocalBusinessNames(query: string, sources: VeraSource[], signals: SourceSignal[], key: string, callCounts?: ExternalCallCounts) {
