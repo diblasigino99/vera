@@ -21,6 +21,116 @@ export function normalizeQuery(query: string) {
     .replace(/\s+/g, " ");
 }
 
+export function normalizeLocalQueryIntent(query: string) {
+  let normalized = normalizeQuery(query)
+    .replace(/\brestaraunt\b/g, "restaurant")
+    .replace(/\bresturant\b/g, "restaurant")
+    .replace(/\bpizzaria\b/g, "pizzeria")
+    .replace(/\bpiza\b/g, "pizza")
+    .replace(/\bexpresso martini\b/g, "espresso martini")
+    .replace(/\bcofee\b/g, "coffee")
+    .replace(/\bsteak house\b/g, "steakhouse")
+    .replace(/\btaco place\b/g, "mexican restaurant")
+    .replace(/\btacos\b/g, "mexican restaurant")
+    .replace(/\bfish restaurant\b/g, "seafood restaurant")
+    .replace(/\bfish\b/g, "seafood")
+    .replace(/\bitalian food\b/g, "italian restaurant")
+    .replace(/\bsushi spot\b/g, "sushi restaurant")
+    .replace(/\bsushi\b/g, "sushi restaurant")
+    .replace(/\bbrunch spot\b/g, "brunch restaurant")
+    .replace(/\bcoffee spot\b/g, "coffee shop")
+    .replace(/\bcocktail spot\b/g, "cocktail bar")
+    .replace(/\bdrinks\b/g, "cocktail bar")
+    .replace(/\bpizza place\b/g, "pizza")
+    .replace(/\bpizzeria\b/g, "pizza italian restaurant")
+    .replace(/\bseafood\b/g, "seafood restaurant")
+    .replace(/\bsteak\b/g, "steakhouse");
+
+  normalized = normalized
+    .replace(/\b(sushi restaurant)\s+restaurant\b/g, "$1")
+    .replace(/\b(seafood restaurant)\s+restaurant\b/g, "$1")
+    .replace(/\b(italian restaurant)\s+restaurant\b/g, "$1")
+    .replace(/\b(brunch restaurant)\s+restaurant\b/g, "$1")
+    .replace(/\b(mexican restaurant)\s+restaurant\b/g, "$1")
+    .replace(/\b(cocktail bar)\s+bar\b/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized;
+}
+
+export type LocalQueryConstraint = {
+  key: string;
+  type: "price" | "atmosphere" | "experience" | "food_quality";
+  label: string;
+  retrievalTerms: string[];
+};
+
+export function parseLocalQueryConstraints(query: string): LocalQueryConstraint[] {
+  const normalized = normalizeLocalQueryIntent(query);
+  const constraints: LocalQueryConstraint[] = [];
+  const add = (constraint: LocalQueryConstraint) => {
+    if (!constraints.some((item) => item.key === constraint.key)) {
+      constraints.push(constraint);
+    }
+  };
+
+  if (/\b(cheap|affordable|budget|decent priced|reasonably priced|inexpensive|best value|value)\b/.test(normalized)) {
+    add({ key: "affordable", type: "price", label: "Affordable", retrievalTerms: ["affordable", "best value", "reasonably priced"] });
+  }
+  if (/\b(expensive|upscale|luxury|high end|fancy)\b/.test(normalized)) {
+    add({ key: "upscale", type: "price", label: "Upscale", retrievalTerms: ["upscale", "high end", "luxury"] });
+  }
+  if (/\b(romantic|date night|date-night)\b/.test(normalized)) {
+    add({ key: "romantic", type: "atmosphere", label: "Date-night atmosphere", retrievalTerms: ["romantic", "date night"] });
+  }
+  if (/\b(casual|cozy|cosy|lively|quiet)\b/.test(normalized)) {
+    const key = normalized.match(/\b(casual|cozy|cosy|lively|quiet)\b/)?.[1]?.replace("cosy", "cozy") ?? "atmosphere";
+    add({ key, type: "atmosphere", label: key === "cozy" ? "Cozy" : `${key.charAt(0).toUpperCase()}${key.slice(1)}`, retrievalTerms: [key] });
+  }
+  if (/\brooftop\b/.test(normalized)) {
+    add({ key: "rooftop", type: "experience", label: "Rooftop", retrievalTerms: ["rooftop"] });
+  }
+  if (/\bwaterfront|water view|on the water\b/.test(normalized)) {
+    add({ key: "waterfront", type: "experience", label: "Waterfront", retrievalTerms: ["waterfront", "water view"] });
+  }
+  if (/\boutdoor seating|outdoor|patio\b/.test(normalized)) {
+    add({ key: "outdoor_seating", type: "experience", label: "Outdoor seating", retrievalTerms: ["outdoor seating", "patio"] });
+  }
+  if (/\blive music\b/.test(normalized)) {
+    add({ key: "live_music", type: "experience", label: "Live music", retrievalTerms: ["live music"] });
+  }
+  if (/\bsports bar\b/.test(normalized)) {
+    add({ key: "sports_bar", type: "experience", label: "Sports bar", retrievalTerms: ["sports bar"] });
+  }
+  if (/\bfamily friendly|kid friendly|kids friendly|good for kids\b/.test(normalized)) {
+    add({ key: "family_friendly", type: "experience", label: "Family friendly", retrievalTerms: ["family friendly", "kid friendly"] });
+  }
+  if (/\bdog friendly|pet friendly\b/.test(normalized)) {
+    add({ key: "dog_friendly", type: "experience", label: "Dog friendly", retrievalTerms: ["dog friendly", "pet friendly"] });
+  }
+  if (/\blate night\b/.test(normalized)) {
+    add({ key: "late_night", type: "experience", label: "Late night", retrievalTerms: ["late night"] });
+  }
+  if (/\bhappy hour\b/.test(normalized)) {
+    add({ key: "happy_hour", type: "experience", label: "Happy hour", retrievalTerms: ["happy hour"] });
+  }
+  if (/\bhomemade\b/.test(normalized)) {
+    add({ key: "homemade", type: "food_quality", label: "Homemade", retrievalTerms: ["homemade"] });
+  }
+  if (/\bauthentic\b/.test(normalized)) {
+    add({ key: "authentic", type: "food_quality", label: "Authentic", retrievalTerms: ["authentic"] });
+  }
+  if (/\bfresh\b/.test(normalized)) {
+    add({ key: "fresh", type: "food_quality", label: "Fresh", retrievalTerms: ["fresh"] });
+  }
+  if (/\bhealthy\b/.test(normalized)) {
+    add({ key: "healthy", type: "food_quality", label: "Healthy", retrievalTerms: ["healthy"] });
+  }
+
+  return constraints;
+}
+
 export function canonicalizeQuery(query: string) {
   const normalized = normalizeQuery(query)
     .replace(/\b(highest rated|most recommended|recommended|recommendations|recommendation|best|top|great|good)\b/g, " ")
@@ -39,7 +149,7 @@ export function canonicalizeQuery(query: string) {
 export type QueryEvidenceType = "local_recommendation" | "product_recommendation" | "software_tool" | "dominant_platform";
 
 export function inferQueryEvidenceType(query: string): QueryEvidenceType {
-  const normalized = normalizeQuery(query);
+  const normalized = normalizeLocalQueryIntent(query);
 
   if (/\b(team chat|work chat|business chat|workplace chat)\b/.test(normalized)) {
     return "software_tool";

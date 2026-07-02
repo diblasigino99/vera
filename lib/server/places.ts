@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { SourceSignal } from "@/lib/types";
-import { normalizeQuery } from "@/lib/utils";
+import { normalizeLocalQueryIntent, normalizeQuery } from "@/lib/utils";
 import { getSupabaseAdmin } from "@/lib/server/supabase";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 
@@ -785,7 +785,7 @@ function isNonBusinessPlace(types: string[]) {
 }
 
 function localLocationLabelForPlaces(query: string) {
-  const normalized = normalizeQuery(query);
+  const normalized = normalizeLocalQueryIntent(query);
   const match = normalized.match(/\b(?:in|near|around)\s+(.+)$/);
 
   if (!match) {
@@ -814,12 +814,13 @@ function localLocationTokensForPlaces(query: string) {
 }
 
 function localCategoryLabelForPlaces(query: string) {
-  const normalized = normalizeQuery(query);
+  const normalized = normalizeLocalQueryIntent(query);
 
   if (/\b(italian|sushi|seafood|pizza|brunch|ramen|tacos?|mexican|steakhouse)\b/.test(normalized)) {
     return `${normalized.match(/\b(italian|sushi|seafood|pizza|brunch|ramen|tacos?|mexican|steakhouse)\b/)?.[1]} restaurant`;
   }
-  if (/\b(espresso martini|cocktail|bar|pub)\b/.test(normalized)) return "bar";
+  if (/\b(espresso martini|cocktail bar|cocktail)\b/.test(normalized)) return "cocktail bar";
+  if (/\b(bar|pub)\b/.test(normalized)) return "bar";
   if (/\b(coffee|cafe)\b/.test(normalized)) return "coffee shop";
   if (/\b(hotel|hotels)\b/.test(normalized)) return "hotel";
   if (/\b(dentist|dental|plumber|plumbing|gym|fitness)\b/.test(normalized)) return normalized.match(/\b(dentist|dental|plumber|plumbing|gym|fitness)\b/)?.[1] ?? "local business";

@@ -17,6 +17,8 @@ import {
   inferQueryEvidenceType,
   isSpecializedDominantPlatformQuery,
   normalizeQuery,
+  normalizeLocalQueryIntent,
+  parseLocalQueryConstraints,
   slugify
 } from "@/lib/utils";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
@@ -1591,6 +1593,7 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
   const bodyMatchScore = localBodyMatchScore(signals);
   const candidateConfidenceScore = localCandidateConfidenceScore(signals);
   const contextQualityScore = localContextQualityScore(signals);
+  const constraintMatchScore = localConstraintMatchScore(query, metrics.name, signals);
   const specificIntentEvidence = localSpecificIntentEvidence(query, metrics.name, signals);
   const specificIntentScore = localSpecificIntentScore(specificIntentEvidence);
   const specificIntentPenalty = localSpecificIntentPenalty(specificIntentEvidence);
@@ -1612,6 +1615,7 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
       bodyMatchScore +
       candidateConfidenceScore +
       contextQualityScore +
+      constraintMatchScore +
       specificIntentScore +
       ratingBoost -
       specificIntentPenalty -
@@ -1648,6 +1652,7 @@ function applyLocalRecommendationStrategy(metrics: ContenderMetrics, query: stri
     bodyMatchScore,
     candidateConfidenceScore,
     contextQualityScore,
+    constraintMatchScore,
     specificIntentScore,
     specificIntentPenalty,
     wrongCategoryPenalty,
@@ -1998,7 +2003,7 @@ type LocalSpecificIntentEvidence = {
 };
 
 function localSpecificIntentForQuery(query: string): LocalSpecificIntent | null {
-  const normalized = normalizeQuery(query);
+  const normalized = normalizeLocalQueryIntent(query);
 
   if (/\bespresso martini\b/.test(normalized)) {
     return {
@@ -2231,7 +2236,7 @@ function localUniversalEntityRejectionReason(query: string, candidate: string, c
 }
 
 function isLocalSearchSubjectOnly(query: string, normalizedCandidate: string) {
-  const normalizedQuery = normalizeQuery(query);
+  const normalizedQuery = normalizeLocalQueryIntent(query);
   const subjects = new Set<string>();
   const add = (value: string) => {
     const normalized = normalizeQuery(value);
@@ -2301,7 +2306,7 @@ function localCandidateHasLocationEvidence(query: string, contenderName: string,
 }
 
 function localRequestedLocationTerms(query: string) {
-  const normalized = normalizeQuery(query);
+  const normalized = normalizeLocalQueryIntent(query);
   const terms = new Set<string>();
 
   const add = (value: string) => {
@@ -2333,7 +2338,7 @@ function localRequestedLocationTerms(query: string) {
 }
 
 function localCandidateHasLocationLeakage(query: string, evidenceText: string) {
-  const queryText = normalizeQuery(query);
+  const queryText = normalizeLocalQueryIntent(query);
   const leakagePatterns: Array<[RegExp, RegExp]> = [
     [/\bwantagh\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island|whitestone|westchester|connecticut|new jersey)\b/],
     [/\bseaford\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island)\b/],
@@ -2364,7 +2369,7 @@ function localCandidateHasCategoryEvidence(query: string, contenderName: string,
 
 function localCategoryMatchScore(query: string, contenderName: string, signals: SourceSignal[]) {
   const category = localCategoryForQuery(query);
-  const queryText = normalizeQuery(query);
+  const queryText = normalizeLocalQueryIntent(query);
   const evidenceText = normalizeQuery([contenderName, ...signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""}`)].join(" "));
   let score = 0;
 
@@ -2382,6 +2387,83 @@ function localCategoryMatchScore(query: string, contenderName: string, signals: 
   if (category === "plumber" && /\b(directory|near me|recommendation|king county)\b/.test(evidenceText)) score -= 4;
 
   return round1(Math.max(-10, Math.min(score, 10)));
+}
+
+function localConstraintMatchScore(query: string, contenderName: string, signals: SourceSignal[]) {
+  const constraints = parseLocalQueryConstraints(query);
+
+  if (!constraints.length) return 0;
+
+  const evidenceText = normalizeLocalQueryIntent(
+    [
+      contenderName,
+      ...signals.map((signal) =>
+        [
+          signal.sourceTitle,
+          signal.domain,
+          signal.extractedReason,
+          signal.positiveMention ?? "",
+          signal.negativeMention ?? "",
+          signal.themes.join(" ")
+        ].join(" ")
+      )
+    ].join(" ")
+  );
+  let score = 0;
+
+  for (const constraint of constraints) {
+    const matcher = localConstraintEvidenceMatcher(constraint.key);
+    score += matcher.test(evidenceText) ? 2.6 : -0.55;
+  }
+
+  return round1(Math.max(-4, Math.min(score, 7)));
+}
+
+function localConstraintEvidenceMatcher(key: string) {
+  switch (key) {
+    case "affordable":
+      return /\b(cheap|affordable|budget|inexpensive|reasonable|reasonably priced|decent priced|value|best value|happy hour|deal|deals)\b/;
+    case "upscale":
+      return /\b(upscale|luxury|expensive|high end|fancy|elegant|special occasion)\b/;
+    case "romantic":
+      return /\b(romantic|date night|date-night|intimate|candlelit|cozy|quiet)\b/;
+    case "casual":
+      return /\b(casual|laid back|relaxed|easygoing)\b/;
+    case "cozy":
+      return /\b(cozy|cosy|intimate|warm|small)\b/;
+    case "lively":
+      return /\b(lively|energetic|busy|fun|vibrant)\b/;
+    case "quiet":
+      return /\b(quiet|conversation|low key|calm|relaxed)\b/;
+    case "rooftop":
+      return /\b(rooftop|roof deck|roof)\b/;
+    case "waterfront":
+      return /\b(waterfront|water view|on the water|riverfront|oceanfront)\b/;
+    case "outdoor_seating":
+      return /\b(outdoor|patio|sidewalk seating|garden|terrace)\b/;
+    case "live_music":
+      return /\b(live music|jazz|band|music venue|performances?)\b/;
+    case "sports_bar":
+      return /\b(sports bar|screens?|watch the game|game day|tv)\b/;
+    case "family_friendly":
+      return /\b(family friendly|kid friendly|good for kids|families|children)\b/;
+    case "dog_friendly":
+      return /\b(dog friendly|pet friendly|dogs allowed|dogs welcome)\b/;
+    case "late_night":
+      return /\b(late night|open late|after midnight|late-night)\b/;
+    case "happy_hour":
+      return /\b(happy hour|drink specials?|specials)\b/;
+    case "homemade":
+      return /\b(homemade|housemade|made in house|from scratch)\b/;
+    case "authentic":
+      return /\b(authentic|traditional|classic|old school)\b/;
+    case "fresh":
+      return /\b(fresh|seasonal|freshly made)\b/;
+    case "healthy":
+      return /\b(healthy|lighter|salad|vegetarian|vegan|organic)\b/;
+    default:
+      return /$a/;
+  }
 }
 
 function localExtractionConfidence(signals: SourceSignal[]) {
@@ -2589,7 +2671,7 @@ function localUrlOnlyPenalty(signals: SourceSignal[]) {
 }
 
 function localCategoryForQuery(query: string) {
-  const normalized = normalizeQuery(query);
+  const normalized = normalizeLocalQueryIntent(query);
 
   if (/\b(espresso martini|cocktail|cocktails|speakeasy)\b/.test(normalized)) return "bar";
   if (/\b(hotel|motel|inn|resort|lodging|place to stay)\b/.test(normalized)) return "hotel";
@@ -4975,7 +5057,7 @@ function cleanLocalReasons(reasons: string[]) {
 }
 
 function localReasonChip(reason: string) {
-  const normalized = normalizeQuery(reason);
+  const normalized = normalizeLocalQueryIntent(reason);
 
   if (!normalized) return "";
   if (normalized === "great drinks") return "excellent cocktails";
@@ -4987,9 +5069,26 @@ function localReasonChip(reason: string) {
 }
 
 function localEditorialTheme(theme: string) {
-  const normalized = normalizeQuery(theme);
+  const normalized = normalizeLocalQueryIntent(theme);
 
   if (!normalized) return "";
+  if (/\b(cheap|affordable|budget|inexpensive|reasonable|reasonably priced|decent priced|best value|value)\b/.test(normalized)) return "strong value";
+  if (/\b(upscale|luxury|expensive|high end|fancy|special occasion)\b/.test(normalized)) return "upscale";
+  if (/\b(romantic|date night|date-night|intimate|candlelit)\b/.test(normalized)) return "date-night spot";
+  if (/\b(casual|laid back|relaxed)\b/.test(normalized)) return "casual";
+  if (/\b(cozy|cosy)\b/.test(normalized)) return "cozy atmosphere";
+  if (/\b(lively|energetic|vibrant)\b/.test(normalized)) return "lively atmosphere";
+  if (/\b(quiet|conversation|low key|calm)\b/.test(normalized)) return "good for conversation";
+  if (/\brooftop|roof deck\b/.test(normalized)) return "rooftop";
+  if (/\b(waterfront|water view|on the water|riverfront|oceanfront)\b/.test(normalized)) return "waterfront";
+  if (/\b(outdoor seating|outdoor|patio|terrace|garden)\b/.test(normalized)) return "outdoor seating";
+  if (/\blive music|jazz|band\b/.test(normalized)) return "live music";
+  if (/\bsports bar|watch the game|game day\b/.test(normalized)) return "sports bar";
+  if (/\bfamily friendly|kid friendly|good for kids|families\b/.test(normalized)) return "family friendly";
+  if (/\bdog friendly|pet friendly|dogs welcome\b/.test(normalized)) return "dog friendly";
+  if (/\blate night|open late|late-night\b/.test(normalized)) return "late night";
+  if (/\bhappy hour|drink specials?\b/.test(normalized)) return "happy hour";
+  if (/\bhealthy|lighter|vegetarian|vegan|organic\b/.test(normalized)) return "healthy options";
   if (/\b(espresso martini|cocktail|drinks?|bar menu|aperitivo)\b/.test(normalized)) return "excellent cocktails";
   if (/\b(homemade pasta|fresh pasta|pasta)\b/.test(normalized)) return "homemade pasta";
   if (/\b(italian|trattoria|pizzeria|red sauce)\b/.test(normalized)) return "authentic Italian food";

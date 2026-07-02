@@ -1,5 +1,12 @@
 import type { VeraSource } from "@/lib/types";
-import { domainFromUrl, evidenceStrategyFor, inferQueryEvidenceType, isSpecializedDominantPlatformQuery } from "@/lib/utils";
+import {
+  domainFromUrl,
+  evidenceStrategyFor,
+  inferQueryEvidenceType,
+  isSpecializedDominantPlatformQuery,
+  normalizeLocalQueryIntent,
+  parseLocalQueryConstraints
+} from "@/lib/utils";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 
 type TavilyResult = {
@@ -34,9 +41,10 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
   const startedAt = Date.now();
   let tavilyMs = 0;
   const evidenceType = inferQueryEvidenceType(query);
+  const effectiveQuery = evidenceType === "local_recommendation" ? normalizeLocalQueryIntent(query) : query;
   const tavilyCallsBefore = callCounts?.tavilyCalls ?? 0;
   const tavilyCallLimit = evidenceType === "local_recommendation" ? maxLocalTavilyCallsPerRequest : maxTavilyCallsPerRequest;
-  const variants = buildSearchVariants(query);
+  const variants = buildSearchVariants(effectiveQuery);
   const guardedVariants = variants.slice(0, tavilyCallLimit);
 
   if (variants.length > tavilyCallLimit) {
@@ -90,8 +98,8 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
 
   let namedDiscoveryResponses: VeraSource[][] = [];
 
-  if (evidenceType === "local_recommendation" && shouldRunLocalNamedCandidateDiscovery(query, responses.flat())) {
-    namedDiscoveryResponses = await runLocalNamedCandidateDiscovery(query, key, callCounts);
+  if (evidenceType === "local_recommendation" && shouldRunLocalNamedCandidateDiscovery(effectiveQuery, responses.flat())) {
+    namedDiscoveryResponses = await runLocalNamedCandidateDiscovery(effectiveQuery, key, callCounts);
   }
 
   tavilyMs = Date.now() - startedAt;
@@ -100,7 +108,7 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
   const dedupedSources = dedupeSources(rawSources);
   const filteredSources = filterSources(dedupedSources);
   const balancedSources = reduceDuplicateDomains(filteredSources).slice(0, evidenceType === "local_recommendation" ? 28 : 18);
-  const finalSources = evidenceType === "local_recommendation" ? await enrichLocalAuthoritySources(query, balancedSources) : balancedSources;
+  const finalSources = evidenceType === "local_recommendation" ? await enrichLocalAuthoritySources(effectiveQuery, balancedSources) : balancedSources;
   const filteringMs = Date.now() - filteringStartedAt;
 
   if (timings) {
@@ -719,17 +727,21 @@ function buildLocalSearchQuery(query: string) {
 function buildLocalSearchVariants(query: string) {
   const context = localRetrievalContext(query);
   const category = context.category;
-  const locationQuery = context.location ? `${context.categoryLabel} ${context.location}` : query;
+  const constraintPrefix = localConstraintRetrievalPrefix(context.constraints);
+  const baseLocationQuery = context.location ? `${context.categoryLabel} ${context.location}` : query;
+  const locationQuery = [constraintPrefix, baseLocationQuery].filter(Boolean).join(" ");
   const lanes = localRetrievalLanes(category);
 
   console.log("LOCAL_RETRIEVAL_CATEGORY", category);
   console.log("LOCAL_LOCATION_CONTEXT", context);
+  console.log("LOCAL_QUERY_CONSTRAINTS", context.constraints);
   console.log("LOCAL_RETRIEVAL_VARIANTS", lanes.map((lane) => `${locationQuery} ${lane}`));
 
   return lanes.map((lane) => `${locationQuery} ${lane}`);
 }
 
 function localRetrievalCategory(normalized: string) {
+  normalized = normalizeLocalQueryIntent(normalized);
   if (/\b(hotel|motel|inn|resort|lodging|place to stay)\b/.test(normalized)) return "hotel";
   if (/\b(coffee shop|coffee shops|coffee|cafe|cafes|café)\b/.test(normalized)) return "coffee";
   if (/\b(pizza|pizzeria)\b/.test(normalized)) return "pizza";
@@ -828,27 +840,37 @@ function localRecoveryContext(query: string) {
   return {
     category: context.category,
     categoryLabel: context.categoryLabel,
-    location: context.location
+    location: context.location,
+    constraints: context.constraints
   };
 }
 
 function localRetrievalContext(query: string) {
-  const normalized = query.toLowerCase();
+  const normalized = normalizeLocalQueryIntent(query);
   const category = localRetrievalCategory(normalized);
   const location = expandLocalLocation(extractLocalLocation(normalized));
+  const constraints = parseLocalQueryConstraints(normalized);
 
   return {
     category,
     categoryLabel: localRecoveryCategoryLabel(category, normalized),
-    location: location || ""
+    location: location || "",
+    constraints
   };
+}
+
+function localConstraintRetrievalPrefix(constraints: ReturnType<typeof parseLocalQueryConstraints>) {
+  return Array.from(new Set(constraints.flatMap((constraint) => constraint.retrievalTerms))).slice(0, 4).join(" ");
 }
 
 function extractLocalLocation(normalized: string) {
   const locationMatch = normalized.match(/\b(?:in|near|around)\s+(.+?)$/);
   return (
     locationMatch?.[1]
-      ?.replace(/\b(best|top|recommended|reviews?|reddit|yelp|tripadvisor|google maps|eater|infatuation|booking|opentable|restaurants?|bars?|coffee shops?|hotels?)\b/g, " ")
+      ?.replace(
+        /\b(best|top|recommended|reviews?|reddit|yelp|tripadvisor|google maps|eater|infatuation|booking|opentable|restaurants?|bars?|coffee shops?|hotels?|cheap|affordable|budget|decent priced|reasonably priced|inexpensive|expensive|upscale|luxury|romantic|date night|casual|cozy|cosy|lively|quiet|rooftop|waterfront|outdoor seating|outdoor|patio|live music|sports bar|family friendly|kid friendly|dog friendly|pet friendly|late night|happy hour|homemade|authentic|fresh|healthy)\b/g,
+        " "
+      )
       .replace(/\s+/g, " ")
       .trim() ?? ""
   );
@@ -903,6 +925,7 @@ function localRecoveryCategoryLabel(category: string, normalizedQuery: string) {
   if (category === "restaurant") return "restaurant";
   if (category === "coffee") return "coffee shop";
   if (category === "bar" && /\bespresso martini\b/.test(normalizedQuery)) return "espresso martini bar";
+  if (category === "bar" && /\bcocktail\b/.test(normalizedQuery)) return "cocktail bar";
   if (category === "bar") return "bar";
   if (category === "golf_course") return "golf course";
   if (category === "dentist") return "dentist";
@@ -913,7 +936,8 @@ function localRecoveryCategoryLabel(category: string, normalizedQuery: string) {
 function buildLocalSparseRecoveryVariants(query: string, context: ReturnType<typeof localRecoveryContext>) {
   const location = context.location;
   const category = context.categoryLabel;
-  const base = location ? `${category} ${location}` : `${query} ${category}`;
+  const constraintPrefix = localConstraintRetrievalPrefix(context.constraints);
+  const base = [constraintPrefix, location ? `${category} ${location}` : `${query} ${category}`].filter(Boolean).join(" ");
 
   if (context.category === "hotel") {
     return [
@@ -971,7 +995,8 @@ function buildLocalNamedCandidateVariants(query: string) {
   const context = localRetrievalContext(query);
   const location = context.location;
   const category = context.categoryLabel;
-  const base = location ? `${category} ${location}` : `${query} ${category}`;
+  const constraintPrefix = localConstraintRetrievalPrefix(context.constraints);
+  const base = [constraintPrefix, location ? `${category} ${location}` : `${query} ${category}`].filter(Boolean).join(" ");
   const genericVariants = [
     `best ${category} in ${location || query} names`,
     `top ${category} in ${location || query} list`,
