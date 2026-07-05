@@ -40,10 +40,10 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
     return (
       <main className="min-h-screen bg-white px-5 py-8 text-ink">
         <nav className="mx-auto flex w-full max-w-5xl items-center justify-between">
-          <Link href="/" className="font-serif text-3xl text-ink">
+          <Link href="/vera" className="font-serif text-3xl text-ink">
             Vera
           </Link>
-          <Link href="/search" className="inline-flex items-center gap-2 text-sm font-medium text-muted transition hover:text-ink">
+          <Link href="/vera/search" className="inline-flex items-center gap-2 text-sm font-medium text-muted transition hover:text-ink">
             <ArrowLeft className="h-4 w-4" />
             Back to results
           </Link>
@@ -65,11 +65,11 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
   return (
     <main className="min-h-screen bg-white px-5 py-8 text-ink">
       <nav className="sticky top-0 z-20 mx-auto flex w-full max-w-5xl items-center justify-between border-b border-transparent bg-white/88 py-3 backdrop-blur">
-        <Link href="/" className="font-serif text-3xl text-ink">
+        <Link href="/vera" className="font-serif text-3xl text-ink">
           Vera
         </Link>
         <Link
-          href={`/search?q=${encodeURIComponent(consensus.query)}`}
+          href={`/vera/search?q=${encodeURIComponent(consensus.query)}`}
           className="inline-flex items-center gap-2 text-sm font-medium text-muted transition hover:text-ink"
         >
           <ArrowLeft className="h-4 w-4" />

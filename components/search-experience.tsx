@@ -57,7 +57,7 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
 
     window.setTimeout(() => {
       startTransition(() => {
-        router.push(`/search?q=${encodeURIComponent(nextQuery)}&thinking=1`);
+        router.push(`/vera/search?q=${encodeURIComponent(nextQuery)}&thinking=1`);
         setIsSubmittingSearch(false);
       });
     }, 2000);

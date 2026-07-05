@@ -325,10 +325,10 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
 function SearchResultsNav() {
   return (
     <nav className="mx-auto flex w-full max-w-5xl items-center justify-between search-nav-enter">
-      <Link href="/" className="font-serif text-3xl text-ink">
+      <Link href="/vera" className="font-serif text-3xl text-ink">
         Vera
       </Link>
-      <Link href="/profile" className="text-sm text-muted transition hover:text-ink">
+      <Link href="/vera/profile" className="text-sm text-muted transition hover:text-ink">
         Profile
       </Link>
     </nav>
@@ -609,7 +609,7 @@ function ResultCard({
   searchId: string;
   featured?: boolean;
 }) {
-  const resultHref = `/result/${buildResultSlug(item.name, searchId, item.id)}` as Route;
+  const resultHref = `/vera/result/${buildResultSlug(item.name, searchId, item.id)}` as Route;
 
   useEffect(() => {
     console.log("RESULT_CARD_RENDER_NO_FETCH", { searchId, resultId: item.id });

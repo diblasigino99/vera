@@ -1,22 +1,26 @@
-import { ResultsView } from "@/components/results-view";
+import { redirect } from "next/navigation";
+import type { Route } from "next";
 
-type SearchPageProps = {
+type LegacySearchPageProps = {
   searchParams: Promise<{
     q?: string;
     thinking?: string;
   }>;
 };
 
-export default async function SearchPage({ searchParams }: SearchPageProps) {
+export default async function LegacySearchPage({ searchParams }: LegacySearchPageProps) {
   const params = await searchParams;
-  const query = typeof params.q === "string" ? params.q.trim() : "";
-  const showThinking = params.thinking === "1";
+  const nextParams = new URLSearchParams();
 
-  console.log("SEARCH_PAGE_RENDER", { query, showThinking });
+  if (typeof params.q === "string" && params.q.trim()) {
+    nextParams.set("q", params.q);
+  }
 
-  return (
-    <main className="min-h-screen bg-white px-5 py-8">
-      <ResultsView initialResult={null} query={query} showThinking={showThinking} />
-    </main>
-  );
+  if (typeof params.thinking === "string" && params.thinking) {
+    nextParams.set("thinking", params.thinking);
+  }
+
+  const queryString = nextParams.toString();
+
+  redirect(`/vera/search${queryString ? `?${queryString}` : ""}` as Route);
 }

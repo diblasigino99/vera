@@ -42,7 +42,7 @@ export function ProfileView() {
 
   function clearSession() {
     window.localStorage.removeItem("vera_anonymous_id");
-    window.location.href = "/";
+    window.location.href = "/vera";
   }
 
   return (
@@ -125,7 +125,7 @@ function SavedSearchRow({ search }: { search: ProfileSnapshot["savedSearches"][n
   return (
     <Link
       className="group block border-b border-[#ECECF0] py-5 transition hover:border-[#D8D9DE]"
-      href={`/search?q=${encodeURIComponent(search.query)}`}
+      href={`/vera/search?q=${encodeURIComponent(search.query)}`}
     >
       <p className="text-xl font-semibold tracking-[-0.01em] text-[#111114] group-hover:text-black">{search.query}</p>
       <p className="mt-2 line-clamp-2 leading-7 text-[#62626A]">{search.headline}</p>
@@ -137,7 +137,7 @@ function SavedResultRow({ result }: { result: ProfileSnapshot["savedResults"][nu
   return (
     <Link
       className="group block border-b border-[#ECECF0] py-5 transition hover:border-[#D8D9DE]"
-      href={`/result/${buildResultSlug(result.name, result.searchId, result.resultId)}` as Route}
+      href={`/vera/result/${buildResultSlug(result.name, result.searchId, result.resultId)}` as Route}
       prefetch={false}
     >
       <p className="text-xl font-semibold tracking-[-0.01em] text-[#111114] group-hover:text-black">{result.name}</p>
