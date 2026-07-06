@@ -187,7 +187,7 @@ export function buildProductFallbackConsensus(
   const evidenceType = inferQueryEvidenceType(query);
   const category = productCategoryForQuery(query);
 
-  if (evidenceType !== "product_recommendation" || !category || sources.length < 3) {
+  if (evidenceType !== "product_recommendation" || isAutomotiveAvoidanceQuery(query) || !category || sources.length < 3) {
     return null;
   }
 
@@ -4323,6 +4323,26 @@ function productLeaderSignal(source: VeraSource, leader: ProductLeader, evidence
 function productCategoryForQuery(query: string): ProductCategoryPrior | null {
   const normalized = normalizeQuery(query);
 
+  if (isAutomotiveQuery(query)) {
+    if (/\b(minivan|minivans|family van|family vans)\b/.test(normalized)) {
+      return productCategory("minivan", ["Toyota Sienna", "Honda Odyssey", "Kia Carnival", "Chrysler Pacifica"]);
+    }
+
+    if (/\b(compact suv|small suv|family of 4|family car|family vehicle|family vehicles|family cars)\b/.test(normalized)) {
+      return productCategory("family vehicle", ["Compact SUV", "Midsize SUV", "Minivan", "Toyota RAV4", "Honda CR-V", "Subaru Forester"]);
+    }
+
+    if (/\b(midsize suv|mid size suv|three row suv|3 row suv)\b/.test(normalized)) {
+      return productCategory("midsize suv", ["Toyota Highlander", "Kia Telluride", "Hyundai Palisade", "Honda Pilot", "Mazda CX-90"]);
+    }
+
+    if (/\b(midsize sedan|mid size sedan|sedan|sedans)\b/.test(normalized)) {
+      return productCategory("midsize sedan", ["Toyota Camry", "Honda Accord", "Hyundai Sonata", "Kia K5", "Subaru Legacy"]);
+    }
+
+    return productCategory("car", ["Compact SUV", "Midsize SUV", "Minivan", "Toyota RAV4", "Honda CR-V", "Toyota Camry"]);
+  }
+
   if (/\b(board game|board games|tabletop game|tabletop games|family game|party game|strategy game)\b/.test(normalized)) {
     return productCategory("board games", ["Catan", "Ticket to Ride", "Codenames", "Pandemic", "Azul", "Wingspan"]);
   }
@@ -4410,6 +4430,16 @@ function productCategoryForQuery(query: string): ProductCategoryPrior | null {
   return null;
 }
 
+function isAutomotiveQuery(query: string) {
+  return /\b(car|cars|vehicle|vehicles|sedan|sedans|midsize sedan|mid size sedan|compact suv|midsize suv|mid size suv|suv|suvs|minivan|minivans|family car|family vehicle|family of 4|family of four)\b/.test(
+    normalizeQuery(query)
+  );
+}
+
+function isAutomotiveAvoidanceQuery(query: string) {
+  return isAutomotiveQuery(query) && /\b(worst|avoid|least reliable|unreliable|problems?|bad|lemons?|do not buy|don t buy)\b/.test(normalizeQuery(query));
+}
+
 function productCategory(key: string, labels: string[]): ProductCategoryPrior {
   return {
     key,
@@ -4454,6 +4484,26 @@ function productLeaderAliases(label: string) {
   if (normalized === "levoit core") aliases.add("levoit");
   if (normalized === "logitech mx master 3s") ["mx master 3s", "mx master"].forEach((alias) => aliases.add(alias));
   if (normalized === "samsung t7 shield") ["t7 shield", "samsung t7"].forEach((alias) => aliases.add(alias));
+  if (normalized === "compact suv") ["compact suvs", "small suv", "small suvs"].forEach((alias) => aliases.add(alias));
+  if (normalized === "midsize suv") ["midsize suvs", "mid size suv", "mid size suvs", "three row suv", "3 row suv"].forEach((alias) => aliases.add(alias));
+  if (normalized === "minivan") ["minivans", "family van", "family vans"].forEach((alias) => aliases.add(alias));
+  if (normalized === "toyota rav4") ["rav4", "toyota rav 4"].forEach((alias) => aliases.add(alias));
+  if (normalized === "honda cr-v") ["honda crv", "cr-v", "crv"].forEach((alias) => aliases.add(alias));
+  if (normalized === "subaru forester") aliases.add("forester");
+  if (normalized === "toyota highlander") aliases.add("highlander");
+  if (normalized === "kia telluride") aliases.add("telluride");
+  if (normalized === "hyundai palisade") aliases.add("palisade");
+  if (normalized === "honda pilot") aliases.add("pilot");
+  if (normalized === "mazda cx-90") ["mazda cx90", "cx-90", "cx90"].forEach((alias) => aliases.add(alias));
+  if (normalized === "toyota sienna") aliases.add("sienna");
+  if (normalized === "honda odyssey") aliases.add("odyssey");
+  if (normalized === "kia carnival") aliases.add("carnival");
+  if (normalized === "chrysler pacifica") aliases.add("pacifica");
+  if (normalized === "toyota camry") aliases.add("camry");
+  if (normalized === "honda accord") aliases.add("accord");
+  if (normalized === "hyundai sonata") aliases.add("sonata");
+  if (normalized === "kia k5") aliases.add("k5");
+  if (normalized === "subaru legacy") aliases.add("legacy");
 
   return Array.from(aliases);
 }
@@ -4470,7 +4520,7 @@ function productSourceAuthorityFromText(text: string): "high" | "medium" | "low"
   const normalized = normalizeQuery(text);
 
   if (
-    /\b(rtings|rtings.com|wirecutter|nytimes|pcmag|techradar|tom s guide|consumer reports|the verge|notebookcheck|soundguys|outdoorgearlab|babygearlab|cnet|reviewed|what hi-fi|what hifi|dpreview|camera labs)\b/.test(
+    /\b(rtings|rtings.com|wirecutter|nytimes|pcmag|techradar|tom s guide|consumer reports|the verge|notebookcheck|soundguys|outdoorgearlab|babygearlab|cnet|reviewed|what hi-fi|what hifi|dpreview|camera labs|car and driver|caranddriver|edmunds|kelley blue book|kbb|motortrend|motor trend|cars com|cars.com|u s news cars|u.s. news cars|us news cars|iihs|nhtsa|j d power|j.d. power|jd power|consumer guide automotive)\b/.test(
       normalized
     )
   ) {
@@ -4508,7 +4558,7 @@ function isGenericProductContender(query: string, name: string) {
   }
 
   if (
-    /^(product|best product|headphones|wireless headphones|laptop|notebook|router|keyboard|mouse|office chair|chair|running shoes|shoes|espresso machine|robot vacuum|vacuum|camera|phone|smartphone|monitor|television|tv|backpack|brand|unknown|none|lost|house|the expanse|board games?|tabletop games?|games?|fun games?|party games?|family games?)$/i.test(
+    /^(product|best product|headphones|wireless headphones|laptop|notebook|router|keyboard|mouse|office chair|chair|running shoes|shoes|espresso machine|robot vacuum|vacuum|camera|phone|smartphone|monitor|television|tv|backpack|brand|unknown|none|lost|house|the expanse|board games?|tabletop games?|games?|fun games?|party games?|family games?|cars?|vehicles?|sedans?|suvs?|family cars?|family vehicles?)$/i.test(
       normalized
     )
   ) {
@@ -4868,7 +4918,12 @@ function categoryFromText(text: string): VeraEntityCategory | null {
     return "restaurant";
   }
   if (/\b(crm|software|saas|platform|app|ai coding assistant|coding assistant)\b/.test(text)) return "software";
-  if (/\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress|board game|board games|tabletop game|tabletop games)\b/.test(text)) return "product";
+  if (
+    /\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress|board game|board games|tabletop game|tabletop games|car|cars|vehicle|vehicles|sedan|sedans|suv|suvs|minivan|minivans|rav4|cr-v|crv|camry|accord|sienna|odyssey|telluride|palisade|highlander|forester)\b/.test(
+      text
+    )
+  )
+    return "product";
   if (/\b(shop|store|retail|boutique|mall|pharmacy|hardware)\b/.test(text)) return "retail";
   if (/\b(museum|park|beach|theater|theatre|attraction|landmark)\b/.test(text)) return "attraction";
   if (/\b(service|agency|consultant|contractor)\b/.test(text)) return "service";
@@ -4958,8 +5013,8 @@ function buildConsensus(
     generated_at: createdAt,
     model: openAIModel,
     mode,
-    headline: consensusHeadline(mode, contenders, intent, structuredConsensus.queryEvidenceType),
-    explanation: consensusExplanation(mode, contenders, intent, structuredConsensus.queryEvidenceType),
+    headline: consensusHeadline(mode, contenders, intent, structuredConsensus.queryEvidenceType, query),
+    explanation: consensusExplanation(mode, contenders, intent, structuredConsensus.queryEvidenceType, query),
     intent,
     results: contenders.map((contender, index) => buildResult(contender, structuredConsensus, sources, index)),
     sources,
@@ -5161,6 +5216,10 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
     return classifyLocalConsensus(contenders);
   }
 
+  if (evidenceType === "product_recommendation" && isAutomotiveAvoidanceQuery(query)) {
+    return "no_reliable_consensus";
+  }
+
   const totalPositiveMentions = contenders.reduce((total, contender) => total + contender.positiveMentionCount, 0);
   const positiveSourceCount = new Set(contenders.flatMap((contender) => (contender.positiveMentionCount > 0 ? contender.sourceUrls : []))).size;
   const top = contenders[0];
@@ -5170,10 +5229,21 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
     top.sourceCount >= classificationThresholds.minimumTopSourceCount &&
     top.netWeightedScore >= 12;
   const hasMatureCategoryEvidence = Boolean(top) && matureCategoryEvidenceSupportsConsensus(top, contenders, evidenceType, query, positiveSourceCount);
+  const hasAutomotiveCategoryLevelEvidence =
+    evidenceType === "product_recommendation" &&
+    isAutomotiveQuery(query) &&
+    !isAutomotiveAvoidanceQuery(query) &&
+    Boolean(top) &&
+    contenders.length >= 2 &&
+    totalPositiveMentions >= classificationThresholds.minimumTotalPositiveMentions &&
+    positiveSourceCount >= 2 &&
+    top.sourceCount >= 2 &&
+    top.sourceQualityScore >= 2.4;
 
   if (
     !hasDominantPlatformEvidence &&
     !hasMatureCategoryEvidence &&
+    !hasAutomotiveCategoryLevelEvidence &&
     (totalPositiveMentions < classificationThresholds.minimumTotalPositiveMentions ||
       positiveSourceCount < classificationThresholds.minimumPositiveSourceCount)
   ) {
@@ -5188,6 +5258,7 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
 
   const topHasEnoughEvidence =
     hasMatureCategoryEvidence ||
+    hasAutomotiveCategoryLevelEvidence ||
     (top.positiveMentionCount >= classificationThresholds.minimumTopPositiveMentions && top.sourceCount >= classificationThresholds.minimumTopSourceCount);
 
   if (!topHasEnoughEvidence) {
@@ -5421,7 +5492,7 @@ function consensusScore(contender: ContenderMetrics) {
   return Math.max(1, Math.min(95, Math.round(raw)));
 }
 
-function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], intent: ConsensusResponse["intent"], evidenceType?: QueryEvidenceType) {
+function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], intent: ConsensusResponse["intent"], evidenceType?: QueryEvidenceType, query = "") {
   const winner = contenders[0];
 
   if (evidenceType === "local_recommendation" && mode === "no_reliable_consensus") {
@@ -5430,6 +5501,10 @@ function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], 
 
   if (evidenceType === "local_recommendation" && mode === "split_consensus") {
     return `Top 5 local consensus for ${decisionSubject(intent)}.`;
+  }
+
+  if (evidenceType === "product_recommendation" && mode === "no_reliable_consensus" && isAutomotiveAvoidanceQuery(query)) {
+    return "No reliable avoidance consensus found.";
   }
 
   if (mode === "clear_consensus") {
@@ -5451,7 +5526,7 @@ function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], 
   return "No reliable consensus.";
 }
 
-function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[], intent: ConsensusResponse["intent"], evidenceType?: QueryEvidenceType) {
+function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[], intent: ConsensusResponse["intent"], evidenceType?: QueryEvidenceType, query = "") {
   const winner = contenders[0];
   const second = contenders[1];
   const criteria = intent.optimizeFor.slice(0, 4);
@@ -5462,6 +5537,10 @@ function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[
 
   if (evidenceType === "local_recommendation" && mode === "split_consensus") {
     return "Several local businesses have credible support. Vera ranks the top options by source support, review-platform evidence, local coverage, and community mentions without forcing a single winner.";
+  }
+
+  if (evidenceType === "product_recommendation" && mode === "no_reliable_consensus" && isAutomotiveAvoidanceQuery(query)) {
+    return "Vera found automotive sources, but not enough consistent model-specific avoidance evidence to say which vehicle is most widely criticized.";
   }
 
   if (mode === "clear_consensus") {
@@ -5655,7 +5734,22 @@ function inferSourceType(source: VeraSource): VeraSourceType {
     value.includes("outdoorgearlab") ||
     value.includes("babygearlab") ||
     value.includes("cnet") ||
-    value.includes("dpreview")
+    value.includes("dpreview") ||
+    value.includes("car and driver") ||
+    value.includes("caranddriver") ||
+    value.includes("edmunds") ||
+    value.includes("kelley blue book") ||
+    value.includes("kbb") ||
+    value.includes("motortrend") ||
+    value.includes("motor trend") ||
+    value.includes("cars.com") ||
+    value.includes("cars com") ||
+    value.includes("us news cars") ||
+    value.includes("u.s. news cars") ||
+    value.includes("iihs") ||
+    value.includes("nhtsa") ||
+    value.includes("j.d. power") ||
+    value.includes("jd power")
   ) {
     return "professional_review";
   }
@@ -5764,7 +5858,11 @@ function productAliasCategories() {
     productCategory("office chair", ["Herman Miller Aeron", "Steelcase Leap", "Steelcase Gesture", "Haworth Fern"]),
     productCategory("air purifier", ["Coway Airmega AP-1512HH", "Blueair Blue Pure", "Levoit Core"]),
     productCategory("mouse", ["Logitech MX Master 3S", "Razer Basilisk V3", "Logitech G Pro X Superlight"]),
-    productCategory("external ssd", ["Samsung T7 Shield", "SanDisk Extreme Portable SSD", "Crucial X9 Pro"])
+    productCategory("external ssd", ["Samsung T7 Shield", "SanDisk Extreme Portable SSD", "Crucial X9 Pro"]),
+    productCategory("family vehicle", ["Compact SUV", "Midsize SUV", "Minivan", "Toyota RAV4", "Honda CR-V", "Subaru Forester"]),
+    productCategory("midsize suv", ["Toyota Highlander", "Kia Telluride", "Hyundai Palisade", "Honda Pilot", "Mazda CX-90"]),
+    productCategory("minivan", ["Toyota Sienna", "Honda Odyssey", "Kia Carnival", "Chrysler Pacifica"]),
+    productCategory("midsize sedan", ["Toyota Camry", "Honda Accord", "Hyundai Sonata", "Kia K5", "Subaru Legacy"])
   ];
 }
 
