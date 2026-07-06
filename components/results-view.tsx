@@ -619,7 +619,9 @@ function ResultCard({
     <article
       className={cn(
         "rounded-[1.75rem] border border-[#EEEEF2] bg-white transition duration-300 hover:border-[#DCDDDF]",
-        featured ? "p-8 shadow-[0_18px_60px_rgba(17,17,20,0.045)] sm:p-10" : "p-6 shadow-[0_8px_28px_rgba(17,17,20,0.022)] sm:p-7"
+        featured
+          ? "p-8 shadow-[0_18px_54px_rgba(17,17,20,0.055),0_1px_2px_rgba(17,17,20,0.035)] sm:p-10"
+          : "p-6 shadow-[0_12px_34px_rgba(17,17,20,0.035),0_1px_2px_rgba(17,17,20,0.028)] sm:p-7"
       )}
     >
       {featured ? (
@@ -629,6 +631,9 @@ function ResultCard({
         <h2 className={cn("font-semibold tracking-[-0.02em] text-[#111114]", featured ? "text-4xl sm:text-5xl" : "text-2xl sm:text-3xl")}>
           {item.name}
         </h2>
+        {item.verifiedAddress ? (
+          <p className={cn("mt-2 leading-6 text-[#8A8A92]", featured ? "text-base" : "text-sm")}>{item.verifiedAddress}</p>
+        ) : null}
         <p className={cn("mt-4 max-w-2xl leading-8 text-[#4B4B52]", featured ? "text-lg" : "text-base")}>{item.summary}</p>
       </div>
 

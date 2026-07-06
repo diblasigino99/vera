@@ -214,8 +214,15 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
     const shouldCanonicalize =
       canonicalName && canonicalName !== signal.contenderName && (validation.status === "verified" || validation.nameConfidence >= 0.65);
 
+    const verifiedSignal = validation.formattedAddress
+      ? {
+          ...signal,
+          verifiedAddress: validation.formattedAddress
+        }
+      : signal;
+
     if (!shouldCanonicalize) {
-      return [signal];
+      return [verifiedSignal];
     }
 
     canonicalizedSignals += 1;
@@ -228,7 +235,7 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
 
     return [
       {
-        ...signal,
+        ...verifiedSignal,
         contenderName: canonicalName,
         extractedReason: `${signal.extractedReason}; Places verified canonical business name`,
         themes: Array.from(new Set([...signal.themes, "verified business"]))

@@ -4984,6 +4984,7 @@ function buildResult(
     .map((signal) => signal.positiveMention)
     .filter((item): item is string => Boolean(item))
     .slice(0, 5);
+  const verifiedAddress = structuredConsensus.queryEvidenceType === "local_recommendation" ? firstVerifiedAddress(contenderSignals) : undefined;
 
   return {
     id: `${slugify(contender.name)}-${index + 1}`,
@@ -4995,8 +4996,13 @@ function buildResult(
     downsides,
     evidence,
     sources: resultSources.length ? resultSources : sources.slice(0, 3),
-    metrics: contender
+    metrics: contender,
+    ...(verifiedAddress ? { verifiedAddress } : {})
   };
+}
+
+function firstVerifiedAddress(signals: SourceSignal[]) {
+  return signals.map((signal) => signal.verifiedAddress?.trim()).find((address): address is string => Boolean(address));
 }
 
 export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): ConsensusResponse {

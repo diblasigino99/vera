@@ -11,6 +11,7 @@ import { cacheConsensus, getCachedConsensus, getCacheVersion, getStaleCachedCons
 import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
+import { recordSearchEvent } from "@/lib/server/search-events";
 import { canonicalizeQuery, inferQueryEvidenceType, normalizeQuery } from "@/lib/utils";
 import type { ConsensusResponse } from "@/lib/types";
 import type { SearchPublicWebTimings } from "@/lib/server/search";
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
 
   const normalizedQuery = normalizeQuery(body.data.query);
   const canonicalQuery = canonicalizeQuery(body.data.query);
+  const evidenceType = inferQueryEvidenceType(body.data.query);
   console.log("ORIGINAL_QUERY", body.data.query);
   console.log("NORMALIZED_QUERY", normalizedQuery);
   console.log("CANONICAL_QUERY", canonicalQuery);
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
 
     try {
       await cacheConsensus(fakeResult, externalCallCounts);
-  } catch (error) {
+    } catch (error) {
       console.log("[vera:search] cache test write failed", {
         normalizedQuery,
         error: error instanceof Error ? error.message : String(error)
@@ -68,6 +70,17 @@ export async function POST(request: Request) {
       totalElapsedMs: Date.now() - requestStartedAt
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    await recordSearchEvent({
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      searchId: fakeResult.id,
+      consensusMode: fakeResult.mode,
+      cacheHit: true,
+      cacheHitType: "cache_test",
+      cacheVersion: getCacheVersion(),
+      totalMs: Date.now() - requestStartedAt,
+      cacheMs: 0,
+      cacheWriteMs: Date.now() - cacheWriteStartedAt
+    });
     return NextResponse.json(fakeResult);
   }
 
@@ -105,15 +118,34 @@ export async function POST(request: Request) {
         externalCallCounts
       });
       console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+      await recordSearchEvent({
+        ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+        searchId: cached.id,
+        consensusMode: cached.mode,
+        cacheHit: true,
+        cacheHitType: "hit",
+        cacheVersion: cached.cacheVersion ?? getCacheVersion(),
+        totalMs: Date.now() - requestStartedAt,
+        cacheMs: cacheElapsedMs
+      });
       return NextResponse.json(cached);
     }
-    } catch (error) {
+  } catch (error) {
     console.error("[vera:search] cache lookup aborted live search", {
       normalizedQuery,
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : null
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    await recordSearchEvent({
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      cacheHit: false,
+      cacheHitType: "cache_lookup_error",
+      cacheVersion: getCacheVersion(),
+      totalMs: Date.now() - requestStartedAt,
+      cacheMs: cacheElapsedMs,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return NextResponse.json({ error: "Vera couldn't complete this search. Please try again." }, { status: 500 });
   }
 
@@ -130,6 +162,15 @@ export async function POST(request: Request) {
       abortedBeforeLiveSearch: true
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    await recordSearchEvent({
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      cacheHit: false,
+      cacheHitType: "setup_missing",
+      cacheVersion: getCacheVersion(),
+      totalMs: Date.now() - requestStartedAt,
+      cacheMs: cacheElapsedMs,
+      error: liveSearchSetupMessage(setup.missing)
+    });
     return NextResponse.json(
       {
         error: liveSearchSetupMessage(setup.missing),
@@ -157,8 +198,6 @@ export async function POST(request: Request) {
     const openAIStartedAt = Date.now();
     let consensus: ConsensusResponse;
     let openAITimedOut = false;
-    const evidenceType = inferQueryEvidenceType(body.data.query);
-
     try {
       consensus = await analyzeConsensus(body.data.query, sources, externalCallCounts);
     } catch (error) {
@@ -274,6 +313,18 @@ export async function POST(request: Request) {
           cacheVersion: stale.cacheVersion ?? null
         });
         console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+        await recordSearchEvent({
+          ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+          searchId: stale.id,
+          consensusMode: stale.mode,
+          cacheHit: true,
+          cacheHitType: "stale_empty_local",
+          cacheVersion: stale.cacheVersion ?? null,
+          totalMs: Date.now() - requestStartedAt,
+          cacheMs: cacheElapsedMs,
+          tavilyMs: tavilyElapsedMs,
+          openAiMs: openAIElapsedMs
+        });
         return NextResponse.json({
           ...stale,
           explanation: stale.explanation || "Vera found prior local evidence while the latest search could not form a cleaner consensus."
@@ -346,6 +397,19 @@ export async function POST(request: Request) {
       externalCallCounts
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    await recordSearchEvent({
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      searchId: consensus.id,
+      consensusMode: consensus.mode,
+      cacheHit: false,
+      cacheHitType: "miss",
+      cacheVersion: consensus.cacheVersion ?? getCacheVersion(),
+      totalMs: Date.now() - requestStartedAt,
+      cacheMs: cacheElapsedMs,
+      tavilyMs: tavilyElapsedMs,
+      openAiMs: openAIElapsedMs,
+      cacheWriteMs: cacheWriteElapsedMs
+    });
     return NextResponse.json(consensus);
   } catch (error) {
     if (inferQueryEvidenceType(body.data.query) === "local_recommendation" && isTransientLiveSearchError(error)) {
@@ -359,6 +423,17 @@ export async function POST(request: Request) {
           cacheVersion: stale.cacheVersion ?? null
         });
         console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+        await recordSearchEvent({
+          ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+          searchId: stale.id,
+          consensusMode: stale.mode,
+          cacheHit: true,
+          cacheHitType: "stale_error_fallback",
+          cacheVersion: stale.cacheVersion ?? null,
+          totalMs: Date.now() - requestStartedAt,
+          cacheMs: cacheElapsedMs,
+          error: error instanceof Error ? error.message : String(error)
+        });
         return NextResponse.json({
           ...stale,
           explanation: stale.explanation || "Vera found prior local evidence while the latest search was temporarily unavailable."
@@ -382,6 +457,15 @@ export async function POST(request: Request) {
       stack: error instanceof Error ? error.stack : null
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    await recordSearchEvent({
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      cacheHit: false,
+      cacheHitType: "error",
+      cacheVersion: getCacheVersion(),
+      totalMs: Date.now() - requestStartedAt,
+      cacheMs: cacheElapsedMs,
+      error: error instanceof Error ? error.message : String(error)
+    });
     return NextResponse.json({ error: "Vera couldn't complete this search. Please try again." }, { status: 500 });
   }
 }
@@ -613,4 +697,24 @@ function logSearchCostAudit({
     },
     error: error ?? null
   });
+}
+
+function baseSearchEvent(
+  originalQuery: string,
+  normalizedQuery: string,
+  canonicalQuery: string,
+  evidenceType: ReturnType<typeof inferQueryEvidenceType>,
+  externalCallCounts: ReturnType<typeof createExternalCallCounts>
+) {
+  return {
+    originalQuery,
+    normalizedQuery,
+    canonicalQuery,
+    evidenceType,
+    tavilyCalls: externalCallCounts.tavilyCalls,
+    openAiCalls: externalCallCounts.openAiCalls,
+    placesApiCalls: externalCallCounts.placesApiCalls,
+    placesCacheHits: externalCallCounts.placesCacheHits,
+    placesValidationAttempts: externalCallCounts.placesValidationAttempts
+  };
 }

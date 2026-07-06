@@ -64,6 +64,7 @@ export type SourceSignal = {
   negativeMention?: string;
   extractedReason: string;
   themes: string[];
+  verifiedAddress?: string;
 };
 
 export type ThemeMetric = {
@@ -179,6 +180,7 @@ export type ConsensusResult = {
   evidence: string[];
   sources: VeraSource[];
   metrics?: ContenderMetrics;
+  verifiedAddress?: string;
 };
 
 export type ConsensusMode =
