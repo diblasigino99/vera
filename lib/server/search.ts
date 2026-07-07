@@ -74,7 +74,7 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
   const settledResponses = await Promise.allSettled(
     variantsToFetch.map((variant) =>
       searchVariantWithRetry(variant, key, callCounts, {
-        retry: evidenceType !== "local_recommendation"
+        retry: false
       })
     )
   );
