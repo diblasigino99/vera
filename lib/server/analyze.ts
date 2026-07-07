@@ -2241,7 +2241,9 @@ function localSpecificIntentText(contenderName: string, signals: SourceSignal[])
           signal.extractedReason,
           signal.positiveMention ?? "",
           signal.negativeMention ?? "",
-          signal.themes.join(" ")
+          signal.themes.join(" "),
+          signal.verifiedAddress ?? "",
+          signal.placesTypes?.join(" ") ?? ""
         ].join(" ")
       )
     ].join(" ")
@@ -2253,7 +2255,16 @@ function localCandidateEvidenceText(contenderName: string, signals: SourceSignal
     [
       contenderName,
       ...signals.map((signal) =>
-        [signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? "", signal.themes.join(" ")].join(" ")
+        [
+          signal.sourceTitle,
+          signal.domain,
+          signal.extractedReason,
+          signal.positiveMention ?? "",
+          signal.negativeMention ?? "",
+          signal.themes.join(" "),
+          signal.verifiedAddress ?? "",
+          signal.placesTypes?.join(" ") ?? ""
+        ].join(" ")
       )
     ].join(" ")
   );
@@ -2309,7 +2320,9 @@ function localCandidatePassesDiscovery(query: string, contender: ContenderMetric
     reason: rejectionReason,
     sourceCount: contender.sourceCount,
     positiveMentionCount: contender.positiveMentionCount,
-    localRanking: contender.localRanking
+    localRanking: contender.localRanking,
+    verifiedAddresses: signals.map((signal) => signal.verifiedAddress).filter(Boolean),
+    placesVerified: signals.some((signal) => signal.placesVerified)
   });
 
   return false;
@@ -2445,7 +2458,9 @@ function localCandidateHasLocationEvidence(query: string, contenderName: string,
   if (!terms.length) return true;
 
   return signals.some((signal) => {
-    const text = normalizeQuery([contenderName, signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? ""].join(" "));
+    const text = normalizeQuery(
+      [contenderName, signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? "", signal.verifiedAddress ?? ""].join(" ")
+    );
     return terms.some((term) => text.includes(term));
   });
 }
@@ -2476,6 +2491,20 @@ function localRequestedLocationTerms(query: string) {
   }
   if (/\bwilliamsburg\b/.test(normalized)) add("williamsburg");
   if (/\bbrooklyn\b/.test(normalized)) add("brooklyn");
+  if (/\bqueens\b/.test(normalized)) {
+    add("queens");
+    add("astoria");
+    add("flushing");
+    add("forest hills");
+    add("long island city");
+    add("lic");
+    add("sunnyside");
+    add("jackson heights");
+    add("jamaica");
+    add("ridgewood");
+    add("elmhurst");
+    add("woodside");
+  }
   if (/\bmanhattan\b/.test(normalized)) add("manhattan");
   if (/\bnyc|new york city\b/.test(normalized)) add("new york");
 
@@ -2502,12 +2531,27 @@ function localCandidateHasCategoryEvidence(query: string, contenderName: string,
     return localSpecificIntentEvidence(query, contenderName, signals).matched;
   }
 
+  if (signals.some((signal) => signal.placesVerified && (signal.placesCategoryConfidence ?? 0) >= 0.2)) {
+    return true;
+  }
+
   if (category === "local_business") return true;
 
   return signals.some((signal) =>
     localCandidateHasCategorySignal(
       category,
-      normalizeQuery([contenderName, signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? ""].join(" "))
+      normalizeQuery(
+        [
+          contenderName,
+          signal.sourceTitle,
+          signal.domain,
+          signal.extractedReason,
+          signal.positiveMention ?? "",
+          signal.negativeMention ?? "",
+          signal.verifiedAddress ?? "",
+          signal.placesTypes?.join(" ") ?? ""
+        ].join(" ")
+      )
     )
   );
 }

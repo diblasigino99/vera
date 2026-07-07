@@ -65,6 +65,10 @@ export type SourceSignal = {
   extractedReason: string;
   themes: string[];
   verifiedAddress?: string;
+  placesTypes?: string[];
+  placesCategoryConfidence?: number;
+  placesLocationConfidence?: number;
+  placesVerified?: boolean;
 };
 
 export type ThemeMetric = {

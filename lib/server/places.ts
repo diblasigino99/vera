@@ -198,7 +198,7 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
     const normalizedName = placesCandidateKey(signal.contenderName);
     const validation = validations.get(normalizedName);
 
-    if (!validation) return [];
+    if (!validation) return [signal];
 
     if (validation.status !== "verified") {
       rejectedSignals += 1;
@@ -214,12 +214,14 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
     const shouldCanonicalize =
       canonicalName && canonicalName !== signal.contenderName && (validation.status === "verified" || validation.nameConfidence >= 0.65);
 
-    const verifiedSignal = validation.formattedAddress
-      ? {
-          ...signal,
-          verifiedAddress: validation.formattedAddress
-        }
-      : signal;
+    const verifiedSignal = {
+      ...signal,
+      ...(validation.formattedAddress ? { verifiedAddress: validation.formattedAddress } : {}),
+      placesTypes: validation.types ?? [],
+      placesCategoryConfidence: validation.categoryConfidence,
+      placesLocationConfidence: validation.locationConfidence,
+      placesVerified: true
+    };
 
     if (!shouldCanonicalize) {
       return [verifiedSignal];
@@ -334,6 +336,14 @@ function recordPlacesSummary(
 
 async function validateCandidateWithPlaces(query: string, inputName: string, apiKey: string, callCounts?: ExternalCallCounts) {
   const cacheKey = placesCacheKey(query, inputName);
+  const textQuery = placesTextQuery(query, inputName);
+
+  console.log("PLACES_VALIDATION_CANDIDATE", {
+    query,
+    candidate: inputName,
+    textQuery
+  });
+
   const memoryHit = memoryPlacesCache.get(cacheKey);
 
   if (memoryHit && new Date(memoryHit.expiresAt).getTime() > Date.now()) {
@@ -341,6 +351,20 @@ async function validateCandidateWithPlaces(query: string, inputName: string, api
       candidate: inputName,
       cache: "memory",
       status: memoryHit.status
+    });
+    console.log("PLACES_VALIDATION_RESULT", {
+      query,
+      candidate: inputName,
+      textQuery,
+      status: memoryHit.status,
+      canonicalName: memoryHit.canonicalName ?? null,
+      rejectionReason: memoryHit.rejectionReason ?? null,
+      verifiedAddress: memoryHit.formattedAddress ?? null,
+      types: memoryHit.types ?? [],
+      categoryConfidence: memoryHit.categoryConfidence,
+      locationConfidence: memoryHit.locationConfidence,
+      overallConfidence: memoryHit.overallConfidence,
+      cache: "memory"
     });
     if (callCounts) callCounts.placesCacheHits += 1;
     return memoryHit;
@@ -353,6 +377,20 @@ async function validateCandidateWithPlaces(query: string, inputName: string, api
       candidate: inputName,
       cache: "persistent",
       status: cached.status
+    });
+    console.log("PLACES_VALIDATION_RESULT", {
+      query,
+      candidate: inputName,
+      textQuery,
+      status: cached.status,
+      canonicalName: cached.canonicalName ?? null,
+      rejectionReason: cached.rejectionReason ?? null,
+      verifiedAddress: cached.formattedAddress ?? null,
+      types: cached.types ?? [],
+      categoryConfidence: cached.categoryConfidence,
+      locationConfidence: cached.locationConfidence,
+      overallConfidence: cached.overallConfidence,
+      cache: "persistent"
     });
     if (callCounts) callCounts.placesCacheHits += 1;
     return cached;
@@ -428,8 +466,25 @@ async function fetchPlacesValidation(query: string, inputName: string, apiKey: s
       candidate: inputName,
       status: validation.status,
       canonicalName: validation.canonicalName,
+      rejectionReason: validation.rejectionReason ?? null,
+      verifiedAddress: validation.formattedAddress ?? null,
+      categoryConfidence: validation.categoryConfidence,
+      locationConfidence: validation.locationConfidence,
       overallConfidence: validation.overallConfidence,
       durationMs: Date.now() - startedAt
+    });
+    console.log("PLACES_VALIDATION_RESULT", {
+      query,
+      candidate: inputName,
+      textQuery,
+      status: validation.status,
+      canonicalName: validation.canonicalName ?? null,
+      rejectionReason: validation.rejectionReason ?? null,
+      verifiedAddress: validation.formattedAddress ?? null,
+      types: validation.types ?? [],
+      categoryConfidence: validation.categoryConfidence,
+      locationConfidence: validation.locationConfidence,
+      overallConfidence: validation.overallConfidence
     });
 
     return validation;
