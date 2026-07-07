@@ -1156,6 +1156,11 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
       ? dominantFilteredSignals.filter(
           (signal) => !isGenericProductContender(query, signal.contenderName) && !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
         )
+      : queryEvidenceType === "destination_recommendation"
+        ? dominantFilteredSignals.filter(
+            (signal) =>
+              !isGenericDestinationContender(query, signal.contenderName) && !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
+          )
       : queryEvidenceType === "local_recommendation"
         ? dominantFilteredSignals.filter(
             (signal) => !isRejectableLocalSignalName(query, signal.contenderName) && !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
@@ -1200,10 +1205,15 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
   const qualityFilteredContenders =
     queryEvidenceType === "local_recommendation"
       ? contendersBeforeFiltering.filter((contender) => localCandidatePassesDiscovery(query, contender, byName.get(contender.name) ?? []))
+      : queryEvidenceType === "destination_recommendation"
+        ? contendersBeforeFiltering.filter((contender) => !isGenericDestinationContender(query, contender.name))
       : queryEvidenceType === "product_recommendation" && isBroadExploratoryQuery(query)
         ? contendersBeforeFiltering.filter((contender) => !isWeakBroadProductContender(contender, query))
         : contendersBeforeFiltering;
-  const { contenders, removed } = filterContendersByCategory(qualityFilteredContenders, intendedCategory);
+  const { contenders, removed } =
+    queryEvidenceType === "destination_recommendation" || queryEvidenceType === "provider_or_brand_recommendation"
+      ? { contenders: qualityFilteredContenders, removed: [] }
+      : filterContendersByCategory(qualityFilteredContenders, intendedCategory);
   const contenderNames = new Set(contenders.map((contender) => contender.name));
   const filteredSignals = aggregationSignals.filter((signal) => contenderNames.has(signal.contenderName));
   if (queryEvidenceType === "local_recommendation") {
@@ -1500,7 +1510,7 @@ function applyCategoryRelevanceForEvidenceType(
   signals: SourceSignal[],
   evidenceType: QueryEvidenceType
 ): ContenderMetrics {
-  if (evidenceType === "dominant_platform") {
+  if (evidenceType === "dominant_platform" || evidenceType === "destination_recommendation" || evidenceType === "provider_or_brand_recommendation") {
     return metrics;
   }
 
@@ -2385,6 +2395,7 @@ function localCategoryMatchScore(query: string, contenderName: string, signals: 
   if ((category === "restaurant" || category === "bar") && /\b(hotel|inn|motel|residence inn|hilton|marriott)\b/.test(normalizeQuery(contenderName))) score -= 8;
   if (category === "dentist" && /\b(directory|dentists?|recommendation|delta dental|metlife|near me|texas|austin dentist office)\b/.test(evidenceText)) score -= 8;
   if (category === "plumber" && /\b(directory|near me|recommendation|king county)\b/.test(evidenceText)) score -= 4;
+  if (category === "tattoo" && /\b(directory|near me|recommendation)\b/.test(evidenceText)) score -= 4;
 
   return round1(Math.max(-10, Math.min(score, 10)));
 }
@@ -2622,10 +2633,11 @@ function localWrongCategoryPenalty(query: string, contenderName: string, signals
   if (category === "gym" && !has(/\b(gym|fitness|athletic|training|crossfit|yoga|pilates|barre|club|wellness)\b/)) penalty += 7;
   if (category === "dentist" && !has(/\b(dentist|dental|dds|dmd|orthodont|periodont|smile|oral|practice)\b/)) penalty += 9;
   if (category === "plumber" && !has(/\b(plumber|plumbing|rooter|drain|sewer|pipe|leak|water heater|service)\b/)) penalty += 9;
+  if (category === "tattoo" && !has(/\b(tattoo|ink|artist|studio|body art)\b/)) penalty += 8;
   if (category === "golf_course" && !has(/\b(golf|course|club|links|country club)\b/)) penalty += 8;
 
   if (
-    !["dentist", "plumber", "gym"].includes(category) &&
+    !["dentist", "plumber", "gym", "tattoo"].includes(category) &&
     nameHas(/\b(?:dr|dds|dmd|contributor|editor|writer|author|correspondent)\b/)
   ) {
     penalty += 12;
@@ -2682,6 +2694,7 @@ function localCategoryForQuery(query: string) {
   if (/\b(bakery|bakeries)\b/.test(normalized)) return "bakery";
   if (/\b(bar|bars|pub|cocktail|brewery|taproom)\b/.test(normalized)) return "bar";
   if (/\b(gym|gyms|fitness)\b/.test(normalized)) return "gym";
+  if (/\b(tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo)\b/.test(normalized)) return "tattoo";
   if (/\b(dentist|dentists|dental)\b/.test(normalized)) return "dentist";
   if (/\b(plumber|plumbers|plumbing)\b/.test(normalized)) return "plumber";
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
@@ -3453,6 +3466,7 @@ function localCandidateHasCategorySignal(category: string, normalized: string) {
   if (category === "pizza") return /\b(pizza|pizzeria)\b/.test(normalized);
   if (category === "bar") return /\b(bar|pub|cocktail|lounge|tavern|brewery|taproom)\b/.test(normalized);
   if (category === "gym") return /\b(gym|fitness|athletic|club|training)\b/.test(normalized);
+  if (category === "tattoo") return /\b(tattoo|ink|artist|studio|body art)\b/.test(normalized);
   if (category === "dentist") return /\b(dentist|dentistry|dental|dds|orthodontic)\b/.test(normalized);
   if (category === "plumber") return /\b(plumb|plumbing|drain|rooter|pipe)\b/.test(normalized);
   if (category === "attraction") return /\b(museum|park|aquarium|needle|market|garden|zoo|center|theatre|theater|tour|ferry|landmark|national historical)\b/.test(normalized);
@@ -3866,13 +3880,13 @@ function isGenericLocalContender(query: string, name: string) {
 
   if (
     /\b(?:netgear|orbi|eero|tp link|wifi|wi fi|router)\b/.test(generic) &&
-    /\b(?:coffee|cafe|restaurant|bar|hotel|bakery|brunch|pizza|sushi|ramen|taco|gym|dentist|plumber|attraction)\b/.test(normalizeQuery(query))
+    /\b(?:coffee|cafe|restaurant|bar|hotel|bakery|brunch|pizza|sushi|ramen|taco|gym|dentist|plumber|tattoo|attraction)\b/.test(normalizeQuery(query))
   ) {
     return true;
   }
 
   if (
-    /^(best|top|great|recommended|recommendations?|recs|unknown|none|the|read|last|course|courses|what s|gallery|landmark|dining|list|pasta|pizza|sushi|ramen|plumber|plumbers|plumbing|fitness|gyms?|fitness club|travel tourism|travel and tourism|blog|post|features?|hot spots?|watch|entity|category|avenue|street|st|ave|nyc|restaurants?|bars?|bar events|hotels?|dentists?|dentistry|dental|pediatric dentists|places? to stay|places? to eat|food near me|coffee|coffee shops?|coffee in nyc|coffee espresso recs|espresso recs|booking com|tripadvisor|yelp|google maps|google hotels|google hotel search|googles?|opentable|resy|reddit|local guide|reviews?|comments?|replies|threads?|restaurant reviews?|restaurant rating|hotel recommendation|dentist recommendation|romantic restaurants bars|cocktail bars chicago|club chicago|chicago by|the vendry|venues|see more|more maps|visit website|book online|order now|reserve now|make a reservation|advertising|advertisement|skip to content|america'?s top|lakeview east chamber of commerce|(?:the )?\d+\s+best .+|(?:the )?best restaurant|(?:the )?best restaurants|(?:the )?best .+|best coffee cafe|updated \d{4}|short visit|what to visit|bakeries?|bakery|bakeries san francisco ca|golf courses?|public courses?|rankings?|metropolitan golf association|met area course|forum|.+ forum|eater|eater new york|eater san francisco|the infatuation|infatuation|theinfatuation|healthgrades|golf digest'?s?|golfweek'?s?|time out|timeout|time out new yorks?|new york city|new york|new yorks?|manhattan|brooklyn|brooklyn s|williamsburg|williamsburg right now|long island|austin|seattle|los angeles|san francisco|san franciscos?|san francisco s|massapequa|chicago|texas|south side|north side|hells kitchen|what they are saying|brunch|museum|top attractions|must see attractions|sightseeing|mobile park|local listings|answer|podcast|apple podcasts|postcard inc|gym comparison|athletic club|biz|came)$/.test(
+    /^(best|top|great|recommended|recommendations?|recs|unknown|none|the|read|last|course|courses|what s|gallery|landmark|dining|list|pasta|pizza|sushi|ramen|plumber|plumbers|plumbing|tattoo|tattoos|tattoo shops?|tattoo studios?|fitness|gyms?|fitness club|travel tourism|travel and tourism|blog|post|features?|hot spots?|watch|entity|category|avenue|street|st|ave|nyc|restaurants?|bars?|bar events|hotels?|dentists?|dentistry|dental|pediatric dentists|places? to stay|places? to eat|food near me|coffee|coffee shops?|coffee in nyc|coffee espresso recs|espresso recs|booking com|tripadvisor|yelp|google maps|google hotels|google hotel search|googles?|opentable|resy|reddit|local guide|reviews?|comments?|replies|threads?|restaurant reviews?|restaurant rating|hotel recommendation|dentist recommendation|romantic restaurants bars|cocktail bars chicago|club chicago|chicago by|the vendry|venues|see more|more maps|visit website|book online|order now|reserve now|make a reservation|advertising|advertisement|skip to content|america'?s top|lakeview east chamber of commerce|(?:the )?\d+\s+best .+|(?:the )?best restaurant|(?:the )?best restaurants|(?:the )?best .+|best coffee cafe|updated \d{4}|short visit|what to visit|bakeries?|bakery|bakeries san francisco ca|golf courses?|public courses?|rankings?|metropolitan golf association|met area course|forum|.+ forum|eater|eater new york|eater san francisco|the infatuation|infatuation|theinfatuation|healthgrades|golf digest'?s?|golfweek'?s?|time out|timeout|time out new yorks?|new york city|new york|new yorks?|manhattan|brooklyn|brooklyn s|williamsburg|williamsburg right now|long island|austin|seattle|los angeles|san francisco|san franciscos?|san francisco s|massapequa|chicago|texas|south side|north side|hells kitchen|what they are saying|brunch|museum|top attractions|must see attractions|sightseeing|mobile park|local listings|answer|podcast|apple podcasts|postcard inc|gym comparison|athletic club|biz|came)$/.test(
       generic
     )
   ) {
@@ -3883,7 +3897,7 @@ function isGenericLocalContender(query: string, name: string) {
     return true;
   }
 
-  if (/^(gyms?|dentists?|plumbers?|attractions?|restaurants?|hotels?|bars?|coffee shops?|bakeries?|golf courses?) (in|near)\b/.test(generic)) {
+  if (/^(gyms?|dentists?|plumbers?|tattoo shops?|tattoo studios?|attractions?|restaurants?|hotels?|bars?|coffee shops?|bakeries?|golf courses?) (in|near)\b/.test(generic)) {
     return true;
   }
 
@@ -4588,6 +4602,34 @@ function isGenericProductContender(query: string, name: string) {
   return false;
 }
 
+function isGenericDestinationContender(query: string, name: string) {
+  const normalized = normalizeQuery(name.replace(/([a-z])([A-Z])/g, "$1 $2"));
+  const querySubject = normalizeQuery(query)
+    .replace(/\b(best|top|recommended|great|good|where to|places? to|things to|visit|stay|from|near|around|in|the|a|an)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized || normalized.length < 2) return true;
+  if (isArticleOrGuideTitle(normalized)) return true;
+  if (normalized === querySubject) return true;
+  if (
+    /^(?:beach|beaches|neighborhood|neighborhoods|neighbourhood|neighbourhoods|island|islands|weekend trips?|day trips?|destinations?|places?|places to visit|things to do|where to stay|areas? to stay|travel guide|guide|tourism|tripadvisor|reddit|booking|hotels?|best beaches|best islands|best neighborhoods?)$/.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
+  if (/\b(?:where to stay|things to do|places to visit|best beaches|best islands|best neighborhoods|travel guide|itinerary|guide to|top \d+|best \d+)\b/.test(normalized)) {
+    return true;
+  }
+  if (/\b(?:reddit|tripadvisor|booking|expedia|conde nast|travel leisure|time out|timeout|official tourism|tourism board)\b/.test(normalized)) {
+    return true;
+  }
+  if (/[:|]/.test(name) && normalized.split(/\s+/).length >= 4) return true;
+
+  return false;
+}
+
 function dominantPlatformPrior(
   query: string,
   sources: VeraSource[],
@@ -4874,7 +4916,8 @@ function inferIntendedCategory(query: string): VeraEntityCategory {
   if (/\b(hotel|motel|inn|resort|lodging|place to stay)\b/.test(normalized)) return "hotel";
   if (/\b(golf course|golf club|country club|links)\b/.test(normalized)) return "golf_course";
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
-  if (/\b(gym|gyms|fitness|dentist|dentists|dental|plumber|plumbers|plumbing|spa|salon)\b/.test(normalized)) return "service";
+  if (/\b(gym|gyms|fitness|dentist|dentists|dental|plumber|plumbers|plumbing|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|spa|salon)\b/.test(normalized))
+    return "service";
   if (/\b(crm|software|app|platform|tool|ai coding assistant|coding assistant)\b/.test(normalized)) return "software";
   if (/\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress|board game|board games|tabletop game|tabletop games|product)\b/.test(normalized)) return "product";
   if (/\b(service|contractor|agency|consultant)\b/.test(normalized)) return "service";
@@ -4926,7 +4969,7 @@ function categoryFromText(text: string): VeraEntityCategory | null {
     return "product";
   if (/\b(shop|store|retail|boutique|mall|pharmacy|hardware)\b/.test(text)) return "retail";
   if (/\b(museum|park|beach|theater|theatre|attraction|landmark)\b/.test(text)) return "attraction";
-  if (/\b(service|agency|consultant|contractor)\b/.test(text)) return "service";
+  if (/\b(tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo artist|tattoo artists|tattoo|service|agency|consultant|contractor)\b/.test(text)) return "service";
 
   return null;
 }
@@ -5239,11 +5282,29 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
     positiveSourceCount >= 2 &&
     top.sourceCount >= 2 &&
     top.sourceQualityScore >= 2.4;
+  const hasDestinationCategoryLevelEvidence =
+    evidenceType === "destination_recommendation" &&
+    Boolean(top) &&
+    contenders.length >= 2 &&
+    totalPositiveMentions >= classificationThresholds.minimumTotalPositiveMentions &&
+    positiveSourceCount >= 2 &&
+    top.sourceCount >= 2 &&
+    top.sourceQualityScore >= 2.4;
+  const hasProviderBrandCategoryLevelEvidence =
+    evidenceType === "provider_or_brand_recommendation" &&
+    Boolean(top) &&
+    contenders.length >= 2 &&
+    totalPositiveMentions >= classificationThresholds.minimumTotalPositiveMentions &&
+    positiveSourceCount >= 2 &&
+    top.sourceCount >= 2 &&
+    top.sourceQualityScore >= 2.4;
 
   if (
     !hasDominantPlatformEvidence &&
     !hasMatureCategoryEvidence &&
     !hasAutomotiveCategoryLevelEvidence &&
+    !hasDestinationCategoryLevelEvidence &&
+    !hasProviderBrandCategoryLevelEvidence &&
     (totalPositiveMentions < classificationThresholds.minimumTotalPositiveMentions ||
       positiveSourceCount < classificationThresholds.minimumPositiveSourceCount)
   ) {
@@ -5259,6 +5320,8 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
   const topHasEnoughEvidence =
     hasMatureCategoryEvidence ||
     hasAutomotiveCategoryLevelEvidence ||
+    hasDestinationCategoryLevelEvidence ||
+    hasProviderBrandCategoryLevelEvidence ||
     (top.positiveMentionCount >= classificationThresholds.minimumTopPositiveMentions && top.sourceCount >= classificationThresholds.minimumTopSourceCount);
 
   if (!topHasEnoughEvidence) {
@@ -5774,13 +5837,22 @@ function sourceTypeWeight(type: VeraSourceType, evidenceType: QueryEvidenceType 
     return 1;
   }
 
-  if (evidenceType === "product_recommendation" || evidenceType === "software_tool") {
+  if (evidenceType === "product_recommendation" || evidenceType === "software_tool" || evidenceType === "provider_or_brand_recommendation") {
     if (type === "professional_review") return 2.2;
     if (type === "editorial") return 1.8;
     if (type === "review_site") return 1.4;
     if (type === "reddit" || type === "forum") return 1;
     if (type === "local_guide") return 1;
     if (type === "official") return 0.5;
+    return 1;
+  }
+
+  if (evidenceType === "destination_recommendation") {
+    if (type === "editorial" || type === "local_guide") return 2.1;
+    if (type === "review_site") return 1.7;
+    if (type === "professional_review") return 1.8;
+    if (type === "official") return 1.5;
+    if (type === "reddit" || type === "forum") return 1.1;
     return 1;
   }
 

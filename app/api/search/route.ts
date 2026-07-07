@@ -12,7 +12,7 @@ import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
 import { recordSearchEvent } from "@/lib/server/search-events";
-import { canonicalizeQuery, inferQueryEvidenceType, normalizeQuery } from "@/lib/utils";
+import { canonicalizeQuery, inferQueryEvidenceType, inferQueryIntent, normalizeQuery } from "@/lib/utils";
 import type { ConsensusResponse } from "@/lib/types";
 import type { SearchPublicWebTimings } from "@/lib/server/search";
 
@@ -34,9 +34,11 @@ export async function POST(request: Request) {
   const normalizedQuery = normalizeQuery(body.data.query);
   const canonicalQuery = canonicalizeQuery(body.data.query);
   const evidenceType = inferQueryEvidenceType(body.data.query);
+  const queryIntent = inferQueryIntent(body.data.query);
   console.log("ORIGINAL_QUERY", body.data.query);
   console.log("NORMALIZED_QUERY", normalizedQuery);
   console.log("CANONICAL_QUERY", canonicalQuery);
+  console.log("QUERY_INTENT", queryIntent);
   console.log("API_SEARCH_STARTED", {
     originalQuery: body.data.query,
     normalizedQuery,
@@ -82,6 +84,43 @@ export async function POST(request: Request) {
       cacheWriteMs: Date.now() - cacheWriteStartedAt
     });
     return NextResponse.json(fakeResult);
+  }
+
+  if (queryIntent === "negative_avoidance" || queryIntent === "reliability_risk") {
+    const explanation =
+      queryIntent === "reliability_risk"
+        ? "Vera is cautious with reliability-risk searches. It did not find enough reliable cross-source avoidance evidence to rank a worst option confidently."
+        : "Vera is cautious with avoidance searches. It did not find enough reliable cross-source evidence to say what people consistently warn against.";
+    const consensus = buildNoReliableConsensus(body.data.query, [], explanation);
+    const totalElapsedMs = Date.now() - requestStartedAt;
+
+    logSearchCostAudit({
+      query: body.data.query,
+      normalizedQuery,
+      cached: false,
+      cacheHit: false,
+      cacheElapsedMs: 0,
+      totalElapsedMs,
+      externalCallCounts,
+      abortedBeforeLiveSearch: true
+    });
+    console.log("NEGATIVE_INTENT_SAFETY_BYPASS", {
+      query: body.data.query,
+      intent: queryIntent,
+      evidenceType
+    });
+    console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    await recordSearchEvent({
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      searchId: consensus.id,
+      consensusMode: consensus.mode,
+      cacheHit: false,
+      cacheHitType: "negative_intent_safety",
+      cacheVersion: getCacheVersion(),
+      totalMs: totalElapsedMs,
+      cacheMs: 0
+    });
+    return NextResponse.json(consensus);
   }
 
   let cacheElapsedMs = 0;

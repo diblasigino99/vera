@@ -776,7 +776,11 @@ function scoreCategoryMatch(query: string, types: string[], displayName: string)
   if (category === "hotel") return /\b(lodging|hotel|motel|resort|inn)\b/.test(normalizedTypes) ? 1 : 0.05;
   if (category === "coffee") return /\b(cafe|coffee_shop|bakery|restaurant|food|store)\b/.test(normalizedTypes) || /\b(coffee|cafe|espresso|roaster)\b/.test(normalizedName) ? 1 : 0.15;
   if (category === "bar") return /\b(bar|night_club|restaurant|food)\b/.test(normalizedTypes) || /\b(bar|cocktail|pub|lounge|tavern)\b/.test(normalizedName) ? 1 : 0.15;
-  if (category === "service") return /\b(plumber|electrician|roofing_contractor|general_contractor|laundry|car_repair|health|doctor|dentist)\b/.test(normalizedTypes) ? 1 : 0.15;
+  if (category === "service")
+    return /\b(plumber|electrician|roofing_contractor|general_contractor|laundry|car_repair|health|doctor|dentist|tattoo_shop)\b/.test(normalizedTypes) ||
+      /\b(tattoo|ink|body art)\b/.test(normalizedName)
+      ? 1
+      : 0.15;
   if (category === "restaurant") return /\b(restaurant|food|meal_takeaway|meal_delivery|bar|cafe|bakery)\b/.test(normalizedTypes) ? 1 : 0.15;
   return /\b(point_of_interest|establishment|store|food|restaurant|lodging)\b/.test(normalizedTypes) ? 0.8 : 0.45;
 }
@@ -830,6 +834,7 @@ function localCategoryLabelForPlaces(query: string) {
   if (/\b(bar|pub)\b/.test(normalized)) return "bar";
   if (/\b(coffee|cafe)\b/.test(normalized)) return "coffee shop";
   if (/\b(hotel|hotels)\b/.test(normalized)) return "hotel";
+  if (/\b(tattoo shop|tattoo studio|tattoo)\b/.test(normalized)) return "tattoo shop";
   if (/\b(dentist|dental|plumber|plumbing|gym|fitness)\b/.test(normalized)) return normalized.match(/\b(dentist|dental|plumber|plumbing|gym|fitness)\b/)?.[1] ?? "local business";
   if (/\b(restaurant|restaurants)\b/.test(normalized)) return "restaurant";
   return "local business";
@@ -841,7 +846,7 @@ function localCategoryForPlaces(query: string) {
   if (/\bhotel\b/.test(label)) return "hotel";
   if (/\bcoffee|cafe\b/.test(label)) return "coffee";
   if (/\bbar|cocktail|pub\b/.test(label)) return "bar";
-  if (/\bdentist|dental|plumber|plumbing|gym|fitness\b/.test(label)) return "service";
+  if (/\bdentist|dental|plumber|plumbing|gym|fitness|tattoo\b/.test(label)) return "service";
   if (/\brestaurant|italian|sushi|seafood|pizza|brunch|ramen|taco|mexican|steakhouse\b/.test(label)) return "restaurant";
   return "place";
 }

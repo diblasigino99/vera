@@ -146,7 +146,29 @@ export function canonicalizeQuery(query: string) {
   return singularized.join(" ").replace(/\s+/g, " ").trim();
 }
 
-export type QueryEvidenceType = "local_recommendation" | "product_recommendation" | "software_tool" | "dominant_platform";
+export type QueryEvidenceType =
+  | "local_recommendation"
+  | "product_recommendation"
+  | "software_tool"
+  | "dominant_platform"
+  | "destination_recommendation"
+  | "provider_or_brand_recommendation";
+
+export type QueryIntent = "positive_recommendation" | "negative_avoidance" | "reliability_risk";
+
+export function inferQueryIntent(query: string): QueryIntent {
+  const normalized = normalizeLocalQueryIntent(query);
+
+  if (/\b(least reliable|unreliable|reliability problems?|reliability issues?|not reliable)\b/.test(normalized)) {
+    return "reliability_risk";
+  }
+
+  if (/\b(worst|avoid|to avoid|not recommended|stay away from|do not buy|don t buy)\b/.test(normalized)) {
+    return "negative_avoidance";
+  }
+
+  return "positive_recommendation";
+}
 
 export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   const normalized = normalizeLocalQueryIntent(query);
@@ -164,12 +186,28 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   }
 
   if (
-    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|attraction|attractions|museum|spa|salon|place to eat|place to stay|near me)\b/.test(
+    /\b(airline|airlines|hotel chain|hotel chains|bank|banks|wireless carrier|wireless carriers|cell carrier|cell carriers|mobile carrier|mobile carriers|insurance provider|insurance providers|insurance company|insurance companies|laptop brand|laptop brands|phone carrier|phone carriers)\b/.test(
+      normalized
+    )
+  ) {
+    return "provider_or_brand_recommendation";
+  }
+
+  if (
+    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|place to eat|place to stay|near me)\b/.test(
       normalized
     ) ||
     /\b\d{5}(?:-\d{4})?\b/.test(normalized)
   ) {
     return "local_recommendation";
+  }
+
+  if (
+    /\b(beach|beaches|neighborhood|neighborhoods|neighbourhood|neighbourhoods|where to stay|area to stay|areas to stay|island|islands|weekend trip|weekend trips|day trip|day trips|destination|destinations|town|towns|region|regions|places to visit|place to visit|visit|attraction|attractions|landmark|landmarks|things to do)\b/.test(
+      normalized
+    )
+  ) {
+    return "destination_recommendation";
   }
 
   if (/\b(crm|project management|software|saas|app|platform|tool|ai coding assistant|coding assistant)\b/.test(normalized)) {
@@ -198,6 +236,14 @@ export function evidenceStrategyFor(type: QueryEvidenceType) {
 
   if (type === "product_recommendation") {
     return "expert reviews, comparison sites, user reviews, Reddit/forums, and repeated recommendations";
+  }
+
+  if (type === "destination_recommendation") {
+    return "official tourism boards, reputable travel publications, local guides, TripAdvisor, Reddit travel/local communities, and destination-focused editorial recommendations";
+  }
+
+  if (type === "provider_or_brand_recommendation") {
+    return "expert comparisons, customer satisfaction, reliability, service quality, value, industry sources, and supporting user discussion";
   }
 
   return "Google Maps-style business listings, Yelp, TripAdvisor, local guides, Reddit local communities, editorial lists, and booking/review platforms";

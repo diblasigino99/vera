@@ -1,5 +1,5 @@
 import type { ConsensusResponse, ProfileSnapshot } from "@/lib/types";
-import { canonicalizeQuery, normalizeQuery } from "@/lib/utils";
+import { canonicalizeQuery, inferQueryEvidenceType, inferQueryIntent, normalizeQuery } from "@/lib/utils";
 import { getSupabaseAdmin, getSupabaseConfigSnapshot } from "@/lib/server/supabase";
 import { sanitizeCachedLocalConsensus } from "@/lib/server/analyze";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -11,6 +11,9 @@ const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
 const localCacheVersion = 73;
 const localSpecificIntentCacheVersion = 76;
+const destinationRecommendationCacheVersion = 77;
+const negativeIntentCacheVersion = 78;
+const providerOrBrandCacheVersion = 79;
 const canUseLocalJsonFallback = !process.env.VERCEL && process.env.NODE_ENV !== "production";
 
 type LocalCacheEntry = {
@@ -60,8 +63,22 @@ export function getCacheVersion() {
 
 function cacheVersionForQuery(query: string) {
   const normalized = normalizeQuery(query);
+  if (inferQueryIntent(query) !== "positive_recommendation") {
+    return negativeIntentCacheVersion;
+  }
+
+  if (inferQueryEvidenceType(query) === "destination_recommendation") {
+    return destinationRecommendationCacheVersion;
+  }
+
+  if (inferQueryEvidenceType(query) === "provider_or_brand_recommendation") {
+    return providerOrBrandCacheVersion;
+  }
+
   const hasSpecificLocalIntent =
-    /\b(italian|mexican|seafood|sushi|pizza|pizzeria|brunch|coffee|cafe|bar|cocktail|espresso martini|steakhouse|steak house|live music)\b/.test(normalized);
+    /\b(italian|mexican|seafood|sushi|pizza|pizzeria|brunch|coffee|cafe|bar|cocktail|espresso martini|steakhouse|steak house|live music|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo)\b/.test(
+      normalized
+    );
   const hasLocalLocation =
     /\b(?:in|near|around)\b/.test(normalized) ||
     /\b(seaford|huntington|massapequa|williamsburg|brooklyn|manhattan|nyc|new york|long island|seattle|austin)\b/.test(normalized);

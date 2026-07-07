@@ -709,6 +709,18 @@ function buildPrimarySearchQuery(query: string) {
     return `${productQuery} product reviews expert testing best overall rtings wirecutter pcmag techradar toms guide consumer reports reddit long term owner consensus`;
   }
 
+  if (evidenceType === "destination_recommendation") {
+    console.log("QUERY_EVIDENCE_TYPE", evidenceType);
+    console.log("EVIDENCE_STRATEGY", evidenceStrategyFor(evidenceType));
+    return `${query} travel guide recommendations official tourism tripadvisor reddit travel local guide conde nast traveler travel and leisure time out best places consensus`;
+  }
+
+  if (evidenceType === "provider_or_brand_recommendation") {
+    console.log("QUERY_EVIDENCE_TYPE", evidenceType);
+    console.log("EVIDENCE_STRATEGY", evidenceStrategyFor(evidenceType));
+    return `${query} expert comparison customer satisfaction reliability service quality value industry rankings consumer reports reddit discussion consensus`;
+  }
+
   if (evidenceType === "local_recommendation") {
     console.log("QUERY_EVIDENCE_TYPE", evidenceType);
     console.log("EVIDENCE_STRATEGY", evidenceStrategyFor(evidenceType));
@@ -749,6 +761,7 @@ function localRetrievalCategory(normalized: string) {
   if (/\b(bakery|bakeries)\b/.test(normalized)) return "bakery";
   if (/\b(bar|bars|pub|cocktail|brewery|taproom|espresso martini)\b/.test(normalized)) return "bar";
   if (/\b(gym|gyms|fitness)\b/.test(normalized)) return "gym";
+  if (/\b(tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo)\b/.test(normalized)) return "tattoo";
   if (/\b(dentist|dentists|dental)\b/.test(normalized)) return "dentist";
   if (/\b(plumber|plumbers|plumbing)\b/.test(normalized)) return "plumber";
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
@@ -797,6 +810,10 @@ function localRetrievalLanes(category: string) {
 
   if (category === "gym") {
     return ["Google Maps gym reviews", "Reddit local gyms", "Yelp gyms reviews", "fitness studio reviews"];
+  }
+
+  if (category === "tattoo") {
+    return ["Google Maps tattoo shop reviews", "Yelp tattoo shop reviews", "Reddit local tattoo recommendations", "local tattoo studio reviews"];
   }
 
   if (category === "dentist") {
@@ -930,6 +947,7 @@ function localRecoveryCategoryLabel(category: string, normalizedQuery: string) {
   if (category === "golf_course") return "golf course";
   if (category === "dentist") return "dentist";
   if (category === "plumber") return "plumber";
+  if (category === "tattoo") return "tattoo shop";
   return category.replace(/_/g, " ");
 }
 
@@ -962,6 +980,10 @@ function buildLocalSparseRecoveryVariants(query: string, context: ReturnType<typ
 
   if (context.category === "plumber") {
     return [`${base} Angi`, `${base} HomeAdvisor`, `${base} Yelp`, `${base} Google reviews`, `best ${category} near ${location}`];
+  }
+
+  if (context.category === "tattoo") {
+    return [`${base} Yelp`, `${base} Google reviews`, `${base} Reddit recommendations`, `${base} local reviews`, `best ${category} near ${location}`];
   }
 
   if (context.category === "attraction") {
@@ -1022,6 +1044,8 @@ function buildLocalNamedCandidateVariants(query: string) {
     sourceVariants.push(`${base} Healthgrades`, `${base} Zocdoc`, `${base} Google reviews`);
   } else if (context.category === "plumber") {
     sourceVariants.push(`${base} Angi`, `${base} Yelp`, `${base} local reviews`);
+  } else if (context.category === "tattoo") {
+    sourceVariants.push(`${base} Yelp`, `${base} Google reviews`, `${base} Reddit recommendations`, `${base} local reviews`);
   } else if (context.category === "attraction") {
     sourceVariants.push(`${base} tourism`, `${base} TripAdvisor`, `${base} official`);
   } else if (context.category === "golf_course") {
