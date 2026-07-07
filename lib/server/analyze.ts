@@ -888,7 +888,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
           "Analyze each source independently.",
           "Do not rank, summarize, compare, or explain consensus.",
           "For each source choose the named contenders that receive clear support or criticism.",
-          "Prefer concrete product/tool names over generic categories.",
+          extractionEntityGuidance(evidenceType),
           evidenceType === "local_recommendation"
             ? "For local searches, extract only actual business or place names; never extract source names, list titles, addresses, recommendation phrases, or generic categories."
             : "",
@@ -966,6 +966,28 @@ function recordOpenAICall(callCounts: ExternalCallCounts | undefined, evidenceTy
     evidenceType,
     phase
   });
+}
+
+function extractionEntityGuidance(evidenceType: QueryEvidenceType) {
+  if (evidenceType === "destination_recommendation") {
+    return [
+      "For destination searches, extract named destinations, beaches, neighborhoods, islands, towns, regions, attractions, and day-trip locations.",
+      "Valid destination contenders include names like Clearwater Beach, St. Pete Beach, Trastevere, Monti, Naxos, Paros, Beacon, Hudson Valley, and the Catskills.",
+      "Do not require product-like names.",
+      "Never extract article titles, generic headings, source names, search subjects, or phrases like best beaches or where to stay."
+    ].join(" ");
+  }
+
+  if (evidenceType === "provider_or_brand_recommendation") {
+    return [
+      "For provider or brand searches, extract named providers, brands, chains, carriers, airlines, banks, insurers, wireless carriers, and laptop brands.",
+      "Valid provider or brand contenders include names like Delta Air Lines, Singapore Airlines, Qatar Airways, Marriott, Hilton, Apple, Lenovo, and T-Mobile.",
+      "Do not treat provider or brand names as generic categories.",
+      "Never extract article titles, rankings, headings, or vague phrases like top airlines."
+    ].join(" ");
+  }
+
+  return "Prefer concrete product/tool names over generic categories.";
 }
 
 function prepareSourcesForOpenAI(sources: VeraSource[], evidenceType: QueryEvidenceType) {
