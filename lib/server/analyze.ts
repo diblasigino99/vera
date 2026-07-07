@@ -37,7 +37,7 @@ const sourceTypes = [
 ] as const;
 
 const openAIModel = "gpt-4.1-mini";
-const openAITimeoutMs = 12000;
+const openAITimeoutMs = 7500;
 const dominantPlatformOpenAITimeoutMs = 12000;
 const localRecommendationOpenAITimeoutMs = 5500;
 const maxOpenAISources = 8;
