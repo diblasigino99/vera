@@ -1103,15 +1103,19 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
     ];
   });
 
-  const dedupedSignals = dedupeSignals(rawSignals);
+  const destinationFallbackSignals =
+    evidenceType === "destination_recommendation" ? recoverDestinationSignalsFromSources(query, sources, rawSignals) : [];
+  const combinedSignals = [...rawSignals, ...destinationFallbackSignals];
+  const dedupedSignals = dedupeSignals(combinedSignals);
 
   console.log("[vera:consensus] source signal extraction", {
     sourceCount: sources.length,
-    rawSignalCount: rawSignals.length,
+    rawSignalCount: combinedSignals.length,
     dedupedSignalCount: dedupedSignals.length,
-    removedBySourceContenderDedupe: rawSignals.length - dedupedSignals.length,
-    positiveRawSignals: rawSignals.filter((signal) => signal.sentiment === "positive").length,
+    removedBySourceContenderDedupe: combinedSignals.length - dedupedSignals.length,
+    positiveRawSignals: combinedSignals.filter((signal) => signal.sentiment === "positive").length,
     positiveDedupedSignals: dedupedSignals.filter((signal) => signal.sentiment === "positive").length,
+    destinationFallbackSignalCount: destinationFallbackSignals.length,
     sourceTypeBreakdown: sourceTypes.reduce(
       (breakdown, type) => ({
         ...breakdown,
@@ -1122,6 +1126,99 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
   });
 
   return dedupedSignals;
+}
+
+function recoverDestinationSignalsFromSources(query: string, sources: VeraSource[], existingSignals: SourceSignal[]) {
+  const existingBySource = new Set(existingSignals.map((signal) => `${signal.sourceUrl}::${normalizeQuery(signal.contenderName)}`));
+  const recovered: SourceSignal[] = [];
+
+  for (const source of sources) {
+    const text = `${source.title}. ${source.snippet ?? ""}`;
+
+    if (!hasDestinationRecommendationContext(text)) {
+      continue;
+    }
+
+    for (const candidate of extractDestinationCandidatesFromText(text)) {
+      const contenderName = canonicalDestinationName(candidate);
+      const key = `${source.url}::${normalizeQuery(contenderName)}`;
+
+      if (existingBySource.has(key) || isGenericDestinationContender(query, contenderName) || isRejectableContenderName(contenderName, "destination_recommendation", source, text)) {
+        continue;
+      }
+
+      const sourceType = inferSourceType(source);
+      const sourceQuality = inferSourceQuality(source, sourceType);
+      recovered.push({
+        sourceUrl: source.url,
+        sourceTitle: source.title,
+        domain: source.domain,
+        sourceType,
+        sourceWeight: sourceTypeWeight(sourceType, "destination_recommendation"),
+        sourceQuality,
+        sourceQualityWeight: sourceQualityWeightFor(sourceQuality),
+        queryVariant: source.queryVariant,
+        contenderName,
+        sentiment: "positive",
+        mentionStrength: "moderate",
+        positiveMention: "Named in a destination recommendation source",
+        extractedReason: "Named in a destination recommendation source",
+        themes: ["destination recommendation"]
+      });
+      existingBySource.add(key);
+    }
+  }
+
+  if (recovered.length) {
+    console.log("DESTINATION_FALLBACK_SIGNALS", {
+      count: recovered.length,
+      contenders: recovered.map((signal) => ({
+        name: signal.contenderName,
+        sourceTitle: signal.sourceTitle,
+        sourceUrl: signal.sourceUrl
+      }))
+    });
+  }
+
+  return recovered;
+}
+
+function hasDestinationRecommendationContext(text: string) {
+  return /\b(recommend|recommended|recommendations?|favorite|favourite|best|top|known for|include|includes|included|made the list|where to|visit|guide|worth visiting|must visit)\b/i.test(text);
+}
+
+function extractDestinationCandidatesFromText(text: string) {
+  const normalizedText = text.replace(/[“”]/g, '"').replace(/[’]/g, "'");
+  const candidates = new Set<string>();
+  const suffixPattern =
+    /\b((?:St\.?\s+|Saint\s+|Fort\s+)?[A-Z][A-Za-z'.-]*(?:\s+(?:and|of|the|de|del|la|le|du|[A-Z][A-Za-z'.-]*)){0,5}\s+(?:Beach|Beaches|Island|Islands|Park|Parks|Preserve|Trail|Trails|Falls|Valley|Village|Town|City|Neighborhood|Neighbourhood|District|Quarter|Region|Mountains|Mountain|Lake|Springs|Key|Keys|Point|Pier|Bay|Harbor|Harbour|Coast|Shore|Shores|Cove|Caves|Canyon|Gardens|Market|Museum|Monument))\b/g;
+  const fortPattern = /\b(Fort\s+[A-Z][A-Za-z'.-]*(?:\s+[A-Z][A-Za-z'.-]*){0,3})\b/g;
+
+  for (const match of normalizedText.matchAll(suffixPattern)) {
+    candidates.add(match[1]);
+  }
+
+  for (const match of normalizedText.matchAll(fortPattern)) {
+    candidates.add(match[1]);
+  }
+
+  return Array.from(candidates).map((candidate) => candidate.replace(/^[#*\d.\s-]+/, "").replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 8);
+}
+
+function canonicalDestinationName(name: string) {
+  const compact = name.replace(/\s+/g, " ").trim();
+  const titled = compact
+    .split(" ")
+    .map((part) => {
+      const lower = part.toLowerCase();
+      if (lower === "st" || lower === "st.") return "St.";
+      if (lower === "de") return "De";
+      if (lower === "of" || lower === "the" || lower === "and") return lower;
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join(" ");
+
+  return titled.replace(/\bSt\. Pete\b/, "St. Pete").replace(/\bDe Soto\b/, "De Soto");
 }
 
 function dedupeSignals(signals: SourceSignal[]) {
