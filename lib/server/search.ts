@@ -5,6 +5,7 @@ import {
   inferQueryEvidenceType,
   isSpecializedDominantPlatformQuery,
   normalizeLocalQueryIntent,
+  parseLocalIntent,
   parseLocalQueryConstraints
 } from "@/lib/utils";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
@@ -864,8 +865,9 @@ function localRecoveryContext(query: string) {
 
 function localRetrievalContext(query: string) {
   const normalized = normalizeLocalQueryIntent(query);
-  const category = localRetrievalCategory(normalized);
-  const location = expandLocalLocation(extractLocalLocation(normalized));
+  const parsedIntent = parseLocalIntent(query);
+  const category = localRetrievalCategory(parsedIntent.category || normalized);
+  const location = expandLocalLocation(parsedIntent.locationForSearch || extractLocalLocation(normalized));
   const constraints = parseLocalQueryConstraints(normalized);
 
   return {

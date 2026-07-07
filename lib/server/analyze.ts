@@ -18,6 +18,7 @@ import {
   isSpecializedDominantPlatformQuery,
   normalizeQuery,
   normalizeLocalQueryIntent,
+  parseLocalIntent,
   parseLocalQueryConstraints,
   slugify
 } from "@/lib/utils";
@@ -561,7 +562,10 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   }
   const recoveredSignals =
     evidenceType === "local_recommendation" && !skipLocalOpenAI ? await recoverSparseLocalBusinessNames(query, modelSources, sourceSignals.signals, key, callCounts) : [];
-  const allSignals = skipLocalOpenAI ? deterministicLocalSignals : recoveredSignals.length ? dedupeSignals([...sourceSignals.signals, ...recoveredSignals]) : sourceSignals.signals;
+  const allSignals =
+    evidenceType === "local_recommendation"
+      ? dedupeSignals([...(skipLocalOpenAI ? [] : sourceSignals.signals), ...deterministicLocalSignals, ...recoveredSignals])
+      : sourceSignals.signals;
   const structuredConsensus = await aggregateSignals(allSignals, modelSources, query, callCounts);
 
   if (structuredConsensus.contenders.length === 0) {
@@ -1010,6 +1014,18 @@ function trimForOpenAI(text: string, maxChars: number) {
 }
 
 function intentFromQuery(query: string): ConsensusResponse["intent"] {
+  if (inferQueryEvidenceType(query) === "local_recommendation") {
+    const parsedIntent = parseLocalIntent(query);
+
+    return {
+      category: parsedIntent.category || "local business",
+      location: parsedIntent.location,
+      constraints: parseLocalQueryConstraints(query).map((constraint) => constraint.label),
+      optimizeFor: [],
+      avoid: []
+    };
+  }
+
   const normalized = normalizeQuery(query);
   const category = normalized
     .replace(/\b(best|top|great|good|recommended|highest rated|most recommended)\b/g, "")
@@ -3901,26 +3917,22 @@ function localFallbackSignals(query: string, sources: VeraSource[]): SourceSigna
   const sortedSources = [...sources].sort((a, b) => localAuthorityRank(localSourceAuthorityFromSource(b)) - localAuthorityRank(localSourceAuthorityFromSource(a)));
 
   for (const source of sortedSources) {
-    const candidate = candidateBusinessNameFromSource(source);
+    for (const candidate of candidateBusinessNamesFromSource(query, source)) {
+      const key = localBusinessKey(candidate);
 
-    if (!candidate) {
-      continue;
+      if (!key || key.length < 3) {
+        continue;
+      }
+
+      const existing = candidates.get(key) ?? { name: candidate, sources: [] };
+      existing.sources.push(source);
+
+      if (betterLocalDisplayName(candidate, existing.name)) {
+        existing.name = candidate;
+      }
+
+      candidates.set(key, existing);
     }
-
-    const key = localBusinessKey(candidate);
-
-    if (!key || key.length < 3) {
-      continue;
-    }
-
-    const existing = candidates.get(key) ?? { name: candidate, sources: [] };
-    existing.sources.push(source);
-
-    if (betterLocalDisplayName(candidate, existing.name)) {
-      existing.name = candidate;
-    }
-
-    candidates.set(key, existing);
   }
 
   return Array.from(candidates.values())
@@ -3951,6 +3963,22 @@ function localFallbackSignals(query: string, sources: VeraSource[]): SourceSigna
     );
 }
 
+function candidateBusinessNamesFromSource(query: string, source: VeraSource) {
+  const names = [
+    candidateBusinessNameFromSource(source),
+    ...extractLocalNameCandidatesFromText(query, source.title, source),
+    ...extractLocalNameCandidatesFromText(query, source.snippet ?? "", source)
+  ].filter((name): name is string => Boolean(name));
+  const seen = new Set<string>();
+
+  return names.filter((name) => {
+    const key = localBusinessKey(name);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function candidateBusinessNameFromSource(source: VeraSource) {
   const title = localBusinessDisplayName(source.title);
   const normalizedTitle = normalizeQuery(title);
@@ -3972,6 +4000,51 @@ function candidateBusinessNameFromSource(source: VeraSource) {
   }
 
   return isGenericLocalContender(source.queryVariant ?? "", title) ? null : title;
+}
+
+function extractLocalNameCandidatesFromText(query: string, text: string, source: VeraSource) {
+  const candidates = new Set<string>();
+  const normalizedQuery = normalizeLocalQueryIntent(query);
+  const hasLocalContext = /\b(coffee|cafe|restaurant|bar|hotel|tattoo|shop|bakery|brunch|pizza|sushi|ramen|taco|gym|dentist|plumber|recommend|best|top|guide|review|local)\b/i.test(
+    text
+  );
+
+  if (!text || !hasLocalContext) {
+    return [];
+  }
+
+  const segments = text
+    .replace(/[#•]/g, "\n")
+    .split(/\n|,|;|(?:\s+-\s+)|(?:\s+–\s+)|(?:\s+—\s+)|(?:\s+\|\s+)/)
+    .map((segment) => localBusinessDisplayName(segment))
+    .filter(Boolean);
+
+  for (const segment of segments) {
+    addLocalTextCandidate(segment);
+  }
+
+  const properNamePattern =
+    /\b(?:\d{2,4}\s+(?:NYC\s+)?(?:Coffee|Cafe|Café)|[A-Z][A-Za-z0-9’'&.]+(?:\s+(?:[A-Z][A-Za-z0-9’'&.]+|NYC|Coffee|Cafe|Café|Roasters?|Tea|Bar|Bakery|Shop|House|Kitchen|Restaurant|Pizza|Sushi|Tacos?|Diner|Market)){0,3})\b/g;
+
+  for (const match of text.matchAll(properNamePattern)) {
+    addLocalTextCandidate(match[0]);
+  }
+
+  return Array.from(candidates);
+
+  function addLocalTextCandidate(value: string) {
+    const candidate = localBusinessDisplayName(value);
+    const normalizedCandidate = normalizeQuery(candidate);
+
+    if (!candidate || normalizedCandidate.length < 3) return;
+    if (normalizedCandidate.split(" ").length > 5) return;
+    if (localUniversalEntityRejectionReason(query, candidate, { source })) return;
+    if (isGenericLocalContender(query, candidate)) return;
+    if (isLocalLocationOnlyEntity(normalizedCandidate)) return;
+    if (isLocalSearchSubjectOnly(normalizedQuery, normalizedCandidate)) return;
+
+    candidates.add(candidate);
+  }
 }
 
 function localAuthorityRank(authority: "high" | "medium" | "low") {

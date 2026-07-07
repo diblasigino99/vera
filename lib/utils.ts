@@ -59,6 +59,94 @@ export function normalizeLocalQueryIntent(query: string) {
   return normalized;
 }
 
+export type ParsedLocalIntent = {
+  category: string;
+  location: string;
+  locationForSearch: string;
+};
+
+export function parseLocalIntent(query: string): ParsedLocalIntent {
+  const normalized = normalizeLocalQueryIntent(query);
+  const locationMatch = normalized.match(/\b(?:in|near|around)\s+(.+?)$/);
+  const rawLocation = cleanLocalLocationPhrase(locationMatch?.[1] ?? "");
+  const rawCategory = (locationMatch ? normalized.slice(0, locationMatch.index).trim() : normalized).trim();
+  const category = normalizeLocalCategoryPhrase(rawCategory);
+
+  return {
+    category,
+    location: titleCaseLocalLocation(rawLocation),
+    locationForSearch: canonicalizeLocalLocationForSearch(rawLocation)
+  };
+}
+
+function normalizeLocalCategoryPhrase(value: string) {
+  const normalized = value
+    .replace(/\b(best|top|great|good|recommended|highest rated|most recommended|find|show me|nearby)\b/g, " ")
+    .replace(/\b(cheap|affordable|budget|decent priced|reasonably priced|inexpensive|expensive|upscale|luxury|romantic|date night|casual|cozy|cosy|lively|quiet|rooftop|waterfront|outdoor seating|outdoor|patio|live music|sports bar|family friendly|kid friendly|dog friendly|pet friendly|late night|happy hour|homemade|authentic|fresh|healthy)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (/\b(espresso martini|cocktail bar|cocktail)\b/.test(normalized)) return "cocktail bar";
+  if (/\b(coffee shop|coffee|cafe|cafes|café)\b/.test(normalized)) return "coffee shop";
+  if (/\b(tattoo shop|tattoo studio|tattoo)\b/.test(normalized)) return "tattoo shop";
+  if (/\b(golf course|golf)\b/.test(normalized)) return "golf course";
+  if (/\b(dentist|dental)\b/.test(normalized)) return "dentist";
+  if (/\b(plumber|plumbing)\b/.test(normalized)) return "plumber";
+  if (/\b(gym|fitness)\b/.test(normalized)) return "gym";
+  if (/\b(hotel|hotels|motel|inn|resort)\b/.test(normalized)) return "hotel";
+  if (/\b(bar|bars|pub)\b/.test(normalized)) return "bar";
+  if (/\b(italian)\b/.test(normalized)) return "Italian restaurant";
+  if (/\b(seafood)\b/.test(normalized)) return "seafood restaurant";
+  if (/\b(sushi|japanese)\b/.test(normalized)) return "sushi restaurant";
+  if (/\b(pizza|pizzeria)\b/.test(normalized)) return "pizza";
+  if (/\b(brunch)\b/.test(normalized)) return "brunch restaurant";
+  if (/\b(ramen)\b/.test(normalized)) return "ramen";
+  if (/\b(mexican|taqueria|taco)\b/.test(normalized)) return "Mexican restaurant";
+  if (/\b(steakhouse|steak house|steak)\b/.test(normalized)) return "steakhouse";
+  if (/\b(restaurant|restaurants|place to eat|places to eat)\b/.test(normalized)) return "restaurant";
+
+  return normalized || "local business";
+}
+
+function cleanLocalLocationPhrase(value: string) {
+  return normalizeQuery(value)
+    .replace(
+      /\b(best|top|recommended|reviews?|reddit|yelp|tripadvisor|google maps|eater|infatuation|booking|opentable|restaurants?|restaurant|bars?|bar|coffee shops?|coffee|cafes?|hotels?|hotel|tattoo shops?|tattoo|near me)\b/g,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function canonicalizeLocalLocationForSearch(location: string) {
+  const normalized = cleanLocalLocationPhrase(location);
+
+  if (!normalized) return "";
+  if (/\bnyc\b|\bnew york city\b/.test(normalized)) return "New York City, NY";
+  if (/^(?:queens|brooklyn|manhattan|bronx|staten island)$/.test(normalized)) return `${titleCaseLocalLocation(normalized)}, NY`;
+  if (normalized === "williamsburg" || normalized === "williamsburg brooklyn") return "Williamsburg, Brooklyn, NY";
+  if (/^(?:wantagh|seaford|massapequa|massapequa park|huntington|huntington station|bellmore|long island)$/.test(normalized)) {
+    return `${titleCaseLocalLocation(normalized)}, NY`;
+  }
+  if (normalized === "delray" || normalized === "delray beach") return "Delray Beach, FL";
+  if (/\b(?:ny|new york|fl|florida|ca|california|tx|texas|wa|washington)\b/.test(normalized)) {
+    return titleCaseLocalLocation(normalized);
+  }
+
+  return titleCaseLocalLocation(normalized);
+}
+
+function titleCaseLocalLocation(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      if (/^(ny|nyc|fl|ca|tx|wa)$/.test(word)) return word.toUpperCase();
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+}
+
 export type LocalQueryConstraint = {
   key: string;
   type: "price" | "atmosphere" | "experience" | "food_quality";

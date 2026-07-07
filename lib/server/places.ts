@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { SourceSignal } from "@/lib/types";
-import { normalizeLocalQueryIntent, normalizeQuery } from "@/lib/utils";
+import { normalizeLocalQueryIntent, normalizeQuery, parseLocalIntent } from "@/lib/utils";
 import { getSupabaseAdmin } from "@/lib/server/supabase";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 
@@ -796,20 +796,16 @@ function isNonBusinessPlace(types: string[]) {
 }
 
 function localLocationLabelForPlaces(query: string) {
+  const parsedIntent = parseLocalIntent(query);
+
+  if (parsedIntent.locationForSearch) return parsedIntent.locationForSearch;
+
   const normalized = normalizeLocalQueryIntent(query);
-  const match = normalized.match(/\b(?:in|near|around)\s+(.+)$/);
-
-  if (!match) {
-    if (/\bnyc\b/.test(normalized)) return "NYC";
-    if (/\bmanhattan\b/.test(normalized)) return "Manhattan NY";
-    if (/\bbrooklyn\b/.test(normalized)) return "Brooklyn NY";
-    return "";
-  }
-
-  return match[1]
-    .replace(/\b(best|top|recommended|restaurants?|bars?|coffee|hotel|hotels?|near me)\b/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  if (/\bnyc\b/.test(normalized)) return "New York City, NY";
+  if (/\bmanhattan\b/.test(normalized)) return "Manhattan, NY";
+  if (/\bbrooklyn\b/.test(normalized)) return "Brooklyn, NY";
+  if (/\bqueens\b/.test(normalized)) return "Queens, NY";
+  return "";
 }
 
 function localLocationTokensForPlaces(query: string) {
@@ -825,7 +821,8 @@ function localLocationTokensForPlaces(query: string) {
 }
 
 function localCategoryLabelForPlaces(query: string) {
-  const normalized = normalizeLocalQueryIntent(query);
+  const parsedIntent = parseLocalIntent(query);
+  const normalized = normalizeLocalQueryIntent(parsedIntent.category || query);
 
   if (/\b(italian|sushi|seafood|pizza|brunch|ramen|tacos?|mexican|steakhouse)\b/.test(normalized)) {
     return `${normalized.match(/\b(italian|sushi|seafood|pizza|brunch|ramen|tacos?|mexican|steakhouse)\b/)?.[1]} restaurant`;
