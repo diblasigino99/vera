@@ -1122,14 +1122,15 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
   const destinationFallbackSignals =
     evidenceType === "destination_recommendation" ? recoverDestinationSignalsFromSources(query, sources, rawSignals) : [];
   const combinedSignals = [...rawSignals, ...destinationFallbackSignals];
-  const dedupedSignals = dedupeSignals(combinedSignals);
+  const normalizedSignals = evidenceType === "destination_recommendation" ? combinedSignals.map(canonicalizeDestinationSignal) : combinedSignals;
+  const dedupedSignals = dedupeSignals(normalizedSignals);
 
   console.log("[vera:consensus] source signal extraction", {
     sourceCount: sources.length,
-    rawSignalCount: combinedSignals.length,
+    rawSignalCount: normalizedSignals.length,
     dedupedSignalCount: dedupedSignals.length,
-    removedBySourceContenderDedupe: combinedSignals.length - dedupedSignals.length,
-    positiveRawSignals: combinedSignals.filter((signal) => signal.sentiment === "positive").length,
+    removedBySourceContenderDedupe: normalizedSignals.length - dedupedSignals.length,
+    positiveRawSignals: normalizedSignals.filter((signal) => signal.sentiment === "positive").length,
     positiveDedupedSignals: dedupedSignals.filter((signal) => signal.sentiment === "positive").length,
     destinationFallbackSignalCount: destinationFallbackSignals.length,
     sourceTypeBreakdown: sourceTypes.reduce(
@@ -1199,6 +1200,19 @@ function recoverDestinationSignalsFromSources(query: string, sources: VeraSource
   return recovered;
 }
 
+function canonicalizeDestinationSignal(signal: SourceSignal): SourceSignal {
+  const canonicalName = canonicalDestinationName(signal.contenderName);
+
+  if (canonicalName === signal.contenderName) {
+    return signal;
+  }
+
+  return {
+    ...signal,
+    contenderName: canonicalName
+  };
+}
+
 function hasDestinationRecommendationContext(text: string) {
   return /\b(recommend|recommended|recommendations?|favorite|favourite|best|top|known for|include|includes|included|made the list|where to|visit|guide|worth visiting|must visit)\b/i.test(text);
 }
@@ -1223,6 +1237,12 @@ function extractDestinationCandidatesFromText(text: string) {
 
 function canonicalDestinationName(name: string) {
   const compact = name.replace(/\s+/g, " ").trim();
+  const normalized = normalizeQuery(compact.normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+
+  if (/^(?:sao miguel|sao miguel island|miguel island)$/.test(normalized)) {
+    return "São Miguel Island";
+  }
+
   const titled = compact
     .split(" ")
     .map((part) => {
@@ -2263,6 +2283,40 @@ function localSpecificIntentForQuery(query: string): LocalSpecificIntent | null 
   );
 }
 
+function localSignalSpecificIntentEvidenceText(contenderName: string, signal: SourceSignal, intent: LocalSpecificIntent) {
+  const sourceTitle = signal.sourceTitle ?? "";
+  const normalizedTitle = normalizeQuery(sourceTitle);
+  const normalizedContender = normalizeQuery(contenderName);
+  const titleLooksGeneric =
+    isArticleOrGuideTitle(normalizedTitle) ||
+    /\b(?:best|top|guide|where to|restaurants?|places?|spots?|near me)\b/.test(normalizedTitle);
+  const titleNamesContender = normalizedContender.length >= 3 && normalizedTitle.includes(normalizedContender);
+
+  return normalizeQuery(
+    [
+      contenderName,
+      titleNamesContender || !titleLooksGeneric ? sourceTitle : "",
+      signal.extractedReason,
+      signal.positiveMention ?? "",
+      signal.negativeMention ?? "",
+      signal.themes.join(" "),
+      signal.verifiedAddress ?? "",
+      placesTypesSupportSpecificIntent(intent, signal.placesTypes ?? []) ? signal.placesTypes?.join(" ") : ""
+    ].join(" ")
+  );
+}
+
+function placesTypesSupportSpecificIntent(intent: LocalSpecificIntent, placesTypes: string[]) {
+  const normalizedTypes = normalizeQuery(placesTypes.join(" "));
+
+  if (!normalizedTypes) return false;
+  if (intent.key === "coffee") return /\b(coffee shop|cafe|bakery)\b/.test(normalizedTypes);
+  if (intent.key === "bar" || intent.key === "cocktail" || intent.key === "live_music") return /\b(bar|night club)\b/.test(normalizedTypes);
+  if (intent.key === "pizza") return /\bpizza restaurant\b/.test(normalizedTypes);
+
+  return false;
+}
+
 function localSpecificIntentText(contenderName: string, signals: SourceSignal[]) {
   return normalizeQuery(
     [
@@ -2311,23 +2365,13 @@ function localSpecificIntentEvidence(query: string, contenderName: string, signa
   }
 
   const nameText = normalizeQuery(contenderName);
-  const matchedSignals = signals.filter((signal) =>
-    intent.supportPattern.test(
-      normalizeQuery(
-        [
-          signal.sourceTitle,
-          signal.queryVariant ?? "",
-          signal.extractedReason,
-          signal.positiveMention ?? "",
-          signal.negativeMention ?? "",
-          signal.themes.join(" "),
-          signal.verifiedAddress ?? "",
-          signal.placesTypes?.join(" ") ?? ""
-        ].join(" ")
-      )
-    )
-  ).length;
-  const evidenceText = localSpecificIntentText(contenderName, signals);
+  const matchedSignals = signals.filter((signal) => intent.supportPattern.test(localSignalSpecificIntentEvidenceText(contenderName, signal, intent))).length;
+  const evidenceText = normalizeQuery(
+    [
+      contenderName,
+      ...signals.map((signal) => localSignalSpecificIntentEvidenceText(contenderName, signal, intent))
+    ].join(" ")
+  );
   const matched = intent.supportPattern.test(nameText) || matchedSignals > 0 || intent.supportPattern.test(evidenceText);
   const conflict = Boolean(intent.conflictPattern?.test(evidenceText));
 
@@ -4904,6 +4948,12 @@ function isGenericDestinationContender(query: string, name: string) {
     return true;
   }
   if (/\b(?:where to stay|things to do|places to visit|best beaches|best islands|best neighborhoods|travel guide|itinerary|guide to|top \d+|best \d+)\b/.test(normalized)) {
+    return true;
+  }
+  if (
+    /^(?:visiting|exploring|discovering|guide to|where to|how to)\b/.test(normalized) &&
+    /\b(?:islands?|beaches|neighborhoods?|neighbourhoods?|destinations?|places?|regions?|towns?)\b/.test(normalized)
+  ) {
     return true;
   }
   if (/\b(?:reddit|tripadvisor|booking|expedia|conde nast|travel leisure|time out|timeout|official tourism|tourism board)\b/.test(normalized)) {
