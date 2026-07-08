@@ -5547,15 +5547,33 @@ function sanitizeCachedDestinationConsensus(consensus: ConsensusResponse): Conse
 function sanitizeLiveDestinationStructuredConsensus(structuredConsensus: StructuredConsensus): StructuredConsensus {
   console.log(
     "DESTINATION_FINAL_CONTENDERS_BEFORE_DEDUPE",
-    structuredConsensus.contenders.map((contender) => contender.name)
+    {
+      classification: structuredConsensus.consensusClassification,
+      contenders: structuredConsensus.contenders.map((contender) => contender.name)
+    }
   );
   const sanitized = sanitizeCachedDestinationStructuredConsensus(structuredConsensus);
+  const consensusClassification =
+    sanitized.consensusClassification === "no_reliable_consensus" && sanitized.contenders.length > 0 ? "split_consensus" : sanitized.consensusClassification;
   console.log(
     "DESTINATION_FINAL_CONTENDERS_AFTER_DEDUPE",
-    sanitized.contenders.map((contender) => contender.name)
+    {
+      beforeClassification: structuredConsensus.consensusClassification,
+      afterClassification: consensusClassification,
+      contenderCount: sanitized.contenders.length,
+      contenders: sanitized.contenders.map((contender) => contender.name),
+      reason:
+        structuredConsensus.consensusClassification === "no_reliable_consensus" && sanitized.contenders.length > 0
+          ? "valid_destination_contenders_preserved_as_split_consensus"
+          : "classification_unchanged"
+    }
   );
 
-  return sanitized;
+  return {
+    ...sanitized,
+    consensusClassification,
+    winner: consensusClassification === "no_reliable_consensus" ? undefined : sanitized.winner
+  };
 }
 
 function canonicalizeCachedDestinationMetrics(metrics: ContenderMetrics, name: string): ContenderMetrics {
