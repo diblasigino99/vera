@@ -1305,7 +1305,8 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
   const softwarePrior = softwareToolPrior(query, sources, signals, queryEvidenceType);
   const productPrior = productRecommendationPrior(query, sources, signals, queryEvidenceType);
   const localPrior = localRecommendationPrior(query, sources, signals, queryEvidenceType);
-  const evidenceSignals = [...signals, ...dominantPrior.signals, ...softwarePrior.signals, ...productPrior.signals, ...localPrior.signals];
+  const rawEvidenceSignals = [...signals, ...dominantPrior.signals, ...softwarePrior.signals, ...productPrior.signals, ...localPrior.signals];
+  const evidenceSignals = queryEvidenceType === "destination_recommendation" ? rawEvidenceSignals.map(canonicalizeDestinationSignal) : rawEvidenceSignals;
   const dominantFilteredSignals =
     queryEvidenceType === "dominant_platform"
       ? evidenceSignals.filter((signal) => !isGenericDominantPlatformContender(signal.contenderName))
@@ -5443,6 +5444,10 @@ function firstVerifiedAddress(signals: SourceSignal[]) {
 }
 
 export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): ConsensusResponse {
+  if (inferQueryEvidenceType(consensus.query) === "destination_recommendation") {
+    return sanitizeCachedDestinationConsensus(consensus);
+  }
+
   if (inferQueryEvidenceType(consensus.query) !== "local_recommendation") {
     return consensus;
   }
@@ -5486,6 +5491,131 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
         }
       : consensus.structuredConsensus
   };
+}
+
+function sanitizeCachedDestinationConsensus(consensus: ConsensusResponse): ConsensusResponse {
+  const canonicalResults = consensus.results.map((result) => {
+    const name = canonicalDestinationName(result.name);
+    const metrics = result.metrics ? canonicalizeCachedDestinationMetrics(result.metrics, name) : result.metrics;
+
+    return {
+      ...result,
+      name,
+      id: result.id.replace(slugify(result.name), slugify(name)),
+      metrics
+    };
+  });
+  const resultByName = new Map<string, ConsensusResponse["results"][number]>();
+
+  for (const result of canonicalResults) {
+    const key = normalizeQuery(result.name);
+    const existing = resultByName.get(key);
+
+    if (!existing) {
+      resultByName.set(key, result);
+      continue;
+    }
+
+    resultByName.set(key, {
+      ...existing,
+      reasons: Array.from(new Set([...existing.reasons, ...result.reasons])).slice(0, 6),
+      downsides: Array.from(new Set([...existing.downsides, ...result.downsides])).slice(0, 5),
+      evidence: Array.from(new Set([...existing.evidence, ...result.evidence])).slice(0, 5),
+      sources: dedupeSourcesByUrl([...existing.sources, ...result.sources]),
+      metrics: existing.metrics && result.metrics ? mergeCachedDestinationMetrics(existing.metrics, result.metrics, existing.name) : (existing.metrics ?? result.metrics)
+    });
+  }
+
+  const results = Array.from(resultByName.values()).map((result, index) => ({
+    ...result,
+    rank: index + 1,
+    id: `${slugify(result.name)}-${index + 1}`
+  }));
+  const structuredConsensus = consensus.structuredConsensus
+    ? sanitizeCachedDestinationStructuredConsensus(consensus.structuredConsensus, results[0]?.name)
+    : consensus.structuredConsensus;
+
+  return {
+    ...consensus,
+    results,
+    structuredConsensus
+  };
+}
+
+function canonicalizeCachedDestinationMetrics(metrics: ContenderMetrics, name: string): ContenderMetrics {
+  return {
+    ...metrics,
+    name
+  };
+}
+
+function mergeCachedDestinationMetrics(a: ContenderMetrics, b: ContenderMetrics, name: string): ContenderMetrics {
+  const sourceUrls = Array.from(new Set([...a.sourceUrls, ...b.sourceUrls]));
+  const sourceTypes = Array.from(new Set([...a.sourceTypes, ...b.sourceTypes]));
+
+  return {
+    ...a,
+    name,
+    mentionCount: a.mentionCount + b.mentionCount,
+    positiveMentionCount: a.positiveMentionCount + b.positiveMentionCount,
+    negativeMentionCount: a.negativeMentionCount + b.negativeMentionCount,
+    sourceCount: sourceUrls.length,
+    sourceUrls,
+    sourceTypes,
+    themeCounts: mergeThemeMetrics([...a.themeCounts, ...b.themeCounts]),
+    netWeightedScore: Math.max(a.netWeightedScore, b.netWeightedScore),
+    weightedPositiveScore: Math.max(a.weightedPositiveScore, b.weightedPositiveScore),
+    weightedNegativeScore: Math.max(a.weightedNegativeScore, b.weightedNegativeScore)
+  };
+}
+
+function sanitizeCachedDestinationStructuredConsensus(structuredConsensus: StructuredConsensus, fallbackWinner?: string): StructuredConsensus {
+  const signals = structuredConsensus.signals.map(canonicalizeDestinationSignal);
+  const contendersByName = new Map<string, ContenderMetrics>();
+
+  for (const contender of structuredConsensus.contenders) {
+    const name = canonicalDestinationName(contender.name);
+    const canonical = canonicalizeCachedDestinationMetrics(contender, name);
+    const existing = contendersByName.get(normalizeQuery(name));
+    contendersByName.set(normalizeQuery(name), existing ? mergeCachedDestinationMetrics(existing, canonical, name) : canonical);
+  }
+
+  const contenders = Array.from(contendersByName.values()).sort(
+    (a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount
+  );
+
+  return {
+    ...structuredConsensus,
+    winner: structuredConsensus.winner ? canonicalDestinationName(structuredConsensus.winner) : fallbackWinner,
+    contenders,
+    signals
+  };
+}
+
+function mergeThemeMetrics(metrics: ThemeMetric[]) {
+  const byTheme = new Map<string, ThemeMetric>();
+
+  for (const metric of metrics) {
+    const existing = byTheme.get(metric.theme);
+
+    if (!existing) {
+      byTheme.set(metric.theme, metric);
+      continue;
+    }
+
+    byTheme.set(metric.theme, {
+      theme: metric.theme,
+      frequencyCount: existing.frequencyCount + metric.frequencyCount,
+      sourceCount: new Set([...existing.sourceUrls, ...metric.sourceUrls]).size,
+      sourceUrls: Array.from(new Set([...existing.sourceUrls, ...metric.sourceUrls]))
+    });
+  }
+
+  return Array.from(byTheme.values()).sort((a, b) => b.frequencyCount - a.frequencyCount || b.sourceCount - a.sourceCount);
+}
+
+function dedupeSourcesByUrl(sources: VeraSource[]) {
+  return Array.from(new Map(sources.map((source) => [source.url, source])).values());
 }
 
 function cleanLocalReasons(reasons: string[], query = "") {
