@@ -1311,6 +1311,20 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
   }
   const scoringSignals =
     queryEvidenceType === "local_recommendation" ? await validateLocalSignalsWithPlaces(query, preValidationScoringSignals, rankedLocalCandidateNames, callCounts) : preValidationScoringSignals;
+  if (queryEvidenceType === "local_recommendation") {
+    console.log(
+      "LOCAL_VERIFIED_SIGNAL_AFTER_PLACES",
+      scoringSignals
+        .filter((signal) => signal.placesVerified)
+        .map((signal) => ({
+          contender: signal.contenderName,
+          verifiedAddress: signal.verifiedAddress ?? null,
+          placesCategoryConfidence: signal.placesCategoryConfidence ?? null,
+          placesLocationConfidence: signal.placesLocationConfidence ?? null,
+          placesTypes: signal.placesTypes ?? []
+        }))
+    );
+  }
   const aggregationSignals = queryEvidenceType === "local_recommendation" ? mergeLocalBusinessSignalNames(scoringSignals) : scoringSignals;
   const byName = new Map<string, SourceSignal[]>();
 
@@ -1420,7 +1434,26 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
 
   const themeCounts = aggregateThemeCounts(filteredSignals);
   const sourceBreakdown = aggregateSourceBreakdown(sources, filteredSignals);
-  const consensusClassification = classifyFromMetrics(contenders, sources.length, queryEvidenceType, query);
+  const initialConsensusClassification = classifyFromMetrics(contenders, sources.length, queryEvidenceType, query);
+  const verifiedLocalContenders =
+    queryEvidenceType === "local_recommendation"
+      ? contenders.filter((contender) => localCandidateHasVerifiedPlacesEvidence(query, byName.get(contender.name) ?? []))
+      : [];
+  const consensusClassification =
+    queryEvidenceType === "local_recommendation" && initialConsensusClassification === "no_reliable_consensus" && verifiedLocalContenders.length > 0
+      ? "split_consensus"
+      : initialConsensusClassification;
+  if (queryEvidenceType === "local_recommendation") {
+    console.log(
+      "LOCAL_FINAL_VERIFIED_CONTENDERS",
+      verifiedLocalContenders.map((contender) => ({
+        name: contender.name,
+        sourceCount: contender.sourceCount,
+        positiveMentionCount: contender.positiveMentionCount,
+        verifiedAddresses: (byName.get(contender.name) ?? []).map((signal) => signal.verifiedAddress).filter(Boolean)
+      }))
+    );
+  }
   logConsensusDiagnostics(contenders, sources.length, consensusClassification);
   console.log(
     "FINAL_CONTENDERS",
@@ -2333,9 +2366,11 @@ function localCandidateDiscoveryRejectionReason(query: string, contender: Conten
   const normalizedName = normalizeQuery(name || contender.name);
   const evidenceText = localCandidateEvidenceText(contender.name, signals);
   const specificIntentEvidence = localSpecificIntentEvidence(query, contender.name, signals);
+  const verifiedByPlaces = localCandidateHasVerifiedPlacesEvidence(query, signals);
   const universalRejection = localUniversalEntityRejectionReason(query, contender.name, { signals });
 
   if (!signals.length) return "no_source_evidence";
+  if (verifiedByPlaces && !specificIntentEvidence.intent) return null;
   if (universalRejection) return universalRejection;
   if (!name || !looksLikeNamedPlace(name)) return "not_business_name";
   if (isGenericLocalContender(query, name) || isGenericLocalContender(query, contender.name)) return "generic_or_non_business";
@@ -2350,6 +2385,17 @@ function localCandidateDiscoveryRejectionReason(query: string, contender: Conten
   }
 
   return null;
+}
+
+function localCandidateHasVerifiedPlacesEvidence(query: string, signals: SourceSignal[]) {
+  return signals.some(
+    (signal) =>
+      signal.placesVerified &&
+      Boolean(signal.verifiedAddress) &&
+      (signal.placesLocationConfidence ?? 0) >= 0.25 &&
+      (signal.placesCategoryConfidence ?? 0) >= 0.2 &&
+      localCandidateHasLocationEvidence(query, signal.contenderName, [signal])
+  );
 }
 
 type LocalUniversalEntityValidationContext = {
