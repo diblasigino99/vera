@@ -5444,8 +5444,13 @@ function buildConsensus(
 ): ConsensusResponse {
   const id = crypto.randomUUID();
   const normalizedQuery = normalizeQuery(query);
-  const responseStructuredConsensus =
-    structuredConsensus.queryEvidenceType === "destination_recommendation" ? sanitizeLiveDestinationStructuredConsensus(structuredConsensus) : structuredConsensus;
+  let responseStructuredConsensus = structuredConsensus;
+  if (responseStructuredConsensus.queryEvidenceType === "destination_recommendation") {
+    responseStructuredConsensus = sanitizeLiveDestinationStructuredConsensus(responseStructuredConsensus);
+  }
+  if (responseStructuredConsensus.queryEvidenceType === "local_recommendation") {
+    responseStructuredConsensus = sanitizeLiveLocalCuisineStructuredConsensus(query, sources, responseStructuredConsensus);
+  }
   const mode = responseStructuredConsensus.consensusClassification;
   const contenders = mode === "no_reliable_consensus" ? [] : responseStructuredConsensus.contenders.slice(0, 5);
   const createdAt = new Date().toISOString();
@@ -5504,6 +5509,104 @@ function buildResult(
 
 function firstVerifiedAddress(signals: SourceSignal[]) {
   return signals.map((signal) => signal.verifiedAddress?.trim()).find((address): address is string => Boolean(address));
+}
+
+function sanitizeLiveLocalCuisineStructuredConsensus(query: string, sources: VeraSource[], structuredConsensus: StructuredConsensus): StructuredConsensus {
+  const intent = localSpecificIntentForQuery(query);
+
+  if (!intent || !localSpecificIntentRequiresBusinessSpecificEvidence(intent)) {
+    return structuredConsensus;
+  }
+
+  const validContenders = structuredConsensus.contenders.filter((contender) => {
+    const contenderSignals = structuredConsensus.signals.filter((signal) => signal.contenderName === contender.name);
+    const valid = localCuisineContenderHasBusinessSpecificProof(query, contender.name, contenderSignals, sources);
+
+    if (!valid) {
+      console.log("LOCAL_FINAL_UI_CUISINE_REJECTED", {
+        candidate: contender.name,
+        intent: intent.key,
+        reason: "missing_business_specific_cuisine_proof",
+        sourceTitles: contenderSignals.map((signal) => signal.sourceTitle).slice(0, 5),
+        placesTypes: contenderSignals.flatMap((signal) => signal.placesTypes ?? []),
+        verifiedAddresses: contenderSignals.map((signal) => signal.verifiedAddress).filter(Boolean)
+      });
+    }
+
+    return valid;
+  });
+  const validNames = new Set(validContenders.map((contender) => contender.name));
+  const signals = structuredConsensus.signals.filter((signal) => validNames.has(signal.contenderName));
+  const consensusClassification = validContenders.length > 0 ? (structuredConsensus.consensusClassification === "no_reliable_consensus" ? "split_consensus" : structuredConsensus.consensusClassification) : "no_reliable_consensus";
+
+  console.log(
+    "LOCAL_FINAL_CUISINE_CONTENDERS",
+    validContenders.map((contender) => ({
+      name: contender.name,
+      intent: intent.key,
+      sourceCount: contender.sourceCount,
+      positiveMentionCount: contender.positiveMentionCount
+    }))
+  );
+
+  return {
+    ...structuredConsensus,
+    contenders: validContenders,
+    signals,
+    winner: consensusClassification === "no_reliable_consensus" ? undefined : validContenders[0]?.name,
+    consensusClassification
+  };
+}
+
+function localCuisineContenderHasBusinessSpecificProof(query: string, contenderName: string, signals: SourceSignal[], sources: VeraSource[]) {
+  const intent = localSpecificIntentForQuery(query);
+
+  if (!intent || !localSpecificIntentRequiresBusinessSpecificEvidence(intent)) {
+    return true;
+  }
+
+  const normalizedName = normalizeQuery(contenderName);
+  if (intent.supportPattern.test(normalizedName)) {
+    return true;
+  }
+
+  if (signals.some((signal) => placesTypesSupportSpecificIntent(intent, signal.placesTypes ?? []))) {
+    return true;
+  }
+
+  const sourceByUrl = new Map(sources.map((source) => [source.url, source]));
+
+  return signals.some((signal) => {
+    const source = sourceByUrl.get(signal.sourceUrl);
+
+    if (!source) {
+      return false;
+    }
+
+    return localSourceHasBusinessSpecificCuisineProof(intent, normalizedName, source);
+  });
+}
+
+function localSourceHasBusinessSpecificCuisineProof(intent: LocalSpecificIntent, normalizedName: string, source: VeraSource) {
+  const title = normalizeQuery(source.title);
+  const body = normalizeQuery([source.snippet ?? "", source.enrichedBodyText ?? "", source.enrichedText ?? "", source.supportingContender ?? ""].join(" "));
+
+  if (normalizedName.length < 3) {
+    return false;
+  }
+
+  const titleNamesBusiness = title.includes(normalizedName);
+  const bodyNamesBusiness = body.includes(normalizedName);
+
+  if (titleNamesBusiness && intent.supportPattern.test(title)) {
+    return true;
+  }
+
+  if (bodyNamesBusiness && intent.supportPattern.test(body)) {
+    return true;
+  }
+
+  return false;
 }
 
 export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): ConsensusResponse {
@@ -5576,17 +5679,9 @@ function cachedLocalResultPassesSpecificIntent(query: string, result: ConsensusR
   }
 
   const normalizedName = normalizeQuery(result.name);
-  const cardSpecificText = normalizeQuery([result.name, result.summary, result.reasons.join(" "), result.evidence.join(" ")].join(" "));
-  const sourceSpecificText = normalizeQuery(
-    result.sources
-      .filter((source) => {
-        const text = normalizeQuery([source.title, source.snippet ?? "", source.supportingContender ?? ""].join(" "));
-        return normalizedName.length >= 3 && text.includes(normalizedName);
-      })
-      .map((source) => [source.title, source.snippet ?? "", source.supportingContender ?? ""].join(" "))
-      .join(" ")
-  );
-  const matched = intent.supportPattern.test(normalizedName) || intent.supportPattern.test(cardSpecificText) || intent.supportPattern.test(sourceSpecificText);
+  const matched =
+    intent.supportPattern.test(normalizedName) ||
+    result.sources.some((source) => localSourceHasBusinessSpecificCuisineProof(intent, normalizedName, source));
 
   if (!matched) {
     console.log("LOCAL_CUISINE_CANDIDATE_REJECTED", {
