@@ -1243,7 +1243,7 @@ function canonicalDestinationName(name: string) {
     return "São Miguel Island";
   }
 
-  if (/^(?:the )?(?:portugal s |portuguese )?azores(?: islands?)?$/.test(normalized)) {
+  if (/^(?:the )?(?:(?:portugal(?:['’]?s|\s+s)) |portuguese )?azores(?: islands?)?$/.test(normalized)) {
     return "Azores";
   }
 
@@ -5383,8 +5383,10 @@ function buildConsensus(
 ): ConsensusResponse {
   const id = crypto.randomUUID();
   const normalizedQuery = normalizeQuery(query);
-  const mode = structuredConsensus.consensusClassification;
-  const contenders = mode === "no_reliable_consensus" ? [] : structuredConsensus.contenders.slice(0, 5);
+  const responseStructuredConsensus =
+    structuredConsensus.queryEvidenceType === "destination_recommendation" ? sanitizeLiveDestinationStructuredConsensus(structuredConsensus) : structuredConsensus;
+  const mode = responseStructuredConsensus.consensusClassification;
+  const contenders = mode === "no_reliable_consensus" ? [] : responseStructuredConsensus.contenders.slice(0, 5);
   const createdAt = new Date().toISOString();
 
   return {
@@ -5395,12 +5397,12 @@ function buildConsensus(
     generated_at: createdAt,
     model: openAIModel,
     mode,
-    headline: consensusHeadline(mode, contenders, intent, structuredConsensus.queryEvidenceType, query),
-    explanation: consensusExplanation(mode, contenders, intent, structuredConsensus.queryEvidenceType, query),
+    headline: consensusHeadline(mode, contenders, intent, responseStructuredConsensus.queryEvidenceType, query),
+    explanation: consensusExplanation(mode, contenders, intent, responseStructuredConsensus.queryEvidenceType, query),
     intent,
-    results: contenders.map((contender, index) => buildResult(contender, structuredConsensus, sources, index, query)),
+    results: contenders.map((contender, index) => buildResult(contender, responseStructuredConsensus, sources, index, query)),
     sources,
-    structuredConsensus,
+    structuredConsensus: responseStructuredConsensus,
     createdAt,
     cached: false
   };
@@ -5540,6 +5542,20 @@ function sanitizeCachedDestinationConsensus(consensus: ConsensusResponse): Conse
     results,
     structuredConsensus
   };
+}
+
+function sanitizeLiveDestinationStructuredConsensus(structuredConsensus: StructuredConsensus): StructuredConsensus {
+  console.log(
+    "DESTINATION_FINAL_CONTENDERS_BEFORE_DEDUPE",
+    structuredConsensus.contenders.map((contender) => contender.name)
+  );
+  const sanitized = sanitizeCachedDestinationStructuredConsensus(structuredConsensus);
+  console.log(
+    "DESTINATION_FINAL_CONTENDERS_AFTER_DEDUPE",
+    sanitized.contenders.map((contender) => contender.name)
+  );
+
+  return sanitized;
 }
 
 function canonicalizeCachedDestinationMetrics(metrics: ContenderMetrics, name: string): ContenderMetrics {
