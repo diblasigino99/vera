@@ -1028,12 +1028,76 @@ function scoreLocationMatch(query: string, formattedAddress: string) {
   if (!tokens.length) return 0.65;
 
   const address = normalizeQuery(formattedAddress);
+  const boroughNeighborhoodMatch = localBoroughNeighborhoodLocationMatch(query, address);
+
+  if (boroughNeighborhoodMatch.matched) {
+    console.log("PLACES_BOROUGH_NEIGHBORHOOD_LOCATION_MATCH", {
+      query,
+      formattedAddress,
+      borough: boroughNeighborhoodMatch.borough,
+      matchedTerm: boroughNeighborhoodMatch.matchedTerm
+    });
+    return 0.86;
+  }
+
   const matched = tokens.filter((token) => address.includes(token)).length;
 
   if (matched === tokens.length) return 1;
   if (matched > 0) return 0.72;
   if (/\bnew york\b/.test(address) && tokens.some((token) => ["nyc", "manhattan", "brooklyn", "williamsburg"].includes(token))) return 0.78;
   return 0.12;
+}
+
+function localBoroughNeighborhoodLocationMatch(query: string, normalizedAddress: string) {
+  const requestedLocation = normalizeQuery(localLocationLabelForPlaces(query));
+
+  if (/\bqueens\b/.test(requestedLocation)) {
+    const queensTerms = [
+      "queens",
+      "astoria",
+      "long island city",
+      "lic",
+      "flushing",
+      "forest hills",
+      "sunnyside",
+      "jackson heights",
+      "bayside",
+      "ridgewood",
+      "elmhurst",
+      "woodside",
+      "jamaica",
+      "kew gardens",
+      "rego park",
+      "whitestone",
+      "corona"
+    ];
+    const outsideQueensTerms = [
+      "manhattan",
+      "brooklyn",
+      "nolita",
+      "bowery",
+      "williamsburg",
+      "greenpoint",
+      "lower east side",
+      "soho",
+      "tribeca",
+      "chelsea",
+      "west village",
+      "east village"
+    ];
+
+    if (outsideQueensTerms.some((term) => normalizedAddress.includes(term))) {
+      return { matched: false, borough: "Queens", matchedTerm: null };
+    }
+
+    const matchedTerm = queensTerms.find((term) => normalizedAddress.includes(term));
+
+    if (matchedTerm) {
+      return { matched: true, borough: "Queens", matchedTerm };
+    }
+  }
+
+  return { matched: false, borough: null, matchedTerm: null };
 }
 
 function scoreCategoryMatch(query: string, types: string[], displayName: string) {
