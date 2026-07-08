@@ -2320,13 +2320,15 @@ function localSpecificIntentEvidence(query: string, contenderName: string, signa
           signal.extractedReason,
           signal.positiveMention ?? "",
           signal.negativeMention ?? "",
-          signal.themes.join(" ")
+          signal.themes.join(" "),
+          signal.verifiedAddress ?? "",
+          signal.placesTypes?.join(" ") ?? ""
         ].join(" ")
       )
     )
   ).length;
   const evidenceText = localSpecificIntentText(contenderName, signals);
-  const matched = intent.supportPattern.test(nameText) || matchedSignals > 0;
+  const matched = intent.supportPattern.test(nameText) || matchedSignals > 0 || intent.supportPattern.test(evidenceText);
   const conflict = Boolean(intent.conflictPattern?.test(evidenceText));
 
   return { intent, matched, conflict, matchedSignals };
@@ -5341,7 +5343,7 @@ function buildConsensus(
     headline: consensusHeadline(mode, contenders, intent, structuredConsensus.queryEvidenceType, query),
     explanation: consensusExplanation(mode, contenders, intent, structuredConsensus.queryEvidenceType, query),
     intent,
-    results: contenders.map((contender, index) => buildResult(contender, structuredConsensus, sources, index)),
+    results: contenders.map((contender, index) => buildResult(contender, structuredConsensus, sources, index, query)),
     sources,
     structuredConsensus,
     createdAt,
@@ -5353,12 +5355,13 @@ function buildResult(
   contender: ContenderMetrics,
   structuredConsensus: StructuredConsensus,
   sources: VeraSource[],
-  index: number
+  index: number,
+  query: string
 ) {
   const resultSources = sources.filter((source) => contender.sourceUrls.includes(source.url));
   const contenderSignals = structuredConsensus.signals.filter((signal) => signal.contenderName === contender.name);
   const reasons = contender.themeCounts.slice(0, 6).map((theme) => humanizeTheme(theme.theme));
-  const cleanReasons = contender.localRanking ? cleanLocalReasons(reasons) : reasons;
+  const cleanReasons = contender.localRanking ? cleanLocalReasons(reasons, query) : reasons;
   const downsides = contenderSignals.map((signal) => signal.negativeMention).filter((item): item is string => Boolean(item)).slice(0, 5);
   const evidence = contenderSignals
     .map((signal) => signal.positiveMention)
@@ -5395,11 +5398,11 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
     .map((result, index) => ({
       ...result,
       rank: index + 1,
-      reasons: cleanLocalReasons(result.reasons),
+      reasons: cleanLocalReasons(result.reasons, consensus.query),
       summary: cleanCachedLocalSummary(result.summary)
     }));
 
-  if (cleanResults.length < 3) {
+  if (cleanResults.length < 3 && !cleanResults.some((result) => Boolean(result.verifiedAddress))) {
     return {
       ...consensus,
       mode: "no_reliable_consensus",
@@ -5431,15 +5434,28 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
   };
 }
 
-function cleanLocalReasons(reasons: string[]) {
+function cleanLocalReasons(reasons: string[], query = "") {
+  const queryCategory = localCategoryForQuery(query);
   const cleaned = reasons
     .map((reason) => normalizeTheme(reason))
     .map((reason) => localEditorialTheme(reason))
     .map((reason) => localReasonChip(reason))
     .filter((reason) => reason && !/^(local source support|reliable performance|recommendation evidence|category match|business evidence)$/i.test(reason))
+    .filter((reason) => localReasonFitsQueryCategory(reason, queryCategory, query))
     .map(humanizeTheme);
 
   return cleaned.length ? Array.from(new Set(cleaned)).slice(0, 6) : ["Popular with locals"];
+}
+
+function localReasonFitsQueryCategory(reason: string, category: string, query: string) {
+  const normalized = normalizeLocalQueryIntent(`${query} ${reason}`);
+  const normalizedReason = normalizeLocalQueryIntent(reason);
+
+  if (category === "coffee" && /\b(excellent cocktails|happy hour|sports bar|live music|late night|date-night spot)\b/.test(normalizedReason)) {
+    return /\b(cocktail|bar|espresso martini|drinks?|nightlife)\b/.test(normalized);
+  }
+
+  return true;
 }
 
 function localReasonChip(reason: string) {
