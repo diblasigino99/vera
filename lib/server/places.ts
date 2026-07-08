@@ -284,10 +284,14 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
 }
 
 function groupSignalsForPlacesValidation(query: string, signals: SourceSignal[], rankedCandidateNames: string[]) {
-  const byName = new Map<string, { normalizedName: string; displayName: string; signalCount: number; sourceCount: number; aliases: Set<string> }>();
+  const byName = new Map<
+    string,
+    { normalizedName: string; displayName: string; signalCount: number; sourceCount: number; aliases: Set<string>; evidenceText: string }
+  >();
 
   for (const signal of signals) {
     const normalizedName = placesCandidateKey(signal.contenderName);
+    const evidenceText = localPlacesSignalEvidenceText(signal);
 
     if (!normalizedName) continue;
 
@@ -299,7 +303,8 @@ function groupSignalsForPlacesValidation(query: string, signals: SourceSignal[],
         displayName: cleanPlacesInputName(signal.contenderName),
         signalCount: 1,
         sourceCount: 1,
-        aliases: new Set([normalizedName])
+        aliases: new Set([normalizedName]),
+        evidenceText
       });
       continue;
     }
@@ -307,6 +312,7 @@ function groupSignalsForPlacesValidation(query: string, signals: SourceSignal[],
     existing.signalCount += 1;
     existing.sourceCount += 1;
     existing.aliases.add(normalizedName);
+    existing.evidenceText = `${existing.evidenceText} ${evidenceText}`.trim();
     if (cleanPlacesInputName(signal.contenderName).length < existing.displayName.length) {
       existing.displayName = cleanPlacesInputName(signal.contenderName);
     }
@@ -315,19 +321,143 @@ function groupSignalsForPlacesValidation(query: string, signals: SourceSignal[],
   const queryTokens = new Set(normalizeQuery(query).split(/\s+/).filter(Boolean));
 
   const rankedIndex = new Map(rankedCandidateNames.map((name, index) => [placesCandidateKey(name), index]));
-
-  return Array.from(byName.values())
+  const orderedGroups = Array.from(byName.values())
     .filter((group) => {
       const candidateTokens = group.normalizedName.split(/\s+/).filter(Boolean);
       return candidateTokens.some((token) => !queryTokens.has(token));
     })
-    .map((group) => ({ ...group, aliases: Array.from(group.aliases) }))
+    .map((group) => {
+      const locationPriority = localPlacesLocationPriority(query, group);
+      return { ...group, aliases: Array.from(group.aliases), locationPriority };
+    })
     .sort((a, b) => {
       const aRank = rankedIndex.get(a.normalizedName) ?? Number.POSITIVE_INFINITY;
       const bRank = rankedIndex.get(b.normalizedName) ?? Number.POSITIVE_INFINITY;
 
-      return aRank - bRank || b.signalCount - a.signalCount || b.sourceCount - a.sourceCount;
+      return b.locationPriority.score - a.locationPriority.score || aRank - bRank || b.signalCount - a.signalCount || b.sourceCount - a.sourceCount;
     });
+
+  console.log(
+    "LOCAL_PLACES_VALIDATION_ORDER",
+    orderedGroups.map((group, index) => ({
+      query,
+      requestedLocation: localLocationLabelForPlaces(query),
+      rank: index + 1,
+      candidate: group.displayName,
+      locationPriorityScore: group.locationPriority.score,
+      matchedTerms: group.locationPriority.matchedTerms,
+      outsideTerms: group.locationPriority.outsideTerms
+    }))
+  );
+
+  return orderedGroups.map(({ locationPriority, ...group }) => group);
+}
+
+function localPlacesSignalEvidenceText(signal: SourceSignal) {
+  return normalizeQuery(
+    [
+      signal.contenderName,
+      signal.sourceTitle,
+      signal.sourceUrl,
+      signal.domain,
+      signal.queryVariant ?? "",
+      signal.extractedReason,
+      signal.positiveMention ?? "",
+      signal.negativeMention ?? "",
+      signal.themes.join(" "),
+      signal.verifiedAddress ?? ""
+    ].join(" ")
+  );
+}
+
+function localPlacesLocationPriority(
+  query: string,
+  group: { displayName: string; normalizedName: string; evidenceText: string }
+): { score: number; matchedTerms: string[]; outsideTerms: string[] } {
+  const location = normalizeQuery(localLocationLabelForPlaces(query));
+  const evidenceText = normalizeQuery(`${group.displayName} ${group.normalizedName} ${group.evidenceText}`);
+  const positiveTerms = localPlacesPositiveLocationTerms(location);
+  const outsideTerms = localPlacesOutsideLocationTerms(location);
+  const matchedTerms = Array.from(new Set(positiveTerms.filter((term) => evidenceText.includes(term))));
+  const matchedOutsideTerms = Array.from(new Set(outsideTerms.filter((term) => evidenceText.includes(term))));
+  const requestedLocationMatches = matchedTerms.filter((term) => term === location || location.includes(term) || term.includes(location)).length;
+  const neighborhoodMatches = Math.max(0, matchedTerms.length - requestedLocationMatches);
+  const score = requestedLocationMatches * 4 + neighborhoodMatches * 2 - matchedOutsideTerms.length * 5;
+
+  return {
+    score,
+    matchedTerms,
+    outsideTerms: matchedOutsideTerms
+  };
+}
+
+function localPlacesPositiveLocationTerms(location: string) {
+  const terms = new Set(localLocationTokensForPlaces(location));
+  const add = (value: string) => {
+    const normalized = normalizeQuery(value);
+    if (normalized.length >= 3) terms.add(normalized);
+  };
+
+  if (/\bqueens\b/.test(location)) {
+    [
+      "queens",
+      "astoria",
+      "long island city",
+      "lic",
+      "flushing",
+      "forest hills",
+      "sunnyside",
+      "jackson heights",
+      "bayside",
+      "ridgewood",
+      "elmhurst",
+      "woodside",
+      "jamaica",
+      "kew gardens",
+      "rego park",
+      "whitestone",
+      "corona"
+    ].forEach(add);
+  }
+
+  if (/\bbrooklyn\b/.test(location)) {
+    ["brooklyn", "williamsburg", "greenpoint", "bushwick", "park slope", "fort greene", "dumbo", "bed stuy", "crown heights", "carroll gardens"].forEach(add);
+  }
+
+  if (/\bwantagh\b/.test(location)) {
+    ["wantagh", "seaford", "bellmore", "massapequa", "levittown"].forEach(add);
+  }
+
+  return Array.from(terms);
+}
+
+function localPlacesOutsideLocationTerms(location: string) {
+  if (/\bqueens\b/.test(location)) {
+    return [
+      "manhattan",
+      "brooklyn",
+      "nolita",
+      "bowery",
+      "williamsburg",
+      "greenpoint",
+      "lower east side",
+      "soho",
+      "tribeca",
+      "chelsea",
+      "west village",
+      "east village"
+    ];
+  }
+
+  if (/\bbrooklyn\b/.test(location)) {
+    return ["manhattan", "queens", "nolita", "bowery", "lower east side", "soho", "tribeca", "chelsea", "west village", "east village"];
+  }
+
+  if (/\bwantagh\b/.test(location)) {
+    return ["manhattan", "brooklyn", "queens", "bronx", "staten island", "new york city", "nyc", "whitestone"];
+  }
+
+  return [];
 }
 
 function recordPlacesSummary(
