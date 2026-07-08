@@ -1243,6 +1243,10 @@ function canonicalDestinationName(name: string) {
     return "São Miguel Island";
   }
 
+  if (/^(?:the )?(?:portugal s |portuguese )?azores(?: islands?)?$/.test(normalized)) {
+    return "Azores";
+  }
+
   const titled = compact
     .split(" ")
     .map((part) => {
@@ -5424,7 +5428,7 @@ function buildResult(
     rank: index + 1,
     name: contender.name,
     consensusPercentage: consensusScore(contender),
-    summary: summaryForContender(contender),
+    summary: summaryForContender(contender, query),
     reasons: cleanReasons.length ? cleanReasons : ["Recurring recommendation"],
     downsides,
     evidence,
@@ -5449,7 +5453,7 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
       ...result,
       rank: index + 1,
       reasons: cleanLocalReasons(result.reasons, consensus.query),
-      summary: cleanCachedLocalSummary(result.summary)
+      summary: cleanCachedLocalSummary(result.summary, consensus.query)
     }));
 
   if (cleanResults.length < 3 && !cleanResults.some((result) => Boolean(result.verifiedAddress))) {
@@ -5556,9 +5560,13 @@ function localEditorialTheme(theme: string) {
   return theme;
 }
 
-function cleanCachedLocalSummary(summary: string) {
+function cleanCachedLocalSummary(summary: string, query = "") {
   if (/live extraction|businesses could.*scored|fallback|signal extraction|pipeline|extracted/i.test(summary)) {
     return "People mention this repeatedly in local recommendations.";
+  }
+
+  if (localCategoryForQuery(query) === "coffee" && /\b(excellent cocktails|happy hour|sports bar|live music|late night|date-night spot)\b/i.test(summary)) {
+    return "Frequently recommended by local coffee sources.";
   }
 
   return summary;
@@ -5998,11 +6006,11 @@ function confidenceReasoning(contenders: ContenderMetrics[], mode: ConsensusMode
   return `${topLine}${secondLine} The weighted evidence gives ${top.name} the strongest consensus signal.`;
 }
 
-function summaryForContender(contender: ContenderMetrics) {
+function summaryForContender(contender: ContenderMetrics, query = "") {
   const themes = contender.themeCounts.slice(0, 3).map((theme) => humanizeTheme(theme.theme).toLowerCase());
 
   if (contender.localRanking) {
-    return localSummaryForContender(contender);
+    return localSummaryForContender(contender, query);
   }
 
   if (themes.length) {
@@ -6012,10 +6020,12 @@ function summaryForContender(contender: ContenderMetrics) {
   return `${contender.name} appears repeatedly in the recommendation evidence.`;
 }
 
-function localSummaryForContender(contender: ContenderMetrics) {
+function localSummaryForContender(contender: ContenderMetrics, query = "") {
+  const queryCategory = localCategoryForQuery(query);
   const themes = contender.themeCounts
     .map((theme) => localSummaryThemePhrase(theme.theme))
     .filter((theme) => theme && !/^(local source support|recurring recommendation|recommendation)$/.test(theme))
+    .filter((theme) => localReasonFitsQueryCategory(theme, queryCategory, query))
     .filter((theme, index, all) => all.indexOf(theme) === index)
     .slice(0, 2);
 
