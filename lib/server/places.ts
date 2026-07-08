@@ -198,7 +198,18 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
     const normalizedName = placesCandidateKey(signal.contenderName);
     const validation = validations.get(normalizedName);
 
-    if (!validation) return [signal];
+    if (!validation) {
+      if (unattemptedLocalSignalLooksSafe(query, signal)) {
+        return [signal];
+      }
+
+      rejectedSignals += 1;
+      console.log("PLACES_UNATTEMPTED_SIGNAL_REJECTED", {
+        candidate: signal.contenderName,
+        reason: "unverified_generic_or_fragment"
+      });
+      return [];
+    }
 
     if (validation.status !== "verified") {
       rejectedSignals += 1;
@@ -749,6 +760,78 @@ function placesCandidateKeysAreDuplicate(a: string, b: string) {
   }
 
   return placesDiceCoefficient(a, b) >= 0.88;
+}
+
+function unattemptedLocalSignalLooksSafe(query: string, signal: SourceSignal) {
+  const candidate = cleanPlacesInputName(signal.contenderName);
+  const normalizedCandidate = normalizeQuery(candidate);
+  const normalizedQuery = normalizeLocalQueryIntent(query);
+  const text = normalizeQuery(
+    [candidate, signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? "", signal.themes.join(" ")].join(" ")
+  );
+
+  if (!normalizedCandidate || normalizedCandidate.length < 3) return false;
+  if (normalizedCandidate.split(/\s+/).length > 5) return false;
+  if (isLocalControlOrGenericText(normalizedCandidate)) return false;
+  if (isLocalSearchSubjectOrCategory(normalizedQuery, normalizedCandidate)) return false;
+  if (isLocalLocationOnly(normalizedCandidate)) return false;
+  if (isLocalArticleOrSentenceFragment(normalizedCandidate) || isLocalArticleOrSentenceFragment(text)) return false;
+  if (!looksLikeLocalBusinessName(candidate)) return false;
+
+  return true;
+}
+
+function isLocalControlOrGenericText(normalizedCandidate: string) {
+  return (
+    /^(?:to go|delivery|order online|reservations?|reserve a table with|book a table|view menu|catering|hours|directions|reviews?|near me|best|top|restaurants?|food|official website|tripadvisor|yelp|doordash|ubereats|grubhub)$/.test(
+      normalizedCandidate
+    ) ||
+    /\b(?:to go|delivery|order online|reservations?|reserve a table with|book a table|view menu|catering|hours|directions|official website|tripadvisor|yelp|doordash|ubereats|grubhub)\b/.test(
+      normalizedCandidate
+    ) ||
+    /^(?:coffee shop|coffee|cafe|italian|seafood|sushi|pizza|brunch|mexican|steakhouse|bar|restaurant)\s*(?:queens|brooklyn|manhattan|wantagh|seaford|massapequa|huntington|nyc|ny|new york)?$/.test(
+      normalizedCandidate
+    )
+  );
+}
+
+function isLocalSearchSubjectOrCategory(normalizedQuery: string, normalizedCandidate: string) {
+  const subject = normalizedQuery
+    .match(/\b(?:best|top|good|great|recommended)\s+(.+?)(?:\s+(?:in|near|around|for)\b|$)/)?.[1]
+    ?.replace(/\b(?:shops?|restaurants?|places?|spots?)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (subject && normalizedCandidate === subject) return true;
+
+  return /^(?:coffee|coffee shop|cafe|espresso martini|pizza|sushi|brunch|restaurant|bar|cocktail|italian food|seafood|tattoo shop|tattoo)$/.test(normalizedCandidate);
+}
+
+function isLocalLocationOnly(normalizedCandidate: string) {
+  return /^(?:upper east side|lower east side|west village|east village|greenwich village|soho|tribeca|chelsea|hells kitchen|midtown|downtown|uptown|manhattan|brooklyn|queens|bronx|staten island|williamsburg|seaford|massapequa|massapequa park|huntington|wantagh|astoria|flushing|forest hills|long island city|sunnyside|jackson heights|jamaica|ridgewood|elmhurst|woodside|nyc|new york|new york city|long island|nassau|suffolk)$/.test(
+    normalizedCandidate
+  );
+}
+
+function isLocalArticleOrSentenceFragment(normalizedText: string) {
+  const words = normalizedText.split(/\s+/).filter(Boolean);
+
+  if (words.length >= 8) return true;
+  if (/\b(?:best|top|where to|guide|list|things to do|freshly roasted coffee beans|has earned|powered by|from eater|from infatuation|reserve a table|book now|recommended hotels)\b/.test(normalizedText)) {
+    return true;
+  }
+
+  return false;
+}
+
+function looksLikeLocalBusinessName(candidate: string) {
+  const trimmed = candidate.trim();
+
+  if (!trimmed) return false;
+  if (/\d{2,4}\s+(?:NYC\s+)?(?:Coffee|Cafe|Café)\b/.test(trimmed)) return true;
+  if (/\b(?:Coffee|Cafe|Café|Roasters?|Tea|Bar|Bakery|Shop|House|Kitchen|Restaurant|Pizza|Sushi|Tacos?|Diner|Market|Tattoo|Studio)\b/.test(trimmed)) return true;
+
+  return /^[A-Z0-9][A-Za-z0-9’'&.]+(?:\s+[A-Z0-9][A-Za-z0-9’'&.]+){0,3}$/.test(trimmed);
 }
 
 function placesDiceCoefficient(a: string, b: string) {
