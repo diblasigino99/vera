@@ -123,6 +123,40 @@ export async function POST(request: Request) {
     return NextResponse.json(consensus);
   }
 
+  const vagueQueryExplanation = vagueRecommendationGuardExplanation(body.data.query, evidenceType);
+  if (vagueQueryExplanation) {
+    const consensus = buildNoReliableConsensus(body.data.query, [], vagueQueryExplanation);
+    const totalElapsedMs = Date.now() - requestStartedAt;
+
+    logSearchCostAudit({
+      query: body.data.query,
+      normalizedQuery,
+      cached: false,
+      cacheHit: false,
+      cacheElapsedMs: 0,
+      totalElapsedMs,
+      externalCallCounts,
+      abortedBeforeLiveSearch: true
+    });
+    console.log("VAGUE_QUERY_SAFETY_BYPASS", {
+      query: body.data.query,
+      evidenceType,
+      reason: vagueQueryExplanation
+    });
+    console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    await recordSearchEvent({
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      searchId: consensus.id,
+      consensusMode: consensus.mode,
+      cacheHit: false,
+      cacheHitType: "vague_query_safety",
+      cacheVersion: getCacheVersion(),
+      totalMs: totalElapsedMs,
+      cacheMs: 0
+    });
+    return NextResponse.json(consensus);
+  }
+
   let cacheElapsedMs = 0;
 
   try {
@@ -563,6 +597,52 @@ function logDominantPlatformTiming({
     inputSourceCount,
     timedOut
   });
+}
+
+function vagueRecommendationGuardExplanation(query: string, evidenceType: ReturnType<typeof inferQueryEvidenceType>) {
+  if (evidenceType === "local_recommendation" && isVagueLocalQueryWithoutLocation(query)) {
+    return "Vera needs a location to compare local businesses reliably. Try adding a city, neighborhood, or ZIP code.";
+  }
+
+  if (evidenceType === "destination_recommendation" && isVagueHiddenDestinationQueryWithoutGeography(query)) {
+    return "Vera could not find enough reliable agreement for such a broad hidden-destination search. Try adding a country, region, or trip context.";
+  }
+
+  return null;
+}
+
+function isVagueLocalQueryWithoutLocation(query: string) {
+  const normalized = normalizeQuery(query);
+
+  if (/\b(?:near me|in|near|around|at)\b/.test(normalized) || /\b\d{5}(?:\s*-\s*\d{4})?\b/.test(normalized)) {
+    return false;
+  }
+
+  if (
+    !/\b(?:restaurant|restaurants|coffee shop|coffee shops|coffee|cafe|cafes|barber|barbers|barber shop|barber shops|gym|gyms|doctor|doctors|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|salon|salons|spa|spas|bakery|bakeries|bar|bars|hotel|hotels)\b/.test(
+      normalized
+    )
+  ) {
+    return false;
+  }
+
+  return !/\b(?:nyc|new york|queens|brooklyn|manhattan|bronx|staten island|astoria|long island|wantagh|seaford|massapequa|huntington|williamsburg|tampa|rome|portugal|europe)\b/.test(
+    normalized
+  );
+}
+
+function isVagueHiddenDestinationQueryWithoutGeography(query: string) {
+  const normalized = normalizeQuery(query);
+
+  if (!/\b(?:unknown|hidden gem|hidden gems|secret|underrated|no one talks about|nobody talks about)\b/.test(normalized)) {
+    return false;
+  }
+
+  if (!/\b(?:island|islands|beach|beaches|destination|destinations|trip|trips|place|places|town|towns|region|regions)\b/.test(normalized)) {
+    return false;
+  }
+
+  return !/\b(?:in|near|around|from|to|within)\b.+\b[a-z]{3,}\b/.test(normalized);
 }
 
 function buildCacheTestResult(originalQuery: string, normalizedQuery: string): ConsensusResponse {
