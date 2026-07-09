@@ -2714,6 +2714,40 @@ function hasLongIslandIncompatibleLocation(value: string) {
   return /\b(long island city|lic|queens|astoria|flushing|jackson heights|brooklyn|manhattan|bronx|staten island|new york city|nyc)\b/.test(normalized);
 }
 
+function localContenderHasLongIslandIncompatibleEvidence(query: string, contenderName: string, signals: SourceSignal[]) {
+  if (!isLongIslandAreaRequest(query)) {
+    return false;
+  }
+
+  return signals.some((signal) => {
+    const text = normalizeQuery(
+      [
+        contenderName,
+        signal.sourceTitle,
+        signal.domain,
+        signal.queryVariant ?? "",
+        signal.extractedReason,
+        signal.positiveMention ?? "",
+        signal.negativeMention ?? "",
+        signal.verifiedAddress ?? ""
+      ].join(" ")
+    );
+    const incompatible = hasLongIslandIncompatibleLocation(text);
+
+    if (incompatible) {
+      console.log("LOCAL_LONG_ISLAND_INCOMPATIBLE_MATCH", {
+        query,
+        candidate: contenderName,
+        verifiedAddress: signal.verifiedAddress ?? null,
+        sourceTitle: signal.sourceTitle,
+        sourceDomain: signal.domain
+      });
+    }
+
+    return incompatible;
+  });
+}
+
 function localCandidateHasCategoryEvidence(query: string, contenderName: string, signals: SourceSignal[]) {
   const category = localCategoryForQuery(query);
   const specificIntent = localSpecificIntentForQuery(query);
@@ -5482,6 +5516,7 @@ function buildConsensus(
     responseStructuredConsensus = sanitizeLiveDestinationStructuredConsensus(responseStructuredConsensus);
   }
   if (responseStructuredConsensus.queryEvidenceType === "local_recommendation") {
+    responseStructuredConsensus = sanitizeLiveLocalGeographyStructuredConsensus(query, responseStructuredConsensus);
     responseStructuredConsensus = sanitizeLiveLocalCuisineStructuredConsensus(query, sources, responseStructuredConsensus);
   }
   const mode = responseStructuredConsensus.consensusClassification;
@@ -5542,6 +5577,40 @@ function buildResult(
 
 function firstVerifiedAddress(signals: SourceSignal[]) {
   return signals.map((signal) => signal.verifiedAddress?.trim()).find((address): address is string => Boolean(address));
+}
+
+function sanitizeLiveLocalGeographyStructuredConsensus(query: string, structuredConsensus: StructuredConsensus): StructuredConsensus {
+  if (!isLongIslandAreaRequest(query)) {
+    return structuredConsensus;
+  }
+
+  const validContenders = structuredConsensus.contenders.filter((contender) => {
+    const contenderSignals = structuredConsensus.signals.filter((signal) => signal.contenderName === contender.name);
+    const incompatible = localContenderHasLongIslandIncompatibleEvidence(query, contender.name, contenderSignals);
+
+    if (incompatible) {
+      console.log("LOCAL_FINAL_UI_LOCATION_REJECTED", {
+        candidate: contender.name,
+        requestedLocation: "Long Island",
+        reason: "long_island_city_or_nyc_borough",
+        verifiedAddresses: contenderSignals.map((signal) => signal.verifiedAddress).filter(Boolean),
+        sourceTitles: contenderSignals.map((signal) => signal.sourceTitle).slice(0, 5)
+      });
+    }
+
+    return !incompatible;
+  });
+  const validNames = new Set(validContenders.map((contender) => contender.name));
+  const signals = structuredConsensus.signals.filter((signal) => validNames.has(signal.contenderName));
+  const consensusClassification = validContenders.length > 0 ? (structuredConsensus.consensusClassification === "no_reliable_consensus" ? "split_consensus" : structuredConsensus.consensusClassification) : "no_reliable_consensus";
+
+  return {
+    ...structuredConsensus,
+    contenders: validContenders,
+    signals,
+    winner: consensusClassification === "no_reliable_consensus" ? undefined : validContenders[0]?.name,
+    consensusClassification
+  };
 }
 
 function sanitizeLiveLocalCuisineStructuredConsensus(query: string, sources: VeraSource[], structuredConsensus: StructuredConsensus): StructuredConsensus {
@@ -5653,6 +5722,7 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
 
   const cleanResults = consensus.results
     .filter((result) => !localUniversalEntityRejectionReason(consensus.query, result.name))
+    .filter((result) => cachedLocalResultPassesLocationIntent(consensus.query, result))
     .filter((result) => cachedLocalResultPassesSpecificIntent(consensus.query, result))
     .map((result, index) => ({
       ...result,
@@ -5702,6 +5772,26 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
         }
       : consensus.structuredConsensus
   };
+}
+
+function cachedLocalResultPassesLocationIntent(query: string, result: ConsensusResponse["results"][number]) {
+  if (!isLongIslandAreaRequest(query)) {
+    return true;
+  }
+
+  const text = normalizeQuery([result.name, result.summary, result.verifiedAddress ?? "", ...result.reasons, ...result.evidence, ...result.sources.map((source) => `${source.title} ${source.snippet ?? ""}`)].join(" "));
+  const valid = !hasLongIslandIncompatibleLocation(text);
+
+  if (!valid) {
+    console.log("LOCAL_FINAL_UI_LOCATION_REJECTED", {
+      candidate: result.name,
+      requestedLocation: "Long Island",
+      reason: "cached_long_island_city_or_nyc_borough",
+      verifiedAddress: result.verifiedAddress ?? null
+    });
+  }
+
+  return valid;
 }
 
 function cachedLocalResultPassesSpecificIntent(query: string, result: ConsensusResponse["results"][number]) {
