@@ -2619,6 +2619,10 @@ function localCandidateHasLocationEvidence(query: string, contenderName: string,
     const text = normalizeQuery(
       [contenderName, signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? "", signal.verifiedAddress ?? ""].join(" ")
     );
+    if (isLongIslandAreaRequest(query) && hasLongIslandIncompatibleLocation(text)) {
+      return false;
+    }
+
     return terms.some((term) => text.includes(term));
   });
 }
@@ -2665,6 +2669,24 @@ function localRequestedLocationTerms(query: string) {
   }
   if (/\bmanhattan\b/.test(normalized)) add("manhattan");
   if (/\bnyc|new york city\b/.test(normalized)) add("new york");
+  if (isLongIslandAreaRequest(normalized)) {
+    add("long island");
+    add("nassau");
+    add("nassau county");
+    add("suffolk");
+    add("suffolk county");
+    add("huntington");
+    add("massapequa");
+    add("wantagh");
+    add("garden city");
+    add("mineola");
+    add("rockville centre");
+    add("syosset");
+    add("farmingdale");
+    add("bay shore");
+    add("patchogue");
+    add("smithtown");
+  }
 
   return Array.from(terms);
 }
@@ -2672,6 +2694,7 @@ function localRequestedLocationTerms(query: string) {
 function localCandidateHasLocationLeakage(query: string, evidenceText: string) {
   const queryText = normalizeLocalQueryIntent(query);
   const leakagePatterns: Array<[RegExp, RegExp]> = [
+    [/\blong island\b(?!\s+city)/, /\b(long island city|lic|queens|astoria|flushing|jackson heights|brooklyn|manhattan|bronx|staten island|new york city|nyc)\b/],
     [/\bwantagh\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island|whitestone|westchester|connecticut|new jersey)\b/],
     [/\bseaford\b/, /\b(nyc|new york city|manhattan|brooklyn|queens|bronx|staten island)\b/],
     [/\bhuntington\b/, /\b(huntington beach|orange county|california|nyc|new york city|manhattan|brooklyn|queens|bronx|staten island)\b/],
@@ -2679,6 +2702,16 @@ function localCandidateHasLocationLeakage(query: string, evidenceText: string) {
   ];
 
   return leakagePatterns.some(([queryPattern, leakagePattern]) => queryPattern.test(queryText) && !leakagePattern.test(queryText) && leakagePattern.test(evidenceText));
+}
+
+function isLongIslandAreaRequest(value: string) {
+  const normalized = normalizeQuery(value);
+  return /\blong island\b/.test(normalized) && !/\b(long island city|lic)\b/.test(normalized);
+}
+
+function hasLongIslandIncompatibleLocation(value: string) {
+  const normalized = normalizeQuery(value);
+  return /\b(long island city|lic|queens|astoria|flushing|jackson heights|brooklyn|manhattan|bronx|staten island|new york city|nyc)\b/.test(normalized);
 }
 
 function localCandidateHasCategoryEvidence(query: string, contenderName: string, signals: SourceSignal[]) {

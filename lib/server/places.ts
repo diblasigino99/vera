@@ -428,10 +428,35 @@ function localPlacesPositiveLocationTerms(location: string) {
     ["wantagh", "seaford", "bellmore", "massapequa", "levittown"].forEach(add);
   }
 
+  if (isLongIslandAreaRequest(location)) {
+    [
+      "long island",
+      "nassau",
+      "nassau county",
+      "suffolk",
+      "suffolk county",
+      "huntington",
+      "massapequa",
+      "wantagh",
+      "garden city",
+      "mineola",
+      "rockville centre",
+      "syosset",
+      "farmingdale",
+      "bay shore",
+      "patchogue",
+      "smithtown"
+    ].forEach(add);
+  }
+
   return Array.from(terms);
 }
 
 function localPlacesOutsideLocationTerms(location: string) {
+  if (isLongIslandAreaRequest(location)) {
+    return ["long island city", "lic", "queens", "astoria", "flushing", "jackson heights", "brooklyn", "manhattan", "bronx", "staten island", "new york city", "nyc"];
+  }
+
   if (/\bqueens\b/.test(location)) {
     return [
       "manhattan",
@@ -458,6 +483,16 @@ function localPlacesOutsideLocationTerms(location: string) {
   }
 
   return [];
+}
+
+function isLongIslandAreaRequest(value: string) {
+  const normalized = normalizeQuery(value);
+  return /\blong island\b/.test(normalized) && !/\b(long island city|lic)\b/.test(normalized);
+}
+
+function hasLongIslandIncompatibleLocation(value: string) {
+  const normalized = normalizeQuery(value);
+  return /\b(long island city|lic|queens|astoria|flushing|jackson heights|brooklyn|manhattan|bronx|staten island|new york city|nyc)\b/.test(normalized);
 }
 
 function recordPlacesSummary(
@@ -1028,6 +1063,15 @@ function scoreLocationMatch(query: string, formattedAddress: string) {
   if (!tokens.length) return 0.65;
 
   const address = normalizeQuery(formattedAddress);
+  if (isLongIslandAreaRequest(query) && hasLongIslandIncompatibleLocation(address)) {
+    console.log("PLACES_LONG_ISLAND_LOCATION_REJECTED", {
+      query,
+      formattedAddress,
+      reason: "long_island_city_or_nyc_borough"
+    });
+    return 0.05;
+  }
+
   const boroughNeighborhoodMatch = localBoroughNeighborhoodLocationMatch(query, address);
 
   if (boroughNeighborhoodMatch.matched) {
