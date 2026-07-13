@@ -29,6 +29,7 @@ export function normalizeLocalQueryIntent(query: string) {
     .replace(/\bpiza\b/g, "pizza")
     .replace(/\bexpresso martini\b/g, "espresso martini")
     .replace(/\bcofee\b/g, "coffee")
+    .replace(/\bdirty martini\b/g, "cocktail bar")
     .replace(/\bsteak house\b/g, "steakhouse")
     .replace(/\btaco place\b/g, "mexican restaurant")
     .replace(/\btacos\b/g, "mexican restaurant")
@@ -67,7 +68,7 @@ export type ParsedLocalIntent = {
 
 export function parseLocalIntent(query: string): ParsedLocalIntent {
   const normalized = normalizeLocalQueryIntent(query);
-  const locationMatch = normalized.match(/\b(?:in|near|around)\s+(.+?)$/);
+  const locationMatch = normalized.match(/\b(?:in|near|around|on)\s+(.+?)$/);
   const rawLocation = cleanLocalLocationPhrase(locationMatch?.[1] ?? "");
   const rawCategory = (locationMatch ? normalized.slice(0, locationMatch.index).trim() : normalized).trim();
   const category = normalizeLocalCategoryPhrase(rawCategory);
@@ -86,7 +87,7 @@ function normalizeLocalCategoryPhrase(value: string) {
     .replace(/\s+/g, " ")
     .trim();
 
-  if (/\b(espresso martini|cocktail bar|cocktail)\b/.test(normalized)) return "cocktail bar";
+  if (/\b(espresso martini|dirty martini|martini|cocktail bar|cocktail)\b/.test(normalized)) return "cocktail bar";
   if (/\b(coffee shop|coffee|cafe|cafes|café)\b/.test(normalized)) return "coffee shop";
   if (/\b(tattoo shop|tattoo studio|tattoo)\b/.test(normalized)) return "tattoo shop";
   if (/\b(golf course|golf)\b/.test(normalized)) return "golf course";
@@ -282,7 +283,7 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   }
 
   if (
-    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|place to eat|place to stay|near me)\b/.test(
+    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|dirty martini|martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|place to eat|place to stay|near me)\b/.test(
       normalized
     ) ||
     /\b\d{5}(?:-\d{4})?\b/.test(normalized)

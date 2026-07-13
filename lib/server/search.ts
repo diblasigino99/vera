@@ -760,7 +760,7 @@ function localRetrievalCategory(normalized: string) {
   if (/\b(pizza|pizzeria)\b/.test(normalized)) return "pizza";
   if (/\b(brunch)\b/.test(normalized)) return "brunch";
   if (/\b(bakery|bakeries)\b/.test(normalized)) return "bakery";
-  if (/\b(bar|bars|pub|cocktail|brewery|taproom|espresso martini)\b/.test(normalized)) return "bar";
+  if (/\b(bar|bars|pub|cocktail|brewery|taproom|espresso martini|dirty martini|martini)\b/.test(normalized)) return "bar";
   if (/\b(gym|gyms|fitness)\b/.test(normalized)) return "gym";
   if (/\b(tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo)\b/.test(normalized)) return "tattoo";
   if (/\b(dentist|dentists|dental)\b/.test(normalized)) return "dentist";
@@ -883,7 +883,7 @@ function localConstraintRetrievalPrefix(constraints: ReturnType<typeof parseLoca
 }
 
 function extractLocalLocation(normalized: string) {
-  const locationMatch = normalized.match(/\b(?:in|near|around)\s+(.+?)$/);
+  const locationMatch = normalized.match(/\b(?:in|near|around|on)\s+(.+?)$/);
   return (
     locationMatch?.[1]
       ?.replace(
@@ -943,7 +943,7 @@ function localRecoveryCategoryLabel(category: string, normalizedQuery: string) {
   if (category === "restaurant" && /\b(steakhouse|steak house|steak)\b/.test(normalizedQuery)) return "steakhouse";
   if (category === "restaurant") return "restaurant";
   if (category === "coffee") return "coffee shop";
-  if (category === "bar" && /\bespresso martini\b/.test(normalizedQuery)) return "espresso martini bar";
+  if (category === "bar" && /\b(?:espresso martini|dirty martini|martini)\b/.test(normalizedQuery)) return "martini bar";
   if (category === "bar" && /\bcocktail\b/.test(normalizedQuery)) return "cocktail bar";
   if (category === "bar") return "bar";
   if (category === "golf_course") return "golf course";

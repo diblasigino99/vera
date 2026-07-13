@@ -969,7 +969,7 @@ function isLocalSearchSubjectOrCategory(normalizedQuery: string, normalizedCandi
 
   if (subject && normalizedCandidate === subject) return true;
 
-  return /^(?:coffee|coffee shop|cafe|espresso martini|pizza|sushi|brunch|restaurant|bar|cocktail|italian food|seafood|tattoo shop|tattoo)$/.test(normalizedCandidate);
+  return /^(?:coffee|coffee shop|cafe|espresso martini|dirty martini|martini|pizza|sushi|brunch|restaurant|bar|cocktail|italian food|seafood|tattoo shop|tattoo)$/.test(normalizedCandidate);
 }
 
 function isLocalLocationOnly(normalizedCandidate: string) {
@@ -1203,7 +1203,7 @@ function localCategoryLabelForPlaces(query: string) {
   if (/\b(italian|sushi|seafood|pizza|brunch|ramen|tacos?|mexican|steakhouse)\b/.test(normalized)) {
     return `${normalized.match(/\b(italian|sushi|seafood|pizza|brunch|ramen|tacos?|mexican|steakhouse)\b/)?.[1]} restaurant`;
   }
-  if (/\b(espresso martini|cocktail bar|cocktail)\b/.test(normalized)) return "cocktail bar";
+  if (/\b(espresso martini|dirty martini|martini|cocktail bar|cocktail)\b/.test(normalized)) return "cocktail bar";
   if (/\b(bar|pub)\b/.test(normalized)) return "bar";
   if (/\b(coffee|cafe)\b/.test(normalized)) return "coffee shop";
   if (/\b(hotel|hotels)\b/.test(normalized)) return "hotel";

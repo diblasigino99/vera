@@ -2225,7 +2225,7 @@ type LocalSpecificIntentEvidence = {
 function localSpecificIntentForQuery(query: string): LocalSpecificIntent | null {
   const normalized = normalizeLocalQueryIntent(query);
 
-  if (/\bespresso martini\b/.test(normalized)) {
+  if (/\b(espresso martini|dirty martini|martini)\b/.test(normalized)) {
     return {
       key: "cocktail",
       label: "cocktail",
@@ -2561,6 +2561,8 @@ function isLocalSearchSubjectOnly(query: string, normalizedCandidate: string) {
 
   for (const subject of [
     "espresso martini",
+    "dirty martini",
+    "martini",
     "italian food",
     "italian food and pizza",
     "seafood",
@@ -2637,7 +2639,7 @@ function localRequestedLocationTerms(query: string) {
   };
 
   const explicitLocation = normalized
-    .match(/\b(?:in|near|around)\s+(.+?)$/)?.[1]
+    .match(/\b(?:in|near|around|on)\s+(.+?)$/)?.[1]
     ?.replace(/\b(?:ny|new york|fl|florida|ca|california|tx|texas|best|top|restaurants?|restaurant|seafood|italian|sushi|pizza|brunch|coffee|bar|bars|mexican|steakhouse)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -2748,6 +2750,74 @@ function localContenderHasLongIslandIncompatibleEvidence(query: string, contende
   });
 }
 
+function localLocationAsContenderRejectionReason(query: string, contenderName: string, signals: SourceSignal[]) {
+  const terms = localRequestedLocationTerms(query);
+
+  if (!terms.length) return null;
+
+  const normalizedName = normalizeLocationContenderName(contenderName);
+  const locationTerms = terms.map(normalizeLocationContenderName).filter(Boolean);
+  const exactLocationName = locationTerms.some((term) => normalizedName === term || normalizedName === `the ${term}`);
+
+  if (exactLocationName) {
+    return "requested_location_as_contender";
+  }
+
+  const locationDerivedName = locationTerms.some((term) => {
+    const withoutGenericSuffix = normalizedName
+      .replace(/\b(?:bar|restaurant|restaurants|cafe|coffee shop|shop|store|hotel|inn|pub|tavern|lounge|grill|bistro|pizzeria|pizza)\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return withoutGenericSuffix === term || withoutGenericSuffix === `the ${term}`;
+  });
+
+  if (!locationDerivedName) {
+    return null;
+  }
+
+  const verifiedAddresses = signals.map((signal) => signal.verifiedAddress).filter((address): address is string => Boolean(address));
+
+  if (!verifiedAddresses.length) {
+    return "location_derived_name_without_verified_address";
+  }
+
+  if (verifiedAddresses.some((address) => hasLongIslandIncompatibleLocation(address) && isLongIslandAreaRequest(query))) {
+    return "location_derived_name_wrong_geography";
+  }
+
+  return null;
+}
+
+function cachedLocalLocationAsContenderRejectionReason(query: string, result: ConsensusResponse["results"][number]) {
+  return localLocationAsContenderRejectionReason(query, result.name, [
+    {
+      contenderName: result.name,
+      sourceTitle: result.sources[0]?.title ?? "",
+      sourceUrl: result.sources[0]?.url ?? "",
+      domain: result.sources[0]?.domain ?? "",
+      sourceType: "other",
+      sourceWeight: 1,
+      sourceQuality: "medium",
+      sourceQualityWeight: 1,
+      sentiment: "neutral",
+      mentionStrength: "moderate",
+      positiveMention: result.summary,
+      negativeMention: undefined,
+      extractedReason: result.evidence.join(" "),
+      themes: result.reasons,
+      verifiedAddress: result.verifiedAddress
+    }
+  ]);
+}
+
+function normalizeLocationContenderName(value: string) {
+  return normalizeQuery(value)
+    .replace(/^the\s+/, "")
+    .replace(/[’']/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function localCandidateHasCategoryEvidence(query: string, contenderName: string, signals: SourceSignal[]) {
   const category = localCategoryForQuery(query);
   const specificIntent = localSpecificIntentForQuery(query);
@@ -2793,7 +2863,7 @@ function localCategoryMatchScore(query: string, contenderName: string, signals: 
   if (/\bramen\b/.test(queryText)) score += /\b(ramen|noodle|tsujita|tatsu|menya)\b/.test(evidenceText) ? 4.5 : -4;
   if (/\bsushi\b/.test(queryText)) score += /\b(sushi|omakase|handroll|izakaya)\b/.test(evidenceText) ? 4.5 : -4;
   if (/\btacos?\b/.test(queryText)) score += /\b(taco|tacos|taqueria|discada)\b/.test(evidenceText) ? 4 : -3;
-  if (/\bespresso martini\b/.test(queryText)) score += /\b(bar|cocktail|lounge|martini|drinks?)\b/.test(evidenceText) ? 3.5 : -5;
+  if (/\b(espresso martini|dirty martini|martini)\b/.test(queryText)) score += /\b(bar|cocktail|lounge|martini|drinks?)\b/.test(evidenceText) ? 3.5 : -5;
 
   if (category === "hotel" && /\b(restaurant|bar|cafe|pizza|sushi|ramen)\b/.test(normalizeQuery(contenderName))) score -= 8;
   if ((category === "restaurant" || category === "bar") && /\b(hotel|inn|motel|residence inn|hilton|marriott)\b/.test(normalizeQuery(contenderName))) score -= 8;
@@ -3089,7 +3159,7 @@ function localUrlOnlyPenalty(signals: SourceSignal[]) {
 function localCategoryForQuery(query: string) {
   const normalized = normalizeLocalQueryIntent(query);
 
-  if (/\b(espresso martini|cocktail|cocktails|speakeasy)\b/.test(normalized)) return "bar";
+  if (/\b(espresso martini|dirty martini|martini|cocktail|cocktails|speakeasy)\b/.test(normalized)) return "bar";
   if (/\b(hotel|motel|inn|resort|lodging|place to stay)\b/.test(normalized)) return "hotel";
   if (/\b(coffee shop|coffee shops|coffee|cafe|cafes|café)\b/.test(normalized)) return "coffee";
   if (/\b(pizza|pizzeria)\b/.test(normalized)) return "pizza";
@@ -5376,7 +5446,7 @@ function isWeakBroadProductContender(contender: ContenderMetrics, query: string)
 function inferIntendedCategory(query: string): VeraEntityCategory {
   const normalized = normalizeQuery(query);
 
-  if (/\b(espresso martini|cocktail|cocktails|speakeasy)\b/.test(normalized)) return "bar";
+  if (/\b(espresso martini|dirty martini|martini|cocktail|cocktails|speakeasy)\b/.test(normalized)) return "bar";
   if (/\b(coffee shop|cafe|café|espresso)\b/.test(normalized)) return "cafe";
   if (/\b(bar|pub|cocktail|brewery|taproom|speakeasy)\b/.test(normalized)) return "bar";
   if (/\b(restaurant|pizza|pizzeria|sushi|steakhouse|diner|brunch|bakery|bakeries|lunch|dinner|place to eat|food)\b/.test(normalized)) return "restaurant";
@@ -5580,13 +5650,10 @@ function firstVerifiedAddress(signals: SourceSignal[]) {
 }
 
 function sanitizeLiveLocalGeographyStructuredConsensus(query: string, structuredConsensus: StructuredConsensus): StructuredConsensus {
-  if (!isLongIslandAreaRequest(query)) {
-    return structuredConsensus;
-  }
-
   const validContenders = structuredConsensus.contenders.filter((contender) => {
     const contenderSignals = structuredConsensus.signals.filter((signal) => signal.contenderName === contender.name);
     const incompatible = localContenderHasLongIslandIncompatibleEvidence(query, contender.name, contenderSignals);
+    const locationNameRejection = localLocationAsContenderRejectionReason(query, contender.name, contenderSignals);
 
     if (incompatible) {
       console.log("LOCAL_FINAL_UI_LOCATION_REJECTED", {
@@ -5598,7 +5665,16 @@ function sanitizeLiveLocalGeographyStructuredConsensus(query: string, structured
       });
     }
 
-    return !incompatible;
+    if (locationNameRejection) {
+      console.log("LOCAL_LOCATION_AS_CONTENDER_REJECTED", {
+        candidate: contender.name,
+        reason: locationNameRejection,
+        verifiedAddresses: contenderSignals.map((signal) => signal.verifiedAddress).filter(Boolean),
+        sourceTitles: contenderSignals.map((signal) => signal.sourceTitle).slice(0, 5)
+      });
+    }
+
+    return !incompatible && !locationNameRejection;
   });
   const validNames = new Set(validContenders.map((contender) => contender.name));
   const signals = structuredConsensus.signals.filter((signal) => validNames.has(signal.contenderName));
@@ -5775,18 +5851,20 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
 }
 
 function cachedLocalResultPassesLocationIntent(query: string, result: ConsensusResponse["results"][number]) {
-  if (!isLongIslandAreaRequest(query)) {
+  const text = normalizeQuery([result.name, result.summary, result.verifiedAddress ?? "", ...result.reasons, ...result.evidence, ...result.sources.map((source) => `${source.title} ${source.snippet ?? ""}`)].join(" "));
+  const locationNameRejection = cachedLocalLocationAsContenderRejectionReason(query, result);
+
+  if (!isLongIslandAreaRequest(query) && !locationNameRejection) {
     return true;
   }
 
-  const text = normalizeQuery([result.name, result.summary, result.verifiedAddress ?? "", ...result.reasons, ...result.evidence, ...result.sources.map((source) => `${source.title} ${source.snippet ?? ""}`)].join(" "));
-  const valid = !hasLongIslandIncompatibleLocation(text);
+  const valid = !hasLongIslandIncompatibleLocation(text) && !locationNameRejection;
 
   if (!valid) {
     console.log("LOCAL_FINAL_UI_LOCATION_REJECTED", {
       candidate: result.name,
       requestedLocation: "Long Island",
-      reason: "cached_long_island_city_or_nyc_borough",
+      reason: locationNameRejection ?? "cached_long_island_city_or_nyc_borough",
       verifiedAddress: result.verifiedAddress ?? null
     });
   }
