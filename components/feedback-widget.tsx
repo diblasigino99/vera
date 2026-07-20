@@ -34,7 +34,7 @@ export function FeedbackWidget({
 
     setSelectedType(feedbackType);
 
-    if ((feedbackType === "no" || feedbackType === "report_issue") && status !== "submitting" && selectedType !== feedbackType) {
+    if ((feedbackType === "no" || feedbackType === "report_issue") && selectedType !== feedbackType) {
       setStatus("writing");
       return;
     }
