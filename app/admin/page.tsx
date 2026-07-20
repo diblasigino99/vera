@@ -5,6 +5,7 @@ import {
   getAdminDashboardData,
   type AdminEventWithCache
 } from "@/lib/server/admin-dashboard";
+import type { AdminFeedbackEvent } from "@/lib/server/feedback";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <MetricCard label="Cache-hit rate" value={formatPercent(data.overview.cacheHitRate)} />
           <MetricCard label="No-consensus rate" value={formatPercent(data.overview.noConsensusRate)} />
           <MetricCard label="Avg response" value={formatMs(data.overview.averageResponseMs)} />
-          <MetricCard label="Recent sample" value={formatNumber(data.sampleSize)} />
+          <MetricCard label="Feedback" value={formatNumber(data.feedback.total)} />
         </section>
 
         <section className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
@@ -81,9 +82,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <ProblemLink href="/admin?filter=slow" label="Slow over 15 seconds" count={data.problemSearches.slow.length} />
               <ProblemLink href="/admin?filter=errors" label="Errors" count={data.problemSearches.errors.length} />
               <ProblemLink href="/admin?filter=zero-contenders" label="Zero contenders" count={data.problemSearches.zeroContenders.length} />
-              <div className="rounded-lg border border-dashed border-[#D8D2C7] bg-white p-4 sm:col-span-2">
+              <div className="rounded-lg border border-[#E7E3DB] bg-white p-4 sm:col-span-2">
                 <span className="block text-sm text-[#3D3D38]">Reported results</span>
-                <span className="mt-2 block text-sm text-[#8B887F]">Not available until feedback/report data is logged.</span>
+                <span className="mt-2 block font-mono text-lg text-[#111114]">
+                  {formatNumber(data.feedback.recent.filter((item) => item.feedback_type === "report_issue").length)}
+                </span>
               </div>
             </div>
           </div>
@@ -110,6 +113,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </div>
 
           <SearchTable rows={visibleRows} />
+        </section>
+
+        <section className="mt-10">
+          <SectionHeading title="Recent feedback" subtitle="Newest feedback submissions from public result pages." />
+          <FeedbackTable rows={data.feedback.recent} />
         </section>
       </div>
     </main>
@@ -199,6 +207,50 @@ function SearchTable({ rows }: { rows: AdminEventWithCache[] }) {
   );
 }
 
+function FeedbackTable({ rows }: { rows: AdminFeedbackEvent[] }) {
+  return (
+    <div className="mt-4 overflow-hidden rounded-lg border border-[#E7E3DB] bg-white">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-[#ECE8E0] text-left text-sm">
+          <thead className="bg-[#F5F3EE] text-xs uppercase tracking-[0.16em] text-[#8B887F]">
+            <tr>
+              <th className="px-4 py-3 font-medium">Feedback</th>
+              <th className="px-4 py-3 font-medium">Query</th>
+              <th className="px-4 py-3 font-medium">Evidence</th>
+              <th className="px-4 py-3 font-medium">Classification</th>
+              <th className="px-4 py-3 font-medium">Created</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#ECE8E0]">
+            {rows.length === 0 ? (
+              <tr>
+                <td className="px-4 py-6 text-[#77776F]" colSpan={5}>
+                  No feedback submitted yet.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id} className="transition hover:bg-[#FAF9F6]">
+                  <td className="px-4 py-3">
+                    <Link href={`/admin/feedback/${row.id}`} className="font-medium text-[#111114] hover:underline">
+                      {feedbackTypeLabel(row.feedback_type)}
+                    </Link>
+                    {row.feedback_text ? <p className="mt-1 max-w-xs truncate text-xs text-[#8B887F]">{row.feedback_text}</p> : null}
+                  </td>
+                  <td className="max-w-[24rem] px-4 py-3 text-[#3D3D38]">{row.search_query || "—"}</td>
+                  <td className="px-4 py-3 text-[#62625C]">{row.evidence_type || "—"}</td>
+                  <td className="px-4 py-3 text-[#62625C]">{row.consensus_classification?.replaceAll("_", " ") || "—"}</td>
+                  <td className="px-4 py-3 text-[#62625C]">{formatDate(row.created_at)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function StatusLabel({ value }: { value: string }) {
   const isProblem = value === "no_reliable_consensus" || value === "unknown";
   return (
@@ -235,4 +287,10 @@ function formatDate(value?: string | null) {
     hour: "numeric",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function feedbackTypeLabel(value: AdminFeedbackEvent["feedback_type"]) {
+  if (value === "report_issue") return "Report issue";
+  if (value === "yes") return "Useful";
+  return "Not useful";
 }

@@ -6,6 +6,7 @@ import { getConsensusById } from "@/lib/server/cache";
 import { parseResultSlug } from "@/lib/result-slug";
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
 import { ResultClientFallback } from "./result-client-fallback";
+import { FeedbackWidget } from "@/components/feedback-widget";
 
 type ResultPageProps = {
   params: Promise<{
@@ -173,6 +174,14 @@ export default async function ResultPage({ params }: ResultPageProps) {
               {supportingSources.length ? <SourceGroup title="Additional Supporting Sources" sources={supportingSources} /> : null}
             </div>
           </DetailSection>
+
+          <FeedbackWidget
+            compact
+            consensusClassification={consensus.mode}
+            evidenceType={consensus.structuredConsensus?.queryEvidenceType}
+            resultSlug={slug}
+            searchQuery={consensus.query}
+          />
         </div>
       </article>
     </main>

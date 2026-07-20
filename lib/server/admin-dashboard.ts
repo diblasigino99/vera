@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/server/supabase";
+import { countFeedbackEvents, getRecentFeedbackEvents, type AdminFeedbackEvent } from "@/lib/server/feedback";
 import type { ConsensusResponse } from "@/lib/types";
 
 export type AdminSearchEvent = {
@@ -66,6 +67,10 @@ export type AdminDashboardData = {
     errors: AdminEventWithCache[];
     zeroContenders: AdminEventWithCache[];
   };
+  feedback: {
+    total: number;
+    recent: AdminFeedbackEvent[];
+  };
   sampleSize: number;
 };
 
@@ -83,7 +88,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const [total, today, last7, errors, recentResult, breakdownResult] = await Promise.all([
+  const [total, today, last7, errors, recentResult, breakdownResult, totalFeedback, recentFeedback] = await Promise.all([
     countSearchEvents(supabase),
     countSearchEvents(supabase, { createdAfter: todayStart.toISOString() }),
     countSearchEvents(supabase, { createdAfter: sevenDaysAgo.toISOString() }),
@@ -97,7 +102,9 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       .from("search_events")
       .select("evidence_type, cache_hit_type")
       .order("created_at", { ascending: false })
-      .limit(breakdownLimit)
+      .limit(breakdownLimit),
+    countFeedbackEvents(),
+    getRecentFeedbackEvents(25)
   ]);
 
   if (recentResult.error) {
@@ -130,6 +137,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       slow: recentSearches.filter((event) => (event.total_ms ?? 0) > 15000).slice(0, 25),
       errors: recentSearches.filter((event) => event.error).slice(0, 25),
       zeroContenders: recentSearches.filter((event) => contenderNamesFromResult(event.cacheResult).length === 0).slice(0, 25)
+    },
+    feedback: {
+      total: totalFeedback,
+      recent: recentFeedback
     },
     sampleSize: recentEvents.length
   };
@@ -286,6 +297,10 @@ function emptyDashboardData(unavailableReason: string): AdminDashboardData {
       slow: [],
       errors: [],
       zeroContenders: []
+    },
+    feedback: {
+      total: 0,
+      recent: []
     },
     sampleSize: 0
   };

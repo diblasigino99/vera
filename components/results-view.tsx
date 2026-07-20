@@ -8,6 +8,7 @@ import type { ConsensusResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { VeraThinking } from "@/components/vera-thinking";
 import { SearchExperience } from "@/components/search-experience";
+import { FeedbackWidget } from "@/components/feedback-widget";
 import { buildResultSlug } from "@/lib/result-slug";
 import { getAnonymousId } from "@/lib/client/anonymous-id";
 
@@ -314,6 +315,11 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
               </section>
 
               <SourcesSection sources={result.sources} />
+              <FeedbackWidget
+                consensusClassification={result.mode}
+                evidenceType={result.structuredConsensus?.queryEvidenceType}
+                searchQuery={result.query}
+              />
             </div>
           )}
         </section>

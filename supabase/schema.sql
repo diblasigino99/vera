@@ -123,12 +123,30 @@ create index if not exists search_events_normalized_query_idx
 create index if not exists search_events_cache_hit_idx
   on public.search_events(cache_hit);
 
+create table if not exists public.feedback_events (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  search_query text,
+  result_slug text,
+  feedback_type text not null check (feedback_type in ('yes', 'no', 'report_issue')),
+  feedback_text text,
+  evidence_type text,
+  consensus_classification text
+);
+
+create index if not exists feedback_events_created_at_idx
+  on public.feedback_events(created_at);
+
+create index if not exists feedback_events_feedback_type_idx
+  on public.feedback_events(feedback_type);
+
 alter table public.search_cache enable row level security;
 alter table public.profiles enable row level security;
 alter table public.saved_searches enable row level security;
 alter table public.saved_results enable row level security;
 alter table public.places_validation_cache enable row level security;
 alter table public.search_events enable row level security;
+alter table public.feedback_events enable row level security;
 
 create policy "Public can read cached consensus"
   on public.search_cache for select

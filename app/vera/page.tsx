@@ -1,14 +1,16 @@
 import { SearchExperience } from "@/components/search-experience";
 
 const examples = [
-  "Best first date restaurant in Williamsburg",
-  "Best budget hotel in Seattle",
-  "Best Wi-Fi router for a large house",
-  "Best espresso martini in NYC",
-  "Best running shoes for beginners",
-  "Best carry-on suitcase",
-  "Best CRM for small businesses",
-  "Best AI coding assistant"
+  "Best AI coding assistant",
+  "Best carry-on suitcase for Europe",
+  "Best airline for first class to Europe",
+  "Best island in Portugal for summer",
+  "Best noise cancelling headphones",
+  "Best coffee shop in Queens",
+  "Best Italian restaurant in Wantagh",
+  "Best golf watch",
+  "Best travel backpack",
+  "Best pizza in Brooklyn"
 ];
 
 export default function Home() {
@@ -28,7 +30,7 @@ export default function Home() {
           <SearchExperience rotatingPlaceholders={examples} />
         </div>
         <div className="mt-8 w-full max-w-[43rem] sm:mt-9">
-          <p className="mb-4 text-[0.68rem] font-medium uppercase tracking-[0.22em] text-[#A6A6AD]">Popular searches</p>
+          <p className="mb-4 text-[0.68rem] font-medium uppercase tracking-[0.22em] text-[#A6A6AD]">Try searching...</p>
           <div className="flex flex-wrap justify-center gap-x-2 gap-y-2.5 text-sm text-[#74747D] sm:text-[15px]">
             {examples.map((example) => (
               <a
