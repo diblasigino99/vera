@@ -85,9 +85,9 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
 
   const [total, today, last7, errors, recentResult, breakdownResult] = await Promise.all([
     countSearchEvents(supabase),
-    countSearchEvents(supabase, (query) => query.gte("created_at", todayStart.toISOString())),
-    countSearchEvents(supabase, (query) => query.gte("created_at", sevenDaysAgo.toISOString())),
-    countSearchEvents(supabase, (query) => query.not("error", "is", null)),
+    countSearchEvents(supabase, { createdAfter: todayStart.toISOString() }),
+    countSearchEvents(supabase, { createdAfter: sevenDaysAgo.toISOString() }),
+    countSearchEvents(supabase, { hasError: true }),
     supabase
       .from("search_events")
       .select(searchEventSelect)
@@ -136,10 +136,18 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
 
 }
 
-async function countSearchEvents(supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>, apply?: (query: any) => any) {
+type SearchEventCountOptions = {
+  createdAfter?: string;
+  hasError?: boolean;
+};
+
+async function countSearchEvents(supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>, options: SearchEventCountOptions = {}) {
   let query = supabase.from("search_events").select("id", { count: "exact", head: true });
-  if (apply) {
-    query = apply(query);
+  if (options.createdAfter) {
+    query = query.gte("created_at", options.createdAfter);
+  }
+  if (options.hasError) {
+    query = query.not("error", "is", null);
   }
 
   const { count, error } = await query;
