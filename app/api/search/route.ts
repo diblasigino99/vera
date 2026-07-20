@@ -644,6 +644,10 @@ function vagueRecommendationGuardExplanation(query: string, evidenceType: Return
     return "Vera needs more destination context for this search. Try adding a country, region, season, or trip style.";
   }
 
+  if (evidenceType === "product_recommendation" && isVagueUnknownProductQuery(query)) {
+    return "Vera needs more product context for this search. Try adding a category, use case, budget, or must-have feature.";
+  }
+
   return null;
 }
 
@@ -689,6 +693,10 @@ function noConsensusExplanationForQuery(query: string, evidenceType: ReturnType<
   }
 
   if (evidenceType === "product_recommendation" || evidenceType === "provider_or_brand_recommendation" || evidenceType === "software_tool") {
+    if (evidenceType === "product_recommendation" && isVagueUnknownProductQuery(query)) {
+      return "Vera needs more product context for this search. Try adding a category, use case, budget, or must-have feature.";
+    }
+
     return "Vera couldn't find enough reliable agreement to recommend a clear answer. Try adding priorities such as budget, use case, location, or must-have features.";
   }
 
@@ -736,6 +744,22 @@ function isVagueHiddenDestinationQueryWithoutGeography(query: string) {
   }
 
   return !/\b(?:in|near|around|from|to|within)\b.+\b[a-z]{3,}\b/.test(normalized);
+}
+
+function isVagueUnknownProductQuery(query: string) {
+  const normalized = normalizeQuery(query);
+
+  if (!/\b(?:unknown|hidden gem|hidden gems|secret|underrated|no one talks about|nobody talks about)\b/.test(normalized)) {
+    return false;
+  }
+
+  if (!/\b(?:product|products|thing|things|item|items|buy|purchase)\b/.test(normalized)) {
+    return false;
+  }
+
+  return !/\b(?:headphones|laptop|router|mouse|keyboard|suitcase|luggage|shoes|running shoes|air purifier|robot vacuum|mattress|camera|monitor|backpack|phone|car|vehicle)\b/.test(
+    normalized
+  );
 }
 
 function buildCacheTestResult(originalQuery: string, normalizedQuery: string): ConsensusResponse {
