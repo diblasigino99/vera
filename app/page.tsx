@@ -15,6 +15,14 @@ export default function NexraHome() {
         >
           Open Vera
         </Link>
+        <footer className="mt-8 flex items-center justify-center gap-5 text-xs text-[#A6A6AD]">
+          <Link href="/privacy" className="transition hover:text-[#62626A]">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="transition hover:text-[#62626A]">
+            Terms of Service
+          </Link>
+        </footer>
       </section>
     </main>
   );

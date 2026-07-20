@@ -28,6 +28,10 @@ export function FeedbackWidget({
   const showTextBox = selectedType === "no" || selectedType === "report_issue";
 
   async function submitFeedback(feedbackType: FeedbackType, text = feedbackText) {
+    if (status === "submitting") {
+      return;
+    }
+
     setSelectedType(feedbackType);
 
     if ((feedbackType === "no" || feedbackType === "report_issue") && status !== "submitting" && selectedType !== feedbackType) {
@@ -78,13 +82,13 @@ export function FeedbackWidget({
           <h2 className="mt-2 text-xl font-semibold tracking-[-0.01em] text-[#111114]">Was this useful?</h2>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <FeedbackButton active={selectedType === "yes"} onClick={() => submitFeedback("yes")}>
+          <FeedbackButton active={selectedType === "yes"} disabled={status === "submitting"} onClick={() => submitFeedback("yes")}>
             Yes
           </FeedbackButton>
-          <FeedbackButton active={selectedType === "no"} onClick={() => submitFeedback("no")}>
+          <FeedbackButton active={selectedType === "no"} disabled={status === "submitting"} onClick={() => submitFeedback("no")}>
             No
           </FeedbackButton>
-          <FeedbackButton active={selectedType === "report_issue"} onClick={() => submitFeedback("report_issue")}>
+          <FeedbackButton active={selectedType === "report_issue"} disabled={status === "submitting"} onClick={() => submitFeedback("report_issue")}>
             Report an issue
           </FeedbackButton>
         </div>
@@ -93,7 +97,7 @@ export function FeedbackWidget({
       {showTextBox ? (
         <div className="mt-5">
           <label className="text-sm font-medium text-[#4B4B52]" htmlFor="vera-feedback-text">
-            Tell us what went wrong.
+            Tell us what happened.
           </label>
           <textarea
             id="vera-feedback-text"
@@ -110,7 +114,7 @@ export function FeedbackWidget({
               disabled={status === "submitting"}
               className="rounded-full bg-[#111114] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#2C2C30] disabled:cursor-default disabled:opacity-60"
             >
-              {status === "submitting" ? "Sending..." : "Send feedback"}
+              {status === "submitting" ? "Submitting..." : "Submit Feedback"}
             </button>
             {status === "failed" ? <p className="text-sm text-[#9B3D2E]">Feedback could not be submitted. Please try again.</p> : null}
           </div>
@@ -123,18 +127,21 @@ export function FeedbackWidget({
 function FeedbackButton({
   active,
   children,
+  disabled,
   onClick
 }: {
   active: boolean;
   children: React.ReactNode;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cn(
-        "rounded-full border px-4 py-2 text-sm font-medium transition",
+        "rounded-full border px-4 py-2 text-sm font-medium transition disabled:cursor-default disabled:opacity-60",
         active
           ? "border-[#111114] bg-[#111114] text-white"
           : "border-[#E4E4EA] bg-white text-[#62626A] hover:border-[#C9CAD1] hover:text-[#111114]"

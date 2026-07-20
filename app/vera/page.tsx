@@ -1,4 +1,5 @@
 import { SearchExperience } from "@/components/search-experience";
+import Link from "next/link";
 
 const examples = [
   "Best AI coding assistant",
@@ -46,6 +47,14 @@ export default function Home() {
         <p className="mt-10 text-[0.84rem] leading-6 text-[#8D8D94] sm:mt-11">
           Built from public discussions, reviews, and expert sources.
         </p>
+        <footer className="mt-8 flex items-center justify-center gap-5 text-xs text-[#A6A6AD]">
+          <Link href="/privacy" className="transition hover:text-[#62626A]">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="transition hover:text-[#62626A]">
+            Terms of Service
+          </Link>
+        </footer>
       </section>
     </main>
   );

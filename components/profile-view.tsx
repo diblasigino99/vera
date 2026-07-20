@@ -51,7 +51,7 @@ export function ProfileView() {
         <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Saved Library</p>
         <h1 className="mt-5 text-5xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-6xl">Your saved Vera research.</h1>
         <p className="mt-6 max-w-2xl text-xl leading-9 text-[#4B4B52]">
-          {loading ? "Loading your saved library..." : error ?? "Saved searches and results from this beta session live here."}
+          {loading ? "Loading your saved library..." : error ?? "Saved searches and recommendations from this browser live here."}
         </p>
       </header>
 
@@ -80,10 +80,10 @@ export function ProfileView() {
           )}
         </LibrarySection>
 
-        <LibrarySection title="Account" description="You're using Vera during the beta.">
+        <LibrarySection title="Account" description="You're using Vera in this browser.">
           <div className="border-t border-[#ECECF0] py-5">
             <div className="grid gap-3 sm:grid-cols-[0.35fr_0.65fr]">
-              <p className="font-medium text-[#111114]">Beta session</p>
+              <p className="font-medium text-[#111114]">Browser session</p>
               <div>
                 <p className="text-[#4B4B52]">Your saved searches and recommendations are stored privately in this browser for now.</p>
               </div>
@@ -91,7 +91,7 @@ export function ProfileView() {
           </div>
         </LibrarySection>
 
-        <LibrarySection title="Support" description="A few quiet essentials for the beta.">
+        <LibrarySection title="Support" description="A few quiet essentials.">
           <div className="border-t border-[#ECECF0]">
             <SupportLink href="mailto:hello@nexraai.com?subject=Vera%20feedback" label="Send Feedback" />
             <SupportLink href="/privacy" label="Privacy Policy" />
