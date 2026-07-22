@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { z } from "zod";
+import { NO_RELIABLE_CONSENSUS_BODY, NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
 import type {
   ConsensusMode,
   ConsensusResponse,
@@ -130,7 +131,7 @@ export async function analyzeConsensus(query: string, sources: VeraSource[], cal
   return debug.consensus;
 }
 
-export function buildNoReliableConsensus(query: string, sources: VeraSource[], explanation = "Not enough reliable data to form a consensus.") {
+export function buildNoReliableConsensus(query: string, sources: VeraSource[], explanation = NO_RELIABLE_CONSENSUS_BODY) {
   return notEnoughData(query, sources, explanation);
 }
 
@@ -267,7 +268,7 @@ export async function buildLocalFallbackConsensus(
   return {
     ...consensus,
     mode: consensus.mode === "clear_consensus" ? "strong_consensus" : consensus.mode,
-    explanation
+    explanation: consensus.mode === "no_reliable_consensus" ? NO_RELIABLE_CONSENSUS_BODY : explanation
   };
 }
 
@@ -534,7 +535,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   const modelSources = prepareSourcesForOpenAI(sources, evidenceType);
 
   if (modelSources.length < 3) {
-    const consensus = notEnoughData(query, sources, "Not enough reliable data to form a consensus.");
+    const consensus = notEnoughData(query, sources, NO_RELIABLE_CONSENSUS_BODY);
     return {
       rawOpenAIContent: null,
       parsedOpenAIAnalysis: null,
@@ -569,7 +570,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   const structuredConsensus = await aggregateSignals(allSignals, modelSources, query, callCounts);
 
   if (structuredConsensus.contenders.length === 0) {
-    const consensus = notEnoughData(query, sources, "Not enough reliable data to form a consensus.");
+    const consensus = notEnoughData(query, sources, NO_RELIABLE_CONSENSUS_BODY);
     consensus.intent = sourceSignals.intent;
     consensus.structuredConsensus = structuredConsensus;
     return {
@@ -5879,8 +5880,8 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
     return {
       ...consensus,
       mode: "no_reliable_consensus",
-      headline: "No reliable local consensus found.",
-      explanation: "Vera could not find enough clean local business evidence to rank this confidently.",
+      headline: NO_RELIABLE_CONSENSUS_TITLE,
+      explanation: NO_RELIABLE_CONSENSUS_BODY,
       results: [],
       structuredConsensus: consensus.structuredConsensus
         ? {
@@ -6220,8 +6221,8 @@ function notEnoughData(query: string, sources: VeraSource[], explanation: string
     generated_at: createdAt,
     model: openAIModel,
     mode: "no_reliable_consensus",
-    headline: "No reliable consensus.",
-    explanation,
+    headline: NO_RELIABLE_CONSENSUS_TITLE,
+    explanation: NO_RELIABLE_CONSENSUS_BODY,
     intent: {
       category: "Decision",
       constraints: [],
@@ -6544,7 +6545,7 @@ function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], 
   const winner = contenders[0];
 
   if (evidenceType === "local_recommendation" && mode === "no_reliable_consensus") {
-    return "No reliable local consensus found.";
+    return NO_RELIABLE_CONSENSUS_TITLE;
   }
 
   if (evidenceType === "local_recommendation" && mode === "split_consensus") {
@@ -6552,7 +6553,7 @@ function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], 
   }
 
   if (evidenceType === "product_recommendation" && mode === "no_reliable_consensus" && isAutomotiveAvoidanceQuery(query)) {
-    return "No reliable avoidance consensus found.";
+    return NO_RELIABLE_CONSENSUS_TITLE;
   }
 
   if (mode === "clear_consensus") {
@@ -6571,7 +6572,7 @@ function consensusHeadline(mode: ConsensusMode, contenders: ContenderMetrics[], 
     return `The internet does not agree on one best ${decisionSubject(intent)}.`;
   }
 
-  return "No reliable consensus.";
+  return NO_RELIABLE_CONSENSUS_TITLE;
 }
 
 function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[], intent: ConsensusResponse["intent"], evidenceType?: QueryEvidenceType, query = "") {
@@ -6580,7 +6581,7 @@ function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[
   const criteria = intent.optimizeFor.slice(0, 4);
 
   if (evidenceType === "local_recommendation" && mode === "no_reliable_consensus") {
-    return "Vera did not find enough real local businesses with matching location and category evidence to rank this confidently.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (evidenceType === "local_recommendation" && mode === "split_consensus") {
@@ -6588,7 +6589,7 @@ function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[
   }
 
   if (evidenceType === "product_recommendation" && mode === "no_reliable_consensus" && isAutomotiveAvoidanceQuery(query)) {
-    return "Vera found automotive sources, but not enough consistent model-specific avoidance evidence to say which vehicle is most widely criticized.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (mode === "clear_consensus") {
@@ -6608,7 +6609,7 @@ function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[
     return `Several options are strongly recommended.${comparison} The best choice depends on ${criteriaPhrase(criteria)}.`;
   }
 
-  return "The available sources are too thin, too conflicting, or too weak to support a reliable consensus.";
+  return NO_RELIABLE_CONSENSUS_BODY;
 }
 
 function confidenceReasoning(contenders: ContenderMetrics[], mode: ConsensusMode, sourceCount: number) {
@@ -6629,7 +6630,7 @@ function confidenceReasoning(contenders: ContenderMetrics[], mode: ConsensusMode
   }
 
   if (mode === "no_reliable_consensus") {
-    return `Only ${sourceCount} sources were available, and the contender-specific evidence was too thin or conflicting.`;
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   return `${topLine}${secondLine} The weighted evidence gives ${top.name} the strongest consensus signal.`;

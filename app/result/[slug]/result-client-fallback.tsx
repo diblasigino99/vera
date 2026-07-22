@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
+import { NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
 
 type ResultClientFallbackProps = {
@@ -15,7 +16,7 @@ const modeLabel: Record<ConsensusResponse["mode"], string> = {
   strong_consensus: "Strong Consensus",
   moderate_consensus: "Moderate Consensus",
   split_consensus: "Split Consensus",
-  no_reliable_consensus: "No Reliable Consensus"
+  no_reliable_consensus: NO_RELIABLE_CONSENSUS_TITLE
 };
 
 export function ResultClientFallback({ searchId, resultId }: ResultClientFallbackProps) {

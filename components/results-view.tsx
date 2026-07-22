@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { Bookmark } from "lucide-react";
+import { NO_RELIABLE_CONSENSUS_BODY, NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
 import type { ConsensusResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { VeraThinking } from "@/components/vera-thinking";
@@ -46,8 +47,8 @@ const modeCopy = {
     description: "Several options are strongly recommended. The best choice depends on what you value most."
   },
   no_reliable_consensus: {
-    label: "No Reliable Consensus",
-    description: "The sources do not support a reliable consensus."
+    label: NO_RELIABLE_CONSENSUS_TITLE,
+    description: NO_RELIABLE_CONSENSUS_BODY
   }
 };
 
@@ -373,7 +374,7 @@ function buildEditorialExplanation(result: ConsensusResponse, winner?: Consensus
   const explanation = result.explanation || winner?.summary || "";
 
   if (result.mode === "no_reliable_consensus") {
-    return conciseEditorialText(explanation || "The available sources were too thin, conflicting, or unspecific to name a reliable consensus.");
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (result.mode === "split_consensus") {
@@ -403,10 +404,8 @@ function conciseEditorialText(text: string) {
 function NoConsensusPanel() {
   return (
     <section className="mt-12 rounded-[1.75rem] border border-[#ECECF0] bg-white p-8 shadow-[0_20px_70px_rgba(17,17,20,0.045)] sm:p-10">
-      <p className="text-2xl font-semibold tracking-[-0.01em] text-[#111114]">Try a more specific search.</p>
-      <p className="mt-4 max-w-2xl text-lg leading-8 text-[#62626A]">
-        Vera works best when the situation is clear. Add a location, budget, use case, audience, or constraint to help the internet&apos;s agreement come into focus.
-      </p>
+      <p className="text-2xl font-semibold tracking-[-0.01em] text-[#111114]">{NO_RELIABLE_CONSENSUS_TITLE}</p>
+      <p className="mt-4 max-w-2xl whitespace-pre-line text-lg leading-8 text-[#62626A]">{NO_RELIABLE_CONSENSUS_BODY}</p>
     </section>
   );
 }
@@ -457,7 +456,7 @@ function SourceList({ quiet = false, sources, title }: { quiet?: boolean; source
 
 function buildRankingExplanation(result: ConsensusResponse) {
   if (result.mode === "no_reliable_consensus") {
-    return "Vera did not find enough reliable source agreement to name a winner.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   const [top, second] = result.results;
@@ -515,11 +514,7 @@ function buildDecisionBullets(result: ConsensusResponse) {
     ];
   }
 
-  return [
-    "Vera found insufficient reliable agreement.",
-    "Evidence was limited or conflicting.",
-    "A winner could not be determined confidently."
-  ];
+  return NO_RELIABLE_CONSENSUS_BODY.split("\n\n");
 }
 
 function buildEvidenceSummary(result: ConsensusResponse) {

@@ -4,6 +4,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { getConsensusById } from "@/lib/server/cache";
 import { parseResultSlug } from "@/lib/result-slug";
+import { NO_RELIABLE_CONSENSUS_BODY, NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
 import { ResultClientFallback } from "./result-client-fallback";
 import { FeedbackWidget } from "@/components/feedback-widget";
@@ -19,7 +20,7 @@ const modeLabel: Record<ConsensusResponse["mode"], string> = {
   strong_consensus: "Strong Consensus",
   moderate_consensus: "Moderate Consensus",
   split_consensus: "Split Consensus",
-  no_reliable_consensus: "No Reliable Consensus"
+  no_reliable_consensus: NO_RELIABLE_CONSENSUS_TITLE
 };
 
 export default async function ResultPage({ params }: ResultPageProps) {
@@ -516,7 +517,7 @@ function buildConfidenceExplanation(consensus: ConsensusResponse, result: Consen
     return `Vera has measured confidence in this recommendation because the evidence supports ${result.name}, but other contenders are also repeatedly recommended. This is a tradeoff decision, not a runaway winner.`;
   }
 
-  return "Vera does not have enough reliable agreement to make a confident recommendation from the available sources.";
+  return NO_RELIABLE_CONSENSUS_BODY;
 }
 
 function confidenceLevel(consensus: ConsensusResponse, result: ConsensusResult) {

@@ -13,6 +13,7 @@ import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
 import { recordSearchEvent } from "@/lib/server/search-events";
 import { canonicalizeQuery, inferQueryEvidenceType, inferQueryIntent, normalizeQuery } from "@/lib/utils";
+import { NO_RELIABLE_CONSENSUS_BODY } from "@/lib/types";
 import type { ConsensusResponse } from "@/lib/types";
 import type { SearchPublicWebTimings } from "@/lib/server/search";
 
@@ -87,8 +88,7 @@ export async function POST(request: Request) {
   }
 
   if (isUnsupportedAdultLocalCategory(body.data.query)) {
-    const explanation = "Vera doesn't support this category yet. Try a different local search.";
-    const consensus = buildNoReliableConsensus(body.data.query, [], explanation);
+    const consensus = buildNoReliableConsensus(body.data.query, [], NO_RELIABLE_CONSENSUS_BODY);
     const totalElapsedMs = Date.now() - requestStartedAt;
 
     logSearchCostAudit({
@@ -121,11 +121,7 @@ export async function POST(request: Request) {
   }
 
   if (queryIntent === "negative_avoidance" || queryIntent === "reliability_risk") {
-    const explanation =
-      queryIntent === "reliability_risk"
-        ? "Vera is cautious with reliability-risk searches. It did not find enough reliable cross-source avoidance evidence to rank a worst option confidently."
-        : "Vera is cautious with avoidance searches. It did not find enough reliable cross-source evidence to say what people consistently warn against.";
-    const consensus = buildNoReliableConsensus(body.data.query, [], explanation);
+    const consensus = buildNoReliableConsensus(body.data.query, [], NO_RELIABLE_CONSENSUS_BODY);
     const totalElapsedMs = Date.now() - requestStartedAt;
 
     logSearchCostAudit({
@@ -342,7 +338,7 @@ export async function POST(request: Request) {
         buildNoReliableConsensus(
           body.data.query,
           sources,
-          "Vera found relevant sources, but not enough reliable agreement to form a consensus."
+          NO_RELIABLE_CONSENSUS_BODY
         );
     }
 
@@ -352,7 +348,7 @@ export async function POST(request: Request) {
         buildProductFallbackConsensus(
           body.data.query,
           sources,
-          "Vera found product-review sources, but the recommendation signal was too thin to make a confident call."
+          NO_RELIABLE_CONSENSUS_BODY
         ) ?? consensus;
     }
     if (evidenceType === "local_recommendation" && consensus.results.length < 3) {
@@ -435,7 +431,7 @@ export async function POST(request: Request) {
         });
         return NextResponse.json({
           ...stale,
-          explanation: stale.explanation || "Vera found prior local evidence while the latest search could not form a cleaner consensus."
+          explanation: stale.mode === "no_reliable_consensus" ? NO_RELIABLE_CONSENSUS_BODY : stale.explanation
         });
       }
     }
@@ -637,15 +633,15 @@ function logDominantPlatformTiming({
 
 function vagueRecommendationGuardExplanation(query: string, evidenceType: ReturnType<typeof inferQueryEvidenceType>) {
   if (evidenceType === "local_recommendation" && isVagueLocalQueryWithoutLocation(query)) {
-    return "Vera needs more context for this search. Try adding a city, neighborhood, or ZIP code.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (evidenceType === "destination_recommendation" && isVagueHiddenDestinationQueryWithoutGeography(query)) {
-    return "Vera needs more destination context for this search. Try adding a country, region, season, or trip style.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (evidenceType === "product_recommendation" && isVagueUnknownProductQuery(query)) {
-    return "Vera needs more product context for this search. Try adding a category, use case, budget, or must-have feature.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   return null;
@@ -669,42 +665,30 @@ function withHelpfulNoConsensusCopy(
 
 function noConsensusExplanationForQuery(query: string, evidenceType: ReturnType<typeof inferQueryEvidenceType>, queryIntent: ReturnType<typeof inferQueryIntent>) {
   if (isUnsupportedAdultLocalCategory(query)) {
-    return "Vera doesn't support this category yet. Try a different local search.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (queryIntent === "negative_avoidance" || queryIntent === "reliability_risk") {
-    return "Vera does not rank worst or avoidance claims without strong, reliable cross-source evidence.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (evidenceType === "local_recommendation") {
-    if (isVagueLocalQueryWithoutLocation(query)) {
-      return "Vera needs more context for this search. Try adding a city, neighborhood, or ZIP code.";
-    }
-
-    return "Vera couldn't find enough reliable agreement for this local search. There may be good options, but the available sources were too thin or inconsistent to confidently recommend one. Try narrowing the search or using a related category.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (evidenceType === "destination_recommendation") {
-    if (isVagueHiddenDestinationQueryWithoutGeography(query)) {
-      return "Vera needs more destination context for this search. Try adding a country, region, season, or trip style.";
-    }
-
-    return "Vera couldn't find enough reliable agreement across travel sources. Try adding trip style, season, budget, or priorities.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (evidenceType === "product_recommendation" || evidenceType === "provider_or_brand_recommendation" || evidenceType === "software_tool") {
-    if (evidenceType === "product_recommendation" && isVagueUnknownProductQuery(query)) {
-      return "Vera needs more product context for this search. Try adding a category, use case, budget, or must-have feature.";
-    }
-
-    return "Vera couldn't find enough reliable agreement to recommend a clear answer. Try adding priorities such as budget, use case, location, or must-have features.";
+    return NO_RELIABLE_CONSENSUS_BODY;
   }
 
   return consensusFallbackNoConsensusExplanation();
 }
 
 function consensusFallbackNoConsensusExplanation() {
-  return "Vera found relevant sources, but not enough reliable agreement to form a consensus.";
+  return NO_RELIABLE_CONSENSUS_BODY;
 }
 
 function isUnsupportedAdultLocalCategory(query: string) {

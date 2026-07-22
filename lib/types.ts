@@ -1,5 +1,9 @@
 import type { QueryEvidenceType } from "@/lib/utils";
 
+export const NO_RELIABLE_CONSENSUS_TITLE = "No Reliable Consensus";
+export const NO_RELIABLE_CONSENSUS_BODY =
+  "The internet doesn’t clearly agree on a single answer for this search.\n\nThat doesn’t mean there aren’t good options. It means the available evidence isn’t strong enough for Vera to confidently recommend one.\n\nWhen reliable consensus doesn’t exist, Vera won’t pretend that it does.";
+
 export type IntentProfile = {
   category: string;
   location?: string;
