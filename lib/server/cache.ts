@@ -10,7 +10,7 @@ const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
 const localCacheVersion = 73;
-const localSpecificIntentCacheVersion = 90;
+const localSpecificIntentCacheVersion = 91;
 const destinationRecommendationCacheVersion = 84;
 const negativeIntentCacheVersion = 78;
 const providerOrBrandCacheVersion = 81;
@@ -223,13 +223,25 @@ export async function getStaleCachedConsensus(query: string, callCounts?: Extern
     callCounts.supabaseReads += 1;
   }
 
-  const { data, error } = await supabase
+  const canonicalLookup = await supabase
     .from("search_cache")
     .select("id, original_query, normalized_query, canonical_query, result_json, result, sources_json, cache_version, updated_at")
-    .or(`canonical_query.eq.${escapePostgrestValue(canonicalQuery)},normalized_query.eq.${escapePostgrestValue(normalizedQuery)}`)
+    .eq("canonical_query", canonicalQuery)
     .order("cache_version", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(1);
+  const normalizedLookup =
+    canonicalLookup.error || canonicalLookup.data?.length
+      ? null
+      : await supabase
+          .from("search_cache")
+          .select("id, original_query, normalized_query, canonical_query, result_json, result, sources_json, cache_version, updated_at")
+          .eq("normalized_query", normalizedQuery)
+          .order("cache_version", { ascending: false })
+          .order("updated_at", { ascending: false })
+          .limit(1);
+  const data = canonicalLookup.data?.length ? canonicalLookup.data : normalizedLookup?.data;
+  const error = canonicalLookup.error ?? normalizedLookup?.error ?? null;
 
   if (error) {
     console.warn("[vera:cache] stale cache lookup failed", {
@@ -370,9 +382,18 @@ async function getSupabaseCachedConsensus(canonicalQuery: string, normalizedQuer
     lookup = await supabase
       .from("search_cache")
       .select("id, original_query, normalized_query, canonical_query, result_json, sources_json, cache_version, updated_at")
-      .or(`canonical_query.eq.${escapePostgrestValue(canonicalQuery)},normalized_query.eq.${escapePostgrestValue(normalizedQuery)}`)
+      .eq("canonical_query", canonicalQuery)
       .eq("cache_version", cacheVersion)
       .limit(2);
+
+    if (!lookup.error && !lookup.data?.length) {
+      lookup = await supabase
+        .from("search_cache")
+        .select("id, original_query, normalized_query, canonical_query, result_json, sources_json, cache_version, updated_at")
+        .eq("normalized_query", normalizedQuery)
+        .eq("cache_version", cacheVersion)
+        .limit(2);
+    }
   } catch (error) {
     console.log("CACHE_LOOKUP_EXCEPTION", {
       name: error instanceof Error ? error.name : typeof error,
@@ -619,10 +640,6 @@ function consensusFromSupabaseRow(row?: SupabaseSearchCacheRow | null): Consensu
     cacheVersion: row.cache_version ?? result.cacheVersion,
     sources: row.sources_json ?? result.sources
   } satisfies ConsensusResponse);
-}
-
-function escapePostgrestValue(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/\./g, "\\.");
 }
 
 export async function getSavedState(actorId: string, searchId: string, resultId?: string) {

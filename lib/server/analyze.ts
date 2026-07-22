@@ -2294,6 +2294,48 @@ function localSpecificIntentForQuery(query: string): LocalSpecificIntent | null 
       label: "live music",
       supportPattern: /\b(live music|music venue|jazz|band|concert|performance|stage|venue)\b/,
       conflictPattern: /\b(hotel|dentist|plumber|gym)\b/
+    },
+    {
+      key: "clothing_boutique",
+      label: "clothing boutique",
+      supportPattern: /\b(clothing boutique|boutique|clothing store|apparel|fashion|womenswear|menswear|dress|dresses|designer clothing)\b/,
+      conflictPattern: /\b(jewelry store|jewellery store|shoe store|bookstore|book shop|furniture store|home decor|restaurant|hotel|cafe)\b/
+    },
+    {
+      key: "jewelry_store",
+      label: "jewelry store",
+      supportPattern: /\b(jewelry|jewellery|jeweler|jeweller|jewelers|jewellers|diamonds?|engagement rings?|wedding rings?|goldsmith|watch repair)\b/,
+      conflictPattern: /\b(clothing store|shoe store|bookstore|book shop|furniture store|home decor|restaurant|hotel|cafe|electronics)\b/
+    },
+    {
+      key: "shoe_store",
+      label: "shoe store",
+      supportPattern: /\b(shoe store|shoes?|footwear|sneakers?|running shoes?|boots?|sandals?)\b/,
+      conflictPattern: /\b(jewelry store|jewellery store|bookstore|book shop|furniture store|home decor|restaurant|hotel|cafe|electronics)\b/
+    },
+    {
+      key: "gift_shop",
+      label: "gift shop",
+      supportPattern: /\b(gift shop|gifts?|souvenirs?|cards?|stationery|local goods|artisan goods)\b/,
+      conflictPattern: /\b(restaurant|hotel|cafe|dentist|plumber|gym)\b/
+    },
+    {
+      key: "home_decor",
+      label: "home decor",
+      supportPattern: /\b(home decor|home décor|decor|décor|home goods|interiors?|furnishings?|housewares?)\b/,
+      conflictPattern: /\b(restaurant|hotel|cafe|dentist|plumber|gym)\b/
+    },
+    {
+      key: "bookstore",
+      label: "bookstore",
+      supportPattern: /\b(bookstore|book store|book shop|bookseller|booksellers|books|used books|independent bookstore)\b/,
+      conflictPattern: /\b(jewelry store|jewellery store|shoe store|furniture store|restaurant|hotel|cafe|electronics)\b/
+    },
+    {
+      key: "furniture_store",
+      label: "furniture store",
+      supportPattern: /\b(furniture store|furniture|sofas?|couches?|chairs?|tables?|mattress|home furnishings?)\b/,
+      conflictPattern: /\b(jewelry store|jewellery store|shoe store|bookstore|book shop|restaurant|hotel|cafe|electronics)\b/
     }
   ];
 
@@ -2335,7 +2377,7 @@ function localSignalSpecificIntentEvidenceText(contenderName: string, signal: So
 }
 
 function localSpecificIntentRequiresBusinessSpecificEvidence(intent: LocalSpecificIntent) {
-  return /^(?:italian|seafood|sushi|pizza|mexican|steakhouse)$/.test(intent.key);
+  return /^(?:italian|seafood|sushi|pizza|mexican|steakhouse|clothing_boutique|jewelry_store|shoe_store|gift_shop|home_decor|bookstore|furniture_store)$/.test(intent.key);
 }
 
 function placesTypesSupportSpecificIntent(intent: LocalSpecificIntent, placesTypes: string[]) {
@@ -2345,6 +2387,13 @@ function placesTypesSupportSpecificIntent(intent: LocalSpecificIntent, placesTyp
   if (intent.key === "coffee") return /\b(coffee shop|cafe|bakery)\b/.test(normalizedTypes);
   if (intent.key === "bar" || intent.key === "cocktail" || intent.key === "live_music") return /\b(bar|night club)\b/.test(normalizedTypes);
   if (intent.key === "pizza") return /\bpizza restaurant\b/.test(normalizedTypes);
+  if (intent.key === "clothing_boutique") return /\b(clothing store)\b/.test(normalizedTypes);
+  if (intent.key === "jewelry_store") return /\b(jewelry store)\b/.test(normalizedTypes);
+  if (intent.key === "shoe_store") return /\b(shoe store)\b/.test(normalizedTypes);
+  if (intent.key === "bookstore") return /\b(book store)\b/.test(normalizedTypes);
+  if (intent.key === "furniture_store") return /\b(furniture store|home goods store)\b/.test(normalizedTypes);
+  if (intent.key === "home_decor") return /\b(home goods store|furniture store)\b/.test(normalizedTypes);
+  if (intent.key === "gift_shop") return /\b(store)\b/.test(normalizedTypes);
 
   return false;
 }
