@@ -95,6 +95,8 @@ function normalizeLocalCategoryPhrase(value: string) {
   if (/\b(plumber|plumbing)\b/.test(normalized)) return "plumber";
   if (/\b(gym|fitness)\b/.test(normalized)) return "gym";
   if (/\b(hotel|hotels|motel|inn|resort)\b/.test(normalized)) return "hotel";
+  if (/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(normalized))
+    return "retail store";
   if (/\b(bar|bars|pub)\b/.test(normalized)) return "bar";
   if (/\b(italian)\b/.test(normalized)) return "Italian restaurant";
   if (/\b(seafood)\b/.test(normalized)) return "seafood restaurant";
@@ -283,7 +285,7 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   }
 
   if (
-    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|dirty martini|martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|place to eat|place to stay|near me)\b/.test(
+    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|dirty martini|martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store|place to eat|place to stay|near me)\b/.test(
       normalized
     ) ||
     /\b\d{5}(?:-\d{4})?\b/.test(normalized)

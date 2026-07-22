@@ -767,6 +767,8 @@ function localRetrievalCategory(normalized: string) {
   if (/\b(plumber|plumbers|plumbing)\b/.test(normalized)) return "plumber";
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
   if (/\b(golf course|golf club)\b/.test(normalized)) return "golf_course";
+  if (/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(normalized))
+    return "retail";
   if (/\b(restaurant|restaurants|place to eat|dinner|lunch|ramen|sushi|tacos|italian|mexican|seafood|steakhouse|steak house)\b/.test(normalized)) return "restaurant";
   return "local_business";
 }
@@ -839,6 +841,10 @@ function localRetrievalLanes(category: string) {
 
   if (category === "golf_course") {
     return ["Golf Digest golf course rankings", "Golfweek best courses", "Reddit golf recommendations", "Google Maps golf course reviews", "TripAdvisor golf course reviews"];
+  }
+
+  if (category === "retail") {
+    return ["Google Maps store reviews", "Yelp local store reviews", "Reddit local shopping recommendations", "local boutique guide", "local shopping guide"];
   }
 
   if (category === "restaurant") {

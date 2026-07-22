@@ -3109,6 +3109,15 @@ function localWrongCategoryPenalty(query: string, contenderName: string, signals
   if (category === "plumber" && !has(/\b(plumber|plumbing|rooter|drain|sewer|pipe|leak|water heater|service)\b/)) penalty += 9;
   if (category === "tattoo" && !has(/\b(tattoo|ink|artist|studio|body art)\b/)) penalty += 8;
   if (category === "golf_course" && !has(/\b(golf|course|club|links|country club)\b/)) penalty += 8;
+  if (category === "retail") {
+    if (nameHas(/\b(hotel|inn|motel|resort|restaurant|pizzeria|pizza|bar|tavern|cafe|coffee|dental|plumbing|gym|fitness|museum|park)\b/)) penalty += 9;
+    if (
+      !has(
+        /\b(retail|shop|store|boutique|clothing|apparel|fashion|jewelry|jewellery|shoe|shoes|gift|home decor|bookstore|book shop|furniture|shopping|local store)\b/
+      )
+    )
+      penalty += 8;
+  }
 
   if (
     !["dentist", "plumber", "gym", "tattoo"].includes(category) &&
@@ -3173,6 +3182,8 @@ function localCategoryForQuery(query: string) {
   if (/\b(plumber|plumbers|plumbing)\b/.test(normalized)) return "plumber";
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
   if (/\b(golf course|golf club)\b/.test(normalized)) return "golf_course";
+  if (/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(normalized))
+    return "retail";
   if (/\b(restaurant|restaurants|place to eat|dinner|lunch)\b/.test(normalized)) return "restaurant";
 
   return "local_business";
@@ -5455,6 +5466,8 @@ function inferIntendedCategory(query: string): VeraEntityCategory {
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
   if (/\b(gym|gyms|fitness|dentist|dentists|dental|plumber|plumbers|plumbing|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|spa|salon)\b/.test(normalized))
     return "service";
+  if (/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(normalized))
+    return "retail";
   if (/\b(crm|software|app|platform|tool|ai coding assistant|coding assistant)\b/.test(normalized)) return "software";
   if (/\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress|board game|board games|tabletop game|tabletop games|product)\b/.test(normalized)) return "product";
   if (/\b(service|contractor|agency|consultant)\b/.test(normalized)) return "service";
@@ -5498,6 +5511,8 @@ function categoryFromText(text: string): VeraEntityCategory | null {
     return "restaurant";
   }
   if (/\b(crm|software|saas|platform|app|ai coding assistant|coding assistant)\b/.test(text)) return "software";
+  if (/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(text))
+    return "retail";
   if (
     /\b(shoe|shoes|suitcase|router|headphones|laptop|phone|mattress|board game|board games|tabletop game|tabletop games|car|cars|vehicle|vehicles|sedan|sedans|suv|suvs|minivan|minivans|rav4|cr-v|crv|camry|accord|sienna|odyssey|telluride|palisade|highlander|forester)\b/.test(
       text

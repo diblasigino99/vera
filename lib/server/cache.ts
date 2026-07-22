@@ -10,7 +10,7 @@ const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
 const localCacheVersion = 73;
-const localSpecificIntentCacheVersion = 89;
+const localSpecificIntentCacheVersion = 90;
 const destinationRecommendationCacheVersion = 84;
 const negativeIntentCacheVersion = 78;
 const providerOrBrandCacheVersion = 81;
@@ -76,7 +76,7 @@ function cacheVersionForQuery(query: string) {
   }
 
   const hasSpecificLocalIntent =
-    /\b(italian|mexican|seafood|sushi|pizza|pizzeria|brunch|coffee|cafe|bar|cocktail|espresso martini|steakhouse|steak house|live music|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo)\b/.test(
+    /\b(italian|mexican|seafood|sushi|pizza|pizzeria|brunch|coffee|cafe|bar|cocktail|espresso martini|steakhouse|steak house|live music|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(
       normalized
     );
   const hasLocalLocation =
