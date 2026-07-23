@@ -25,6 +25,7 @@ import {
 } from "@/lib/utils";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 import { diagnoseMultiContenderSplitEvidence } from "@/lib/server/consensus-classification";
+import { canonicalDestinationName, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "@/lib/server/destination-rules";
 import { getCachedPlacesValidationSnapshot, validateLocalSignalsWithPlaces } from "@/lib/server/places";
 import type { QueryEvidenceType } from "@/lib/utils";
 
@@ -1217,50 +1218,6 @@ function canonicalizeDestinationSignal(signal: SourceSignal): SourceSignal {
 
 function hasDestinationRecommendationContext(text: string) {
   return /\b(recommend|recommended|recommendations?|favorite|favourite|best|top|known for|include|includes|included|made the list|where to|visit|guide|worth visiting|must visit)\b/i.test(text);
-}
-
-function extractDestinationCandidatesFromText(text: string) {
-  const normalizedText = text.replace(/[“”]/g, '"').replace(/[’]/g, "'");
-  const candidates = new Set<string>();
-  const suffixPattern =
-    /\b((?:St\.?\s+|Saint\s+|Fort\s+)?[A-Z][A-Za-z'.-]*(?:\s+(?:and|of|the|de|del|la|le|du|[A-Z][A-Za-z'.-]*)){0,5}\s+(?:Beach|Beaches|Island|Islands|Park|Parks|Preserve|Trail|Trails|Falls|Valley|Village|Town|City|Neighborhood|Neighbourhood|District|Quarter|Region|Mountains|Mountain|Lake|Springs|Key|Keys|Point|Pier|Bay|Harbor|Harbour|Coast|Shore|Shores|Cove|Caves|Canyon|Gardens|Market|Museum|Monument))\b/g;
-  const fortPattern = /\b(Fort\s+[A-Z][A-Za-z'.-]*(?:\s+[A-Z][A-Za-z'.-]*){0,3})\b/g;
-
-  for (const match of normalizedText.matchAll(suffixPattern)) {
-    candidates.add(match[1]);
-  }
-
-  for (const match of normalizedText.matchAll(fortPattern)) {
-    candidates.add(match[1]);
-  }
-
-  return Array.from(candidates).map((candidate) => candidate.replace(/^[#*\d.\s-]+/, "").replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 8);
-}
-
-function canonicalDestinationName(name: string) {
-  const compact = name.replace(/\s+/g, " ").trim();
-  const normalized = normalizeQuery(compact.normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
-
-  if (/^(?:sao miguel|sao miguel island|miguel island)$/.test(normalized)) {
-    return "São Miguel Island";
-  }
-
-  if (/^(?:the )?(?:(?:portugal(?:['’]?s|\s+s)) |portuguese )?azores(?: islands?)?$/.test(normalized)) {
-    return "Azores";
-  }
-
-  const titled = compact
-    .split(" ")
-    .map((part) => {
-      const lower = part.toLowerCase();
-      if (lower === "st" || lower === "st.") return "St.";
-      if (lower === "de") return "De";
-      if (lower === "of" || lower === "the" || lower === "and") return lower;
-      return part.charAt(0).toUpperCase() + part.slice(1);
-    })
-    .join(" ");
-
-  return titled.replace(/\bSt\. Pete\b/, "St. Pete").replace(/\bDe Soto\b/, "De Soto");
 }
 
 function dedupeSignals(signals: SourceSignal[]) {
@@ -5176,37 +5133,7 @@ function isGenericProductContender(query: string, name: string) {
 }
 
 function isGenericDestinationContender(query: string, name: string) {
-  const normalized = normalizeQuery(name.replace(/([a-z])([A-Z])/g, "$1 $2"));
-  const querySubject = normalizeQuery(query)
-    .replace(/\b(best|top|recommended|great|good|where to|places? to|things to|visit|stay|from|near|around|in|the|a|an)\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!normalized || normalized.length < 2) return true;
-  if (isArticleOrGuideTitle(normalized)) return true;
-  if (normalized === querySubject) return true;
-  if (
-    /^(?:beach|beaches|neighborhood|neighborhoods|neighbourhood|neighbourhoods|island|islands|weekend trips?|day trips?|destinations?|places?|places to visit|things to do|where to stay|areas? to stay|travel guide|guide|tourism|tripadvisor|reddit|booking|hotels?|best beaches|best islands|best neighborhoods?)$/.test(
-      normalized
-    )
-  ) {
-    return true;
-  }
-  if (/\b(?:where to stay|things to do|places to visit|best beaches|best islands|best neighborhoods|travel guide|itinerary|guide to|top \d+|best \d+)\b/.test(normalized)) {
-    return true;
-  }
-  if (
-    /^(?:visiting|exploring|discovering|guide to|where to|how to)\b/.test(normalized) &&
-    /\b(?:islands?|beaches|neighborhoods?|neighbourhoods?|destinations?|places?|regions?|towns?)\b/.test(normalized)
-  ) {
-    return true;
-  }
-  if (/\b(?:reddit|tripadvisor|booking|expedia|conde nast|travel leisure|time out|timeout|official tourism|tourism board)\b/.test(normalized)) {
-    return true;
-  }
-  if (/[:|]/.test(name) && normalized.split(/\s+/).length >= 4) return true;
-
-  return false;
+  return isArticleOrGuideTitle(normalizeQuery(name)) || isGenericDestinationContenderName(query, name);
 }
 
 function dominantPlatformPrior(
@@ -5629,7 +5556,7 @@ function buildConsensus(
   const normalizedQuery = normalizeQuery(query);
   let responseStructuredConsensus = structuredConsensus;
   if (responseStructuredConsensus.queryEvidenceType === "destination_recommendation") {
-    responseStructuredConsensus = sanitizeLiveDestinationStructuredConsensus(responseStructuredConsensus);
+    responseStructuredConsensus = sanitizeLiveDestinationStructuredConsensus(query, responseStructuredConsensus);
   }
   if (responseStructuredConsensus.queryEvidenceType === "local_recommendation") {
     responseStructuredConsensus = sanitizeLiveLocalGeographyStructuredConsensus(query, responseStructuredConsensus);
@@ -5981,7 +5908,7 @@ function sanitizeCachedDestinationConsensus(consensus: ConsensusResponse): Conse
     id: `${slugify(result.name)}-${index + 1}`
   }));
   const structuredConsensus = consensus.structuredConsensus
-    ? sanitizeCachedDestinationStructuredConsensus(consensus.structuredConsensus, results[0]?.name)
+    ? sanitizeCachedDestinationStructuredConsensus(consensus.structuredConsensus, results[0]?.name, consensus.query)
     : consensus.structuredConsensus;
 
   return {
@@ -5991,7 +5918,7 @@ function sanitizeCachedDestinationConsensus(consensus: ConsensusResponse): Conse
   };
 }
 
-function sanitizeLiveDestinationStructuredConsensus(structuredConsensus: StructuredConsensus): StructuredConsensus {
+function sanitizeLiveDestinationStructuredConsensus(query: string, structuredConsensus: StructuredConsensus): StructuredConsensus {
   console.log(
     "DESTINATION_FINAL_CONTENDERS_BEFORE_DEDUPE",
     {
@@ -5999,9 +5926,14 @@ function sanitizeLiveDestinationStructuredConsensus(structuredConsensus: Structu
       contenders: structuredConsensus.contenders.map((contender) => contender.name)
     }
   );
-  const sanitized = sanitizeCachedDestinationStructuredConsensus(structuredConsensus);
+  const sanitized = sanitizeCachedDestinationStructuredConsensus(structuredConsensus, undefined, query);
+  const multiContenderDiagnostics = diagnoseMultiContenderSplitEvidence(sanitized.contenders, "destination_recommendation");
   const consensusClassification =
-    sanitized.consensusClassification === "no_reliable_consensus" && sanitized.contenders.length > 0 ? "split_consensus" : sanitized.consensusClassification;
+    sanitized.consensusClassification === "no_reliable_consensus" && multiContenderDiagnostics.supported
+      ? "split_consensus"
+      : sanitized.consensusClassification === "split_consensus" && !multiContenderDiagnostics.supported
+        ? "no_reliable_consensus"
+        : sanitized.consensusClassification;
   console.log(
     "DESTINATION_FINAL_CONTENDERS_AFTER_DEDUPE",
     {
@@ -6009,9 +5941,12 @@ function sanitizeLiveDestinationStructuredConsensus(structuredConsensus: Structu
       afterClassification: consensusClassification,
       contenderCount: sanitized.contenders.length,
       contenders: sanitized.contenders.map((contender) => contender.name),
+      multiContenderDiagnostics,
       reason:
-        structuredConsensus.consensusClassification === "no_reliable_consensus" && sanitized.contenders.length > 0
-          ? "valid_destination_contenders_preserved_as_split_consensus"
+        structuredConsensus.consensusClassification === "no_reliable_consensus" && multiContenderDiagnostics.supported
+          ? "supported_destination_contenders_preserved_as_split_consensus"
+          : structuredConsensus.consensusClassification === "split_consensus" && !multiContenderDiagnostics.supported
+            ? "unsupported_destination_split_downgraded_to_no_reliable_consensus"
           : "classification_unchanged"
     }
   );
@@ -6050,12 +5985,17 @@ function mergeCachedDestinationMetrics(a: ContenderMetrics, b: ContenderMetrics,
   };
 }
 
-function sanitizeCachedDestinationStructuredConsensus(structuredConsensus: StructuredConsensus, fallbackWinner?: string): StructuredConsensus {
+function sanitizeCachedDestinationStructuredConsensus(structuredConsensus: StructuredConsensus, fallbackWinner?: string, query = ""): StructuredConsensus {
   const signals = structuredConsensus.signals.map(canonicalizeDestinationSignal);
   const contendersByName = new Map<string, ContenderMetrics>();
 
   for (const contender of structuredConsensus.contenders) {
     const name = canonicalDestinationName(contender.name);
+
+    if (isGenericDestinationContender(query, name)) {
+      continue;
+    }
+
     const canonical = canonicalizeCachedDestinationMetrics(contender, name);
     const existing = contendersByName.get(normalizeQuery(name));
     contendersByName.set(normalizeQuery(name), existing ? mergeCachedDestinationMetrics(existing, canonical, name) : canonical);

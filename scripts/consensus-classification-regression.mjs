@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { diagnoseMultiContenderSplitEvidence } from "../lib/server/consensus-classification.ts";
+import { canonicalDestinationName, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "../lib/server/destination-rules.ts";
 
 const minimumSourceCount = 3;
 const minimumTopPositiveMentions = 3;
@@ -37,6 +38,10 @@ function classifyRegressionCase({ query, evidenceType, contenders, sourceCount, 
   const top = contenders[0];
 
   if (!diagnostics.supported && (diagnostics.totalPositiveMentions < 3 || diagnostics.positiveSourceCount < 3)) {
+    return { mode: "no_reliable_consensus", diagnostics };
+  }
+
+  if (evidenceType === "destination_recommendation" && !diagnostics.supported) {
     return { mode: "no_reliable_consensus", diagnostics };
   }
 
@@ -97,6 +102,16 @@ const cases = [
     evidenceType: "product_recommendation",
     expectedMode: "no_reliable_consensus",
     contenders: [contender("Obscure Gadget", { sourceUrls: ["single-source"], quality: 1.2, score: 4 })]
+  },
+  {
+    query: "Best beaches in Portugal for vacation",
+    evidenceType: "destination_recommendation",
+    expectedMode: "no_reliable_consensus",
+    contenders: [
+      contender("Barra", { sourceUrls: ["single-aveiro-guide"], quality: 3, score: 2.8 }),
+      contender("Costa Nova", { sourceUrls: ["single-aveiro-guide"], quality: 3, score: 2.8 }),
+      contender("Vagueira", { sourceUrls: ["single-aveiro-guide"], quality: 3, score: 2.8 })
+    ]
   }
 ];
 
@@ -112,6 +127,10 @@ for (const testCase of cases) {
     assert.equal(result.diagnostics?.supported, true, `${testCase.query} should pass multi-contender diagnostics`);
   }
 
+  if (testCase.expectedMode === "no_reliable_consensus") {
+    assert.notEqual(result.diagnostics?.supported, true, `${testCase.query} should not pass multi-contender diagnostics`);
+  }
+
   console.log(
     JSON.stringify(
       {
@@ -125,3 +144,41 @@ for (const testCase of cases) {
     )
   );
 }
+
+const caribbeanText = [
+  "St. Lucia to Jamaica, these are the best all-inclusive resorts in the Caribbean.",
+  "Our top recommendation is Sugar Beach, A Viceroy Resort in St. Lucia.",
+  "We also recommend Curtain Bluff in Antigua.",
+  "Anguilla, Aruba, Grand Cayman, and the Exuma Bahamas are repeatedly mentioned."
+].join(" ");
+const caribbeanCandidates = extractDestinationCandidatesFromText(caribbeanText).map(canonicalDestinationName);
+const acceptedCaribbeanCandidates = caribbeanCandidates.filter((candidate) => !isGenericDestinationContenderName("Best all inclusive Caribbean island", candidate));
+
+for (const expected of ["St. Lucia", "Jamaica", "Antigua", "Anguilla", "Aruba", "Grand Cayman", "Bahamas"]) {
+  assert.ok(caribbeanCandidates.includes(expected), `Expected destination extraction to include ${expected}`);
+}
+
+for (const invalid of ["Underrated Beaches", "the Top Portugal Beaches", "Best Islands in Portugal", "Visiting Portugal's Islands"]) {
+  assert.equal(isGenericDestinationContenderName("Best beaches in Portugal for vacation", invalid), true, `${invalid} should be rejected as generic`);
+}
+
+assert.equal(isGenericDestinationContenderName("Best all inclusive Caribbean island", "Sugar Beach"), true, "Beach/resort-style names should not satisfy island queries");
+assert.equal(acceptedCaribbeanCandidates.includes("Sugar Beach"), false, "Sugar Beach should not be accepted for an island query");
+
+for (const valid of ["Praia da Marinha", "Comporta Beach", "São Miguel Island", "Costa Nova"]) {
+  assert.equal(isGenericDestinationContenderName("Best beaches in Portugal for vacation", valid), false, `${valid} should remain a valid destination name`);
+}
+
+console.log(
+  JSON.stringify(
+    {
+      destinationExtraction: {
+        caribbeanCandidates,
+        acceptedCaribbeanCandidates,
+        genericPhrasesRejected: ["Underrated Beaches", "the Top Portugal Beaches", "Best Islands in Portugal", "Visiting Portugal's Islands"]
+      }
+    },
+    null,
+    2
+  )
+);
