@@ -93,7 +93,7 @@ export function ProfileView() {
 
         <LibrarySection title="Support" description="A few quiet essentials.">
           <div className="border-t border-[#ECECF0]">
-            <SupportLink href="mailto:hello@nexraai.com?subject=Vera%20feedback" label="Send Feedback" />
+            <SupportLink href="mailto:diblasigino99@gmail.com?subject=Vera%20feedback" label="Send Feedback" />
             <SupportLink href="/privacy" label="Privacy Policy" />
             <SupportLink href="/terms" label="Terms of Service" />
             <button

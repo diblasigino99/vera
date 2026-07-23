@@ -48,7 +48,7 @@ const sections = [
   },
   {
     title: "Contact",
-    body: ["Questions or requests can be sent to hello@nexraai.com."]
+    body: ["Questions or requests can be sent to diblasigino99@gmail.com."]
   }
 ];
 

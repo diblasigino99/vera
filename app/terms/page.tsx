@@ -50,7 +50,7 @@ const sections = [
   },
   {
     title: "Contact",
-    body: ["Questions about these terms can be sent to hello@nexraai.com."]
+    body: ["Questions about these terms can be sent to diblasigino99@gmail.com."]
   }
 ];
 

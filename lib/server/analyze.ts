@@ -6264,6 +6264,13 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
     positiveSourceCount >= 2 &&
     top.sourceCount >= 2 &&
     top.sourceQualityScore >= 2.4;
+  const hasMultiContenderSplitEvidence = multiContenderEvidenceSupportsSplitConsensus(
+    contenders,
+    evidenceType,
+    query,
+    totalPositiveMentions,
+    positiveSourceCount
+  );
 
   if (
     !hasDominantPlatformEvidence &&
@@ -6271,6 +6278,7 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
     !hasAutomotiveCategoryLevelEvidence &&
     !hasDestinationCategoryLevelEvidence &&
     !hasProviderBrandCategoryLevelEvidence &&
+    !hasMultiContenderSplitEvidence &&
     (totalPositiveMentions < classificationThresholds.minimumTotalPositiveMentions ||
       positiveSourceCount < classificationThresholds.minimumPositiveSourceCount)
   ) {
@@ -6338,6 +6346,57 @@ function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number
   }
 
   return "split_consensus";
+}
+
+function multiContenderEvidenceSupportsSplitConsensus(
+  contenders: ContenderMetrics[],
+  evidenceType: QueryEvidenceType,
+  query: string,
+  totalPositiveMentions: number,
+  positiveSourceCount: number
+) {
+  if (
+    evidenceType !== "destination_recommendation" &&
+    evidenceType !== "provider_or_brand_recommendation" &&
+    evidenceType !== "product_recommendation" &&
+    evidenceType !== "software_tool"
+  ) {
+    return false;
+  }
+
+  if (evidenceType === "product_recommendation" && isBroadExploratoryQuery(query)) {
+    return false;
+  }
+
+  if (
+    contenders.length < 2 ||
+    totalPositiveMentions < classificationThresholds.minimumTotalPositiveMentions ||
+    positiveSourceCount < 2
+  ) {
+    return false;
+  }
+
+  const credibleContenders = contenders
+    .slice(0, 5)
+    .filter(
+      (contender) =>
+        contender.positiveMentionCount > 0 &&
+        contender.netWeightedScore >= 6 &&
+        contender.sourceQualityScore >= 2.4 &&
+        contender.negativeMentionCount <= contender.positiveMentionCount
+    );
+
+  if (credibleContenders.length < 2) {
+    return false;
+  }
+
+  const supportedSourceUrls = new Set(credibleContenders.flatMap((contender) => contender.sourceUrls));
+  const strongerContenders = credibleContenders.filter(
+    (contender) => contender.positiveMentionCount >= 2 || contender.sourceCount >= 2 || contender.netWeightedScore >= 10
+  );
+  const combinedTopScore = credibleContenders.slice(0, 3).reduce((total, contender) => total + contender.netWeightedScore, 0);
+
+  return supportedSourceUrls.size >= 2 && strongerContenders.length >= 1 && combinedTopScore >= 18;
 }
 
 function matureCategoryEvidenceSupportsConsensus(
