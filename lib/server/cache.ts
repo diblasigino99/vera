@@ -11,7 +11,7 @@ const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
 const localCacheVersion = 73;
 const localSpecificIntentCacheVersion = 91;
-const destinationRecommendationCacheVersion = 84;
+const destinationRecommendationCacheVersion = 85;
 const negativeIntentCacheVersion = 78;
 const providerOrBrandCacheVersion = 81;
 const canUseLocalJsonFallback = !process.env.VERCEL && process.env.NODE_ENV !== "production";
