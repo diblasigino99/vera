@@ -350,7 +350,14 @@ function groupSignalsForPlacesValidation(query: string, signals: SourceSignal[],
     }))
   );
 
-  return orderedGroups.map(({ locationPriority, ...group }) => group);
+  return orderedGroups.map((group) => ({
+    normalizedName: group.normalizedName,
+    displayName: group.displayName,
+    signalCount: group.signalCount,
+    sourceCount: group.sourceCount,
+    aliases: group.aliases,
+    evidenceText: group.evidenceText
+  }));
 }
 
 function localPlacesSignalEvidenceText(signal: SourceSignal) {

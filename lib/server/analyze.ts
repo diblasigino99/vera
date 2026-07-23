@@ -131,8 +131,8 @@ export async function analyzeConsensus(query: string, sources: VeraSource[], cal
   return debug.consensus;
 }
 
-export function buildNoReliableConsensus(query: string, sources: VeraSource[], explanation = NO_RELIABLE_CONSENSUS_BODY) {
-  return notEnoughData(query, sources, explanation);
+export function buildNoReliableConsensus(query: string, sources: VeraSource[]) {
+  return notEnoughData(query, sources, NO_RELIABLE_CONSENSUS_BODY);
 }
 
 export function buildDominantPlatformFallbackConsensus(
@@ -1592,7 +1592,7 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
     mentionCounts,
     themeCounts,
     sourceBreakdown,
-    confidenceReasoning: confidenceReasoning(contenders, consensusClassification, sources.length),
+    confidenceReasoning: confidenceReasoning(contenders, consensusClassification),
     consensusClassification,
     signals: filteredSignals,
     localPlaceExtraction:
@@ -2397,26 +2397,6 @@ function placesTypesSupportSpecificIntent(intent: LocalSpecificIntent, placesTyp
   if (intent.key === "gift_shop") return /\b(store)\b/.test(normalizedTypes);
 
   return false;
-}
-
-function localSpecificIntentText(contenderName: string, signals: SourceSignal[]) {
-  return normalizeQuery(
-    [
-      contenderName,
-      ...signals.map((signal) =>
-        [
-          signal.sourceTitle,
-          signal.queryVariant ?? "",
-          signal.extractedReason,
-          signal.positiveMention ?? "",
-          signal.negativeMention ?? "",
-          signal.themes.join(" "),
-          signal.verifiedAddress ?? "",
-          signal.placesTypes?.join(" ") ?? ""
-        ].join(" ")
-      )
-    ].join(" ")
-  );
 }
 
 function localCandidateEvidenceText(contenderName: string, signals: SourceSignal[]) {
@@ -6612,7 +6592,7 @@ function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[
   return NO_RELIABLE_CONSENSUS_BODY;
 }
 
-function confidenceReasoning(contenders: ContenderMetrics[], mode: ConsensusMode, sourceCount: number) {
+function confidenceReasoning(contenders: ContenderMetrics[], mode: ConsensusMode) {
   const top = contenders[0];
   const second = contenders[1];
 

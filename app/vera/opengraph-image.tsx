@@ -56,7 +56,7 @@ export default function Image() {
             marginTop: 42
           }}
         >
-          See where the internet agrees - and where it doesn't.
+          See where the internet agrees - and where it doesn&apos;t.
         </div>
       </div>
     ),
