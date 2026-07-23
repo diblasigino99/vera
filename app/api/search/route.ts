@@ -18,7 +18,8 @@ import type { ConsensusResponse } from "@/lib/types";
 import type { SearchPublicWebTimings } from "@/lib/server/search";
 
 const SearchBody = z.object({
-  query: z.string().trim().min(3).max(240)
+  query: z.string().trim().min(3).max(240),
+  actorId: z.string().trim().min(1).max(128).optional()
 });
 
 export const runtime = "nodejs";
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
   const canonicalQuery = canonicalizeQuery(body.data.query);
   const evidenceType = inferQueryEvidenceType(body.data.query);
   const queryIntent = inferQueryIntent(body.data.query);
+  const actorId = body.data.actorId ?? null;
   console.log("ORIGINAL_QUERY", body.data.query);
   console.log("NORMALIZED_QUERY", normalizedQuery);
   console.log("CANONICAL_QUERY", canonicalQuery);
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
       searchId: fakeResult.id,
       consensusMode: fakeResult.mode,
       cacheHit: true,
@@ -88,7 +90,7 @@ export async function POST(request: Request) {
   }
 
   if (isUnsupportedAdultLocalCategory(body.data.query)) {
-    const consensus = buildNoReliableConsensus(body.data.query, [], NO_RELIABLE_CONSENSUS_BODY);
+    const consensus = buildNoReliableConsensus(body.data.query, []);
     const totalElapsedMs = Date.now() - requestStartedAt;
 
     logSearchCostAudit({
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
       searchId: consensus.id,
       consensusMode: consensus.mode,
       cacheHit: false,
@@ -121,7 +123,7 @@ export async function POST(request: Request) {
   }
 
   if (queryIntent === "negative_avoidance" || queryIntent === "reliability_risk") {
-    const consensus = buildNoReliableConsensus(body.data.query, [], NO_RELIABLE_CONSENSUS_BODY);
+    const consensus = buildNoReliableConsensus(body.data.query, []);
     const totalElapsedMs = Date.now() - requestStartedAt;
 
     logSearchCostAudit({
@@ -141,7 +143,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
       searchId: consensus.id,
       consensusMode: consensus.mode,
       cacheHit: false,
@@ -155,7 +157,7 @@ export async function POST(request: Request) {
 
   const vagueQueryExplanation = vagueRecommendationGuardExplanation(body.data.query, evidenceType);
   if (vagueQueryExplanation) {
-    const consensus = buildNoReliableConsensus(body.data.query, [], vagueQueryExplanation);
+    const consensus = buildNoReliableConsensus(body.data.query, []);
     const totalElapsedMs = Date.now() - requestStartedAt;
 
     logSearchCostAudit({
@@ -175,7 +177,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
       searchId: consensus.id,
       consensusMode: consensus.mode,
       cacheHit: false,
@@ -223,7 +225,7 @@ export async function POST(request: Request) {
       });
       console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
       await recordSearchEvent({
-        ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+        ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
         searchId: response.id,
         consensusMode: response.mode,
         cacheHit: true,
@@ -242,7 +244,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
       cacheHit: false,
       cacheHitType: "cache_lookup_error",
       cacheVersion: getCacheVersion(),
@@ -267,7 +269,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
       cacheHit: false,
       cacheHitType: "setup_missing",
       cacheVersion: getCacheVersion(),
@@ -335,11 +337,7 @@ export async function POST(request: Request) {
           "Vera could not confidently separate one clear favorite from several local contenders.",
           externalCallCounts
         )) ??
-        buildNoReliableConsensus(
-          body.data.query,
-          sources,
-          NO_RELIABLE_CONSENSUS_BODY
-        );
+        buildNoReliableConsensus(body.data.query, sources);
     }
 
     const openAIElapsedMs = Date.now() - openAIStartedAt;
@@ -418,7 +416,7 @@ export async function POST(request: Request) {
         });
         console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
         await recordSearchEvent({
-          ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+          ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
           searchId: stale.id,
           consensusMode: stale.mode,
           cacheHit: true,
@@ -503,7 +501,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
       searchId: consensus.id,
       consensusMode: consensus.mode,
       cacheHit: false,
@@ -529,7 +527,7 @@ export async function POST(request: Request) {
         });
         console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
         await recordSearchEvent({
-          ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+          ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
           searchId: stale.id,
           consensusMode: stale.mode,
           cacheHit: true,
@@ -563,7 +561,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
       cacheHit: false,
       cacheHitType: "error",
       cacheVersion: getCacheVersion(),
@@ -924,9 +922,11 @@ function baseSearchEvent(
   normalizedQuery: string,
   canonicalQuery: string,
   evidenceType: ReturnType<typeof inferQueryEvidenceType>,
-  externalCallCounts: ReturnType<typeof createExternalCallCounts>
+  externalCallCounts: ReturnType<typeof createExternalCallCounts>,
+  actorId: string | null
 ) {
   return {
+    actorId,
     originalQuery,
     normalizedQuery,
     canonicalQuery,

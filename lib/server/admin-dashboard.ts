@@ -51,6 +51,9 @@ export type AdminDashboardData = {
     totalSearches: number;
     searchesToday: number;
     searchesLast7Days: number;
+    newUsersToday: number;
+    returningUsersToday: number;
+    uniqueUsersLast7Days: number;
     cacheHitRate: number;
     noConsensusRate: number;
     averageResponseMs: number | null;
@@ -88,7 +91,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const [total, today, last7, errors, recentResult, breakdownResult, totalFeedback, recentFeedback] = await Promise.all([
+  const [total, today, last7, errors, recentResult, breakdownResult, actorActivityResult, totalFeedback, recentFeedback] = await Promise.all([
     countSearchEvents(supabase),
     countSearchEvents(supabase, { createdAfter: todayStart.toISOString() }),
     countSearchEvents(supabase, { createdAfter: sevenDaysAgo.toISOString() }),
@@ -101,6 +104,12 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     supabase
       .from("search_events")
       .select("evidence_type, cache_hit_type")
+      .order("created_at", { ascending: false })
+      .limit(breakdownLimit),
+    supabase
+      .from("search_events")
+      .select("actor_id, created_at")
+      .not("actor_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(breakdownLimit),
     countFeedbackEvents(),
@@ -116,12 +125,24 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   const successfulTimedEvents = recentEvents.filter((event) => !event.error && typeof event.total_ms === "number");
   const cacheKnownEvents = recentEvents.filter((event) => typeof event.cache_hit === "boolean");
   const noConsensusEvents = recentEvents.filter((event) => event.consensus_mode === "no_reliable_consensus");
+  const userMetrics = buildUserMetrics(
+    actorActivityResult.error ? [] : ((actorActivityResult.data ?? []) as unknown as AdminActorActivityRow[]),
+    todayStart,
+    sevenDaysAgo
+  );
+
+  if (actorActivityResult.error) {
+    console.warn("[vera:admin] actor activity lookup failed", { error: actorActivityResult.error.message });
+  }
 
   return {
     overview: {
       totalSearches: total,
       searchesToday: today,
       searchesLast7Days: last7,
+      newUsersToday: userMetrics.newUsersToday,
+      returningUsersToday: userMetrics.returningUsersToday,
+      uniqueUsersLast7Days: userMetrics.uniqueUsersLast7Days,
       cacheHitRate: ratio(
         cacheKnownEvents.filter((event) => event.cache_hit).length,
         cacheKnownEvents.length
@@ -150,6 +171,11 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
 type SearchEventCountOptions = {
   createdAfter?: string;
   hasError?: boolean;
+};
+
+type AdminActorActivityRow = {
+  actor_id: string | null;
+  created_at: string | null;
 };
 
 async function countSearchEvents(supabase: NonNullable<ReturnType<typeof getSupabaseAdmin>>, options: SearchEventCountOptions = {}) {
@@ -278,6 +304,53 @@ function buildCategoryBreakdown(events: Array<Pick<AdminSearchEvent, "evidence_t
   return orderedLabels.map((label) => ({ label, count: counts.get(label) ?? 0 }));
 }
 
+function buildUserMetrics(rows: AdminActorActivityRow[], todayStart: Date, sevenDaysAgo: Date) {
+  const firstSeenByActor = new Map<string, number>();
+  const todayActors = new Set<string>();
+  const last7Actors = new Set<string>();
+  const todayStartMs = todayStart.getTime();
+  const sevenDaysAgoMs = sevenDaysAgo.getTime();
+
+  rows.forEach((row) => {
+    const actorId = row.actor_id?.trim();
+    const createdAtMs = row.created_at ? new Date(row.created_at).getTime() : Number.NaN;
+
+    if (!actorId || Number.isNaN(createdAtMs)) {
+      return;
+    }
+
+    firstSeenByActor.set(actorId, Math.min(firstSeenByActor.get(actorId) ?? createdAtMs, createdAtMs));
+
+    if (createdAtMs >= todayStartMs) {
+      todayActors.add(actorId);
+    }
+
+    if (createdAtMs >= sevenDaysAgoMs) {
+      last7Actors.add(actorId);
+    }
+  });
+
+  let newUsersToday = 0;
+  let returningUsersToday = 0;
+
+  todayActors.forEach((actorId) => {
+    const firstSeenAt = firstSeenByActor.get(actorId);
+
+    if (firstSeenAt !== undefined && firstSeenAt >= todayStartMs) {
+      newUsersToday += 1;
+      return;
+    }
+
+    returningUsersToday += 1;
+  });
+
+  return {
+    newUsersToday,
+    returningUsersToday,
+    uniqueUsersLast7Days: last7Actors.size
+  };
+}
+
 function emptyDashboardData(unavailableReason: string): AdminDashboardData {
   return {
     unavailableReason,
@@ -285,6 +358,9 @@ function emptyDashboardData(unavailableReason: string): AdminDashboardData {
       totalSearches: 0,
       searchesToday: 0,
       searchesLast7Days: 0,
+      newUsersToday: 0,
+      returningUsersToday: 0,
+      uniqueUsersLast7Days: 0,
       cacheHitRate: 0,
       noConsensusRate: 0,
       averageResponseMs: null,

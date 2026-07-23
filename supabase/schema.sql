@@ -92,6 +92,7 @@ create index if not exists places_validation_cache_expires_idx
 create table if not exists public.search_events (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
+  actor_id text,
   search_id uuid null,
   original_query text,
   normalized_query text,
@@ -122,6 +123,12 @@ create index if not exists search_events_normalized_query_idx
 
 create index if not exists search_events_cache_hit_idx
   on public.search_events(cache_hit);
+
+create index if not exists search_events_actor_id_idx
+  on public.search_events(actor_id);
+
+create index if not exists search_events_actor_id_created_at_idx
+  on public.search_events(actor_id, created_at);
 
 create table if not exists public.feedback_events (
   id uuid primary key default gen_random_uuid(),

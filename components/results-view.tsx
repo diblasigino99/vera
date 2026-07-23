@@ -121,7 +121,7 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, actorId: getAnonymousId() }),
       signal: controller.signal
     })
       .then(async (response) => {

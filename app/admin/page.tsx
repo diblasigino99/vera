@@ -55,6 +55,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <MetricCard label="Total searches" value={formatNumber(data.overview.totalSearches)} />
           <MetricCard label="Today" value={formatNumber(data.overview.searchesToday)} />
           <MetricCard label="Last 7 days" value={formatNumber(data.overview.searchesLast7Days)} />
+          <MetricCard label="New users today" value={formatNumber(data.overview.newUsersToday)} />
+          <MetricCard label="Returning users today" value={formatNumber(data.overview.returningUsersToday)} />
+          <MetricCard label="Users last 7 days" value={formatNumber(data.overview.uniqueUsersLast7Days)} />
           <MetricCard label="Errors" value={formatNumber(data.overview.errorCount)} tone={data.overview.errorCount > 0 ? "warning" : "normal"} />
           <MetricCard label="Cache-hit rate" value={formatPercent(data.overview.cacheHitRate)} />
           <MetricCard label="No-consensus rate" value={formatPercent(data.overview.noConsensusRate)} />
