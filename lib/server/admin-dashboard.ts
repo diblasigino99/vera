@@ -116,8 +116,8 @@ export type AdminDashboardData = {
   sampleSize: number;
 };
 
-const recentLimit = 300;
-const breakdownLimit = 5000;
+const recentLimit = 100;
+const breakdownLimit = 1000;
 
 type AdminSupabase = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
 
@@ -151,7 +151,7 @@ export async function getAdminDashboardData(filters: AdminDashboardFilters = {})
   const filteredEvents = filterEventsInMemory((filteredResult.data ?? []) as unknown as AdminSearchEvent[], normalizedFilters);
   const sortedEvents = sortEvents(filteredEvents, normalizedFilters.sort);
   const visibleEvents = sortedEvents.slice(0, recentLimit);
-  const recentSearches = await attachCacheResults(visibleEvents);
+  const recentSearches = visibleEvents;
   const successfulTimedEvents = filteredEvents.filter((event) => !event.error && typeof event.total_ms === "number");
   const cacheKnownEvents = filteredEvents.filter((event) => typeof event.cache_hit === "boolean");
   const noConsensusEvents = filteredEvents.filter((event) => event.consensus_mode === "no_reliable_consensus");
@@ -178,14 +178,14 @@ export async function getAdminDashboardData(filters: AdminDashboardFilters = {})
     topSearches: buildTopSearches(filteredEvents).slice(0, 12),
     recentSearches,
     latencySearches: {
-      slowest: await attachCacheResults(sortEvents(filteredEvents, "slowest").slice(0, 10)),
-      fastest: await attachCacheResults(sortEvents(filteredEvents.filter((event) => typeof event.total_ms === "number"), "fastest").slice(0, 10))
+      slowest: sortEvents(filteredEvents, "slowest").slice(0, 10),
+      fastest: sortEvents(filteredEvents.filter((event) => typeof event.total_ms === "number"), "fastest").slice(0, 10)
     },
     problemSearches: {
-      noConsensus: recentSearches.filter((event) => event.consensus_mode === "no_reliable_consensus").slice(0, 25),
-      slow: recentSearches.filter((event) => (event.total_ms ?? 0) > 15000).slice(0, 25),
-      errors: recentSearches.filter((event) => event.error).slice(0, 25),
-      zeroContenders: recentSearches.filter((event) => contenderNamesFromResult(event.cacheResult).length === 0).slice(0, 25)
+      noConsensus: filteredEvents.filter((event) => event.consensus_mode === "no_reliable_consensus").slice(0, 25),
+      slow: sortEvents(filteredEvents.filter((event) => (event.total_ms ?? 0) > 15000), "slowest").slice(0, 25),
+      errors: filteredEvents.filter((event) => event.error).slice(0, 25),
+      zeroContenders: []
     },
     feedback: {
       total: totalFeedback,

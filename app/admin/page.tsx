@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import {
   type AdminDashboardFilters,
   categoryLabelForEvent,
-  contenderNamesFromResult,
   getAdminDashboardData,
   type AdminEventWithCache
 } from "@/lib/server/admin-dashboard";
@@ -22,8 +21,7 @@ const filters = [
   { key: "recent", label: "Recent" },
   { key: "no-consensus", label: "No consensus" },
   { key: "slow", label: "Slow > 15s" },
-  { key: "errors", label: "Errors" },
-  { key: "zero-contenders", label: "Zero contenders" }
+  { key: "errors", label: "Errors" }
 ];
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
@@ -169,7 +167,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <ProblemLink href={adminHref(baseParams, { filter: "no-consensus" })} label="No reliable consensus" count={data.problemSearches.noConsensus.length} />
               <ProblemLink href={adminHref(baseParams, { filter: "slow" })} label="Slow over 15 seconds" count={data.problemSearches.slow.length} />
               <ProblemLink href={adminHref(baseParams, { filter: "errors" })} label="Errors" count={data.problemSearches.errors.length} />
-              <ProblemLink href={adminHref(baseParams, { filter: "zero-contenders" })} label="Zero contenders" count={data.problemSearches.zeroContenders.length} />
               <div className="rounded-lg border border-[#E7E3DB] bg-white p-4 sm:col-span-2">
                 <span className="block text-sm text-[#3D3D38]">Reported results</span>
                 <span className="mt-2 block font-mono text-lg text-[#111114]">
@@ -258,7 +255,6 @@ function rowsForFilter(activeFilter: string, data: Awaited<ReturnType<typeof get
   if (activeFilter === "no-consensus") return data.problemSearches.noConsensus;
   if (activeFilter === "slow") return data.problemSearches.slow;
   if (activeFilter === "errors") return data.problemSearches.errors;
-  if (activeFilter === "zero-contenders") return data.problemSearches.zeroContenders;
   return data.recentSearches;
 }
 
@@ -430,7 +426,7 @@ function SearchTable({ rows }: { rows: AdminEventWithCache[] }) {
                     <Link href={`/admin/search/${row.id}`} className="font-medium text-[#111114] hover:underline">
                       {row.original_query ?? row.normalized_query ?? "Untitled search"}
                     </Link>
-                    <p className="mt-1 truncate text-xs text-[#8B887F]">{contenderNamesFromResult(row.cacheResult).join(", ") || "No cached contenders available"}</p>
+                    <p className="mt-1 truncate text-xs text-[#8B887F]">Open search detail for contenders and sources</p>
                   </td>
                   <td className="px-4 py-3 text-[#62625C]">{categoryLabelForEvent(row)}</td>
                   <td className="px-4 py-3">
