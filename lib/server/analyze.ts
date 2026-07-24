@@ -25,7 +25,7 @@ import {
 } from "@/lib/utils";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 import { diagnoseMultiContenderSplitEvidence } from "@/lib/server/consensus-classification";
-import { canonicalDestinationName, destinationCandidateFitsQuery, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "@/lib/server/destination-rules";
+import { canonicalDestinationName, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "@/lib/server/destination-rules";
 import { getCachedPlacesValidationSnapshot, validateLocalSignalsWithPlaces } from "@/lib/server/places";
 import type { QueryEvidenceType } from "@/lib/utils";
 
@@ -565,16 +565,11 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   }
   const recoveredSignals =
     evidenceType === "local_recommendation" && !skipLocalOpenAI ? await recoverSparseLocalBusinessNames(query, modelSources, sourceSignals.signals, key, callCounts) : [];
-  const recoveredDestinationSignals =
-    evidenceType === "destination_recommendation" ? recoverDestinationSignalsFromSources(query, sources, sourceSignals.signals) : [];
   const allSignals =
     evidenceType === "local_recommendation"
       ? dedupeSignals([...(skipLocalOpenAI ? [] : sourceSignals.signals), ...deterministicLocalSignals, ...recoveredSignals])
-      : evidenceType === "destination_recommendation"
-        ? dedupeSignals([...sourceSignals.signals, ...recoveredDestinationSignals].map(canonicalizeDestinationSignal))
       : sourceSignals.signals;
-  const consensusSources = evidenceType === "destination_recommendation" ? sources : modelSources;
-  const structuredConsensus = await aggregateSignals(allSignals, consensusSources, query, callCounts);
+  const structuredConsensus = await aggregateSignals(allSignals, modelSources, query, callCounts);
 
   if (structuredConsensus.contenders.length === 0) {
     const consensus = notEnoughData(query, sources, NO_RELIABLE_CONSENSUS_BODY);
@@ -587,7 +582,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     };
   }
 
-  const consensus = buildConsensus(query, consensusSources, sourceSignals.intent, structuredConsensus);
+  const consensus = buildConsensus(query, modelSources, sourceSignals.intent, structuredConsensus);
 
   return {
     rawOpenAIContent: sourceSignals.rawOpenAIContent,
@@ -1127,7 +1122,10 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
     ];
   });
 
-  const normalizedSignals = evidenceType === "destination_recommendation" ? rawSignals.map(canonicalizeDestinationSignal) : rawSignals;
+  const destinationFallbackSignals =
+    evidenceType === "destination_recommendation" ? recoverDestinationSignalsFromSources(query, sources, rawSignals) : [];
+  const combinedSignals = [...rawSignals, ...destinationFallbackSignals];
+  const normalizedSignals = evidenceType === "destination_recommendation" ? combinedSignals.map(canonicalizeDestinationSignal) : combinedSignals;
   const dedupedSignals = dedupeSignals(normalizedSignals);
 
   console.log("[vera:consensus] source signal extraction", {
@@ -1137,7 +1135,7 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
     removedBySourceContenderDedupe: normalizedSignals.length - dedupedSignals.length,
     positiveRawSignals: normalizedSignals.filter((signal) => signal.sentiment === "positive").length,
     positiveDedupedSignals: dedupedSignals.filter((signal) => signal.sentiment === "positive").length,
-    destinationFallbackSignalCount: 0,
+    destinationFallbackSignalCount: destinationFallbackSignals.length,
     sourceTypeBreakdown: sourceTypes.reduce(
       (breakdown, type) => ({
         ...breakdown,
@@ -1165,12 +1163,7 @@ function recoverDestinationSignalsFromSources(query: string, sources: VeraSource
       const contenderName = canonicalDestinationName(candidate);
       const key = `${source.url}::${normalizeQuery(contenderName)}`;
 
-      if (
-        existingBySource.has(key) ||
-        isGenericDestinationContender(query, contenderName) ||
-        !destinationCandidateFitsQuery(query, contenderName, [source.title, source.snippet ?? ""]) ||
-        isRejectableContenderName(contenderName, "destination_recommendation", source, text)
-      ) {
+      if (existingBySource.has(key) || isGenericDestinationContender(query, contenderName) || isRejectableContenderName(contenderName, "destination_recommendation", source, text)) {
         continue;
       }
 
@@ -1285,15 +1278,7 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
       : queryEvidenceType === "destination_recommendation"
         ? dominantFilteredSignals.filter(
             (signal) =>
-              !isGenericDestinationContender(query, signal.contenderName) &&
-              destinationCandidateFitsQuery(query, signal.contenderName, [
-                signal.sourceTitle,
-                signal.positiveMention ?? "",
-                signal.negativeMention ?? "",
-                signal.extractedReason,
-                signal.queryVariant ?? ""
-              ]) &&
-              !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
+              !isGenericDestinationContender(query, signal.contenderName) && !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
           )
       : queryEvidenceType === "local_recommendation"
         ? dominantFilteredSignals.filter(
@@ -1354,19 +1339,7 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
     queryEvidenceType === "local_recommendation"
       ? contendersBeforeFiltering.filter((contender) => localCandidatePassesDiscovery(query, contender, byName.get(contender.name) ?? []))
       : queryEvidenceType === "destination_recommendation"
-        ? contendersBeforeFiltering.filter((contender) =>
-            destinationCandidateFitsQuery(
-              query,
-              contender.name,
-              (byName.get(contender.name) ?? []).flatMap((signal) => [
-                signal.sourceTitle,
-                signal.positiveMention ?? "",
-                signal.negativeMention ?? "",
-                signal.extractedReason,
-                signal.queryVariant ?? ""
-              ])
-            )
-          )
+        ? contendersBeforeFiltering.filter((contender) => !isGenericDestinationContender(query, contender.name))
       : queryEvidenceType === "product_recommendation" && isBroadExploratoryQuery(query)
         ? contendersBeforeFiltering.filter((contender) => !isWeakBroadProductContender(contender, query))
         : contendersBeforeFiltering;
@@ -6018,22 +5991,8 @@ function sanitizeCachedDestinationStructuredConsensus(structuredConsensus: Struc
 
   for (const contender of structuredConsensus.contenders) {
     const name = canonicalDestinationName(contender.name);
-    const contenderSignals = signals.filter((signal) => signal.contenderName === name || canonicalDestinationName(signal.contenderName) === name);
 
-    if (
-      isGenericDestinationContender(query, name) ||
-      !destinationCandidateFitsQuery(
-        query,
-        name,
-        contenderSignals.flatMap((signal) => [
-          signal.sourceTitle,
-          signal.positiveMention ?? "",
-          signal.negativeMention ?? "",
-          signal.extractedReason,
-          signal.queryVariant ?? ""
-        ])
-      )
-    ) {
+    if (isGenericDestinationContender(query, name)) {
       continue;
     }
 
