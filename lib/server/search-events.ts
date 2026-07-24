@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/server/supabase";
 
-const searchEventInsertTimeoutMs = 300;
+const searchEventInsertTimeoutMs = 1200;
 
 export type SearchEventInput = {
   searchId?: string | null;

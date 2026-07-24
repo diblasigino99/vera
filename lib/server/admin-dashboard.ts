@@ -118,6 +118,7 @@ export type AdminDashboardData = {
 
 const recentLimit = 100;
 const breakdownLimit = 1000;
+const adminTimeZone = "America/New_York";
 
 type AdminSupabase = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
 
@@ -130,7 +131,7 @@ export async function getAdminDashboardData(filters: AdminDashboardFilters = {})
   }
 
   const now = new Date();
-  const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const todayStart = startOfDayInTimeZone(now, adminTimeZone);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const dateBounds = dateBoundsForFilters(normalizedFilters, now);
 
@@ -413,35 +414,82 @@ function dateBoundsForFilters(filters: Required<AdminDashboardFilters>, now: Dat
 
   if (filters.dateRange === "custom") {
     return {
-      start: dateInputToIso(filters.startDate, "start"),
-      end: dateInputToIso(filters.endDate, "end")
+      start: dateInputToIso(filters.startDate, "start", adminTimeZone),
+      end: dateInputToIso(filters.endDate, "end", adminTimeZone)
     };
   }
 
   const start =
     filters.dateRange === "today"
-      ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+      ? startOfDayInTimeZone(now, adminTimeZone)
       : new Date(now.getTime() - (filters.dateRange === "30d" ? 30 : 7) * 24 * 60 * 60 * 1000);
 
   return { start: start.toISOString(), end: null as string | null };
 }
 
-function dateInputToIso(value: string, boundary: "start" | "end") {
+function dateInputToIso(value: string, boundary: "start" | "end", timeZone: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return null;
   }
 
-  const date = new Date(`${value}T00:00:00.000Z`);
+  const [year, month, day] = value.split("-").map(Number);
+  const date = zonedTimeToUtc(year, month, day + (boundary === "end" ? 1 : 0), 0, 0, 0, timeZone);
 
   if (Number.isNaN(date.getTime())) {
     return null;
   }
 
-  if (boundary === "end") {
-    date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString();
+}
+
+function startOfDayInTimeZone(date: Date, timeZone: string) {
+  const { year, month, day } = datePartsInTimeZone(date, timeZone);
+  return zonedTimeToUtc(year, month, day, 0, 0, 0, timeZone);
+}
+
+function datePartsInTimeZone(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: Number(parts.find((part) => part.type === "month")?.value),
+    day: Number(parts.find((part) => part.type === "day")?.value)
+  };
+}
+
+function zonedTimeToUtc(year: number, month: number, day: number, hour: number, minute: number, second: number, timeZone: string) {
+  let utc = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+
+  for (let i = 0; i < 2; i += 1) {
+    const offsetMs = timeZoneOffsetMs(utc, timeZone);
+    utc = new Date(Date.UTC(year, month - 1, day, hour, minute, second) - offsetMs);
   }
 
-  return date.toISOString();
+  return utc;
+}
+
+function timeZoneOffsetMs(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).formatToParts(date);
+
+  const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
+  const zonedAsUtc = Date.UTC(value("year"), value("month") - 1, value("day"), value("hour"), value("minute"), value("second"));
+
+  return zonedAsUtc - date.getTime();
 }
 
 function rangeLabelForFilters(filters: Required<AdminDashboardFilters>, bounds: { start: string | null; end: string | null }) {
