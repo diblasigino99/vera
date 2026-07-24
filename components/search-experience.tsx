@@ -55,12 +55,10 @@ export function SearchExperience({ initialQuery = "", compact = false, autoFocus
     setIsSubmittingSearch(true);
     console.log("thinking state visible", { query: nextQuery });
 
-    window.setTimeout(() => {
-      startTransition(() => {
-        router.push(`/vera/search?q=${encodeURIComponent(nextQuery)}&thinking=1`);
-        setIsSubmittingSearch(false);
-      });
-    }, 2000);
+    startTransition(() => {
+      router.push(`/vera/search?q=${encodeURIComponent(nextQuery)}&thinking=1`);
+      setIsSubmittingSearch(false);
+    });
   }
 
   function onIconClick(event: MouseEvent<HTMLButtonElement>) {
