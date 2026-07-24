@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import type { ReactNode } from "react";
 import {
   type AdminDashboardFilters,
@@ -568,5 +569,5 @@ function adminHref(baseParams: URLSearchParams, updates: Record<string, string>)
   });
 
   const query = params.toString();
-  return query ? `/admin?${query}` : "/admin";
+  return (query ? `/admin?${query}` : "/admin") as Route;
 }
