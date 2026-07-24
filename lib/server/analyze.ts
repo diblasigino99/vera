@@ -25,7 +25,7 @@ import {
 } from "@/lib/utils";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 import { diagnoseMultiContenderSplitEvidence } from "@/lib/server/consensus-classification";
-import { canonicalDestinationName, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "@/lib/server/destination-rules";
+import { canonicalDestinationName, destinationCandidateFitsQuery, destinationCandidateProof, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "@/lib/server/destination-rules";
 import { getCachedPlacesValidationSnapshot, validateLocalSignalsWithPlaces } from "@/lib/server/places";
 import type { QueryEvidenceType } from "@/lib/utils";
 
@@ -565,11 +565,16 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
   }
   const recoveredSignals =
     evidenceType === "local_recommendation" && !skipLocalOpenAI ? await recoverSparseLocalBusinessNames(query, modelSources, sourceSignals.signals, key, callCounts) : [];
+  const recoveredDestinationSignals =
+    evidenceType === "destination_recommendation" ? recoverDestinationSignalsFromSources(query, sources, sourceSignals.signals) : [];
   const allSignals =
     evidenceType === "local_recommendation"
       ? dedupeSignals([...(skipLocalOpenAI ? [] : sourceSignals.signals), ...deterministicLocalSignals, ...recoveredSignals])
+      : evidenceType === "destination_recommendation"
+        ? dedupeSignals([...sourceSignals.signals, ...recoveredDestinationSignals].map(canonicalizeDestinationSignal))
       : sourceSignals.signals;
-  const structuredConsensus = await aggregateSignals(allSignals, modelSources, query, callCounts);
+  const consensusSources = evidenceType === "destination_recommendation" ? sources : modelSources;
+  const structuredConsensus = await aggregateSignals(allSignals, consensusSources, query, callCounts);
 
   if (structuredConsensus.contenders.length === 0) {
     const consensus = notEnoughData(query, sources, NO_RELIABLE_CONSENSUS_BODY);
@@ -582,7 +587,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     };
   }
 
-  const consensus = buildConsensus(query, modelSources, sourceSignals.intent, structuredConsensus);
+  const consensus = buildConsensus(query, consensusSources, sourceSignals.intent, structuredConsensus);
 
   return {
     rawOpenAIContent: sourceSignals.rawOpenAIContent,
@@ -1122,10 +1127,7 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
     ];
   });
 
-  const destinationFallbackSignals =
-    evidenceType === "destination_recommendation" ? recoverDestinationSignalsFromSources(query, sources, rawSignals) : [];
-  const combinedSignals = [...rawSignals, ...destinationFallbackSignals];
-  const normalizedSignals = evidenceType === "destination_recommendation" ? combinedSignals.map(canonicalizeDestinationSignal) : combinedSignals;
+  const normalizedSignals = evidenceType === "destination_recommendation" ? rawSignals.map(canonicalizeDestinationSignal) : rawSignals;
   const dedupedSignals = dedupeSignals(normalizedSignals);
 
   console.log("[vera:consensus] source signal extraction", {
@@ -1135,7 +1137,7 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
     removedBySourceContenderDedupe: normalizedSignals.length - dedupedSignals.length,
     positiveRawSignals: normalizedSignals.filter((signal) => signal.sentiment === "positive").length,
     positiveDedupedSignals: dedupedSignals.filter((signal) => signal.sentiment === "positive").length,
-    destinationFallbackSignalCount: destinationFallbackSignals.length,
+    destinationFallbackSignalCount: 0,
     sourceTypeBreakdown: sourceTypes.reduce(
       (breakdown, type) => ({
         ...breakdown,
@@ -1149,8 +1151,9 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
 }
 
 function recoverDestinationSignalsFromSources(query: string, sources: VeraSource[], existingSignals: SourceSignal[]) {
-  const existingBySource = new Set(existingSignals.map((signal) => `${signal.sourceUrl}::${normalizeQuery(signal.contenderName)}`));
+  const existingBySource = new Set(existingSignals.map((signal) => `${signal.sourceUrl}::${normalizeQuery(canonicalDestinationName(signal.contenderName))}`));
   const recovered: SourceSignal[] = [];
+  const repeatedContextualCandidates = new Map<string, Array<{ source: VeraSource; contenderName: string; proofPath: string }>>();
 
   for (const source of sources) {
     const text = `${source.title}. ${source.snippet ?? ""}`;
@@ -1160,31 +1163,42 @@ function recoverDestinationSignalsFromSources(query: string, sources: VeraSource
     }
 
     for (const candidate of extractDestinationCandidatesFromText(text)) {
-      const contenderName = canonicalDestinationName(candidate);
+      const proof = destinationCandidateProof(query, candidate, [source.title, source.snippet ?? ""]);
+      const contenderName = proof.canonicalName;
       const key = `${source.url}::${normalizeQuery(contenderName)}`;
 
-      if (existingBySource.has(key) || isGenericDestinationContender(query, contenderName) || isRejectableContenderName(contenderName, "destination_recommendation", source, text)) {
+      if (!proof.accepted || existingBySource.has(key) || isGenericDestinationContender(query, contenderName) || isRejectableContenderName(contenderName, "destination_recommendation", source, text)) {
         continue;
       }
 
-      const sourceType = inferSourceType(source);
-      const sourceQuality = inferSourceQuality(source, sourceType);
-      recovered.push({
-        sourceUrl: source.url,
-        sourceTitle: source.title,
-        domain: source.domain,
-        sourceType,
-        sourceWeight: sourceTypeWeight(sourceType, "destination_recommendation"),
-        sourceQuality,
-        sourceQualityWeight: sourceQualityWeightFor(sourceQuality),
-        queryVariant: source.queryVariant,
-        contenderName,
-        sentiment: "positive",
-        mentionStrength: "moderate",
-        positiveMention: "Named in a destination recommendation source",
-        extractedReason: "Named in a destination recommendation source",
-        themes: ["destination recommendation"]
-      });
+      if (proof.requiresMultipleSources) {
+        const existing = repeatedContextualCandidates.get(normalizeQuery(contenderName)) ?? [];
+
+        if (!existing.some((item) => item.source.url === source.url)) {
+          existing.push({ source, contenderName, proofPath: proof.proofPath ?? "repeated_contextual" });
+          repeatedContextualCandidates.set(normalizeQuery(contenderName), existing);
+        }
+        continue;
+      }
+
+      recovered.push(destinationRecoverySignal(source, contenderName, proof.proofPath ?? "strong_geographic_form"));
+      existingBySource.add(key);
+    }
+  }
+
+  for (const occurrences of repeatedContextualCandidates.values()) {
+    if (new Set(occurrences.map((item) => item.source.url)).size < 2) {
+      continue;
+    }
+
+    for (const occurrence of occurrences) {
+      const key = `${occurrence.source.url}::${normalizeQuery(occurrence.contenderName)}`;
+
+      if (existingBySource.has(key)) {
+        continue;
+      }
+
+      recovered.push(destinationRecoverySignal(occurrence.source, occurrence.contenderName, occurrence.proofPath));
       existingBySource.add(key);
     }
   }
@@ -1201,6 +1215,28 @@ function recoverDestinationSignalsFromSources(query: string, sources: VeraSource
   }
 
   return recovered;
+}
+
+function destinationRecoverySignal(source: VeraSource, contenderName: string, proofPath: string): SourceSignal {
+  const sourceType = inferSourceType(source);
+  const sourceQuality = inferSourceQuality(source, sourceType);
+
+  return {
+    sourceUrl: source.url,
+    sourceTitle: source.title,
+    domain: source.domain,
+    sourceType,
+    sourceWeight: sourceTypeWeight(sourceType, "destination_recommendation"),
+    sourceQuality,
+    sourceQualityWeight: sourceQualityWeightFor(sourceQuality),
+    queryVariant: source.queryVariant,
+    contenderName,
+    sentiment: "positive",
+    mentionStrength: "moderate",
+    positiveMention: "Named in a destination recommendation source",
+    extractedReason: `Named in a destination recommendation source via ${proofPath}`,
+    themes: ["destination recommendation"]
+  };
 }
 
 function canonicalizeDestinationSignal(signal: SourceSignal): SourceSignal {
@@ -1278,7 +1314,15 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
       : queryEvidenceType === "destination_recommendation"
         ? dominantFilteredSignals.filter(
             (signal) =>
-              !isGenericDestinationContender(query, signal.contenderName) && !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
+              !isGenericDestinationContender(query, signal.contenderName) &&
+              destinationCandidateFitsQuery(query, signal.contenderName, [
+                signal.sourceTitle,
+                signal.positiveMention ?? "",
+                signal.negativeMention ?? "",
+                signal.extractedReason,
+                signal.queryVariant ?? ""
+              ]) &&
+              !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
           )
       : queryEvidenceType === "local_recommendation"
         ? dominantFilteredSignals.filter(
@@ -1339,7 +1383,19 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
     queryEvidenceType === "local_recommendation"
       ? contendersBeforeFiltering.filter((contender) => localCandidatePassesDiscovery(query, contender, byName.get(contender.name) ?? []))
       : queryEvidenceType === "destination_recommendation"
-        ? contendersBeforeFiltering.filter((contender) => !isGenericDestinationContender(query, contender.name))
+        ? contendersBeforeFiltering.filter((contender) =>
+            destinationCandidateFitsQuery(
+              query,
+              contender.name,
+              (byName.get(contender.name) ?? []).flatMap((signal) => [
+                signal.sourceTitle,
+                signal.positiveMention ?? "",
+                signal.negativeMention ?? "",
+                signal.extractedReason,
+                signal.queryVariant ?? ""
+              ])
+            )
+          )
       : queryEvidenceType === "product_recommendation" && isBroadExploratoryQuery(query)
         ? contendersBeforeFiltering.filter((contender) => !isWeakBroadProductContender(contender, query))
         : contendersBeforeFiltering;
@@ -5991,8 +6047,22 @@ function sanitizeCachedDestinationStructuredConsensus(structuredConsensus: Struc
 
   for (const contender of structuredConsensus.contenders) {
     const name = canonicalDestinationName(contender.name);
+    const contenderSignals = signals.filter((signal) => signal.contenderName === name || canonicalDestinationName(signal.contenderName) === name);
 
-    if (isGenericDestinationContender(query, name)) {
+    if (
+      isGenericDestinationContender(query, name) ||
+      !destinationCandidateFitsQuery(
+        query,
+        name,
+        contenderSignals.flatMap((signal) => [
+          signal.sourceTitle,
+          signal.positiveMention ?? "",
+          signal.negativeMention ?? "",
+          signal.extractedReason,
+          signal.queryVariant ?? ""
+        ])
+      )
+    ) {
       continue;
     }
 

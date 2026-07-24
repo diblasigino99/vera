@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { diagnoseMultiContenderSplitEvidence } from "../lib/server/consensus-classification.ts";
-import { canonicalDestinationName, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "../lib/server/destination-rules.ts";
+import { canonicalDestinationName, destinationCandidateFitsQuery, destinationCandidateProof, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "../lib/server/destination-rules.ts";
 
 const minimumSourceCount = 3;
 const minimumTopPositiveMentions = 3;
@@ -52,6 +52,67 @@ function classifyRegressionCase({ query, evidenceType, contenders, sourceCount, 
   }
 
   return { mode: "split_consensus", diagnostics };
+}
+
+function destinationContendersFromSources(query, sources) {
+  const bySourceAndName = new Map();
+  const repeatedContextual = new Map();
+
+  for (const source of sources) {
+    const text = `${source.title}. ${source.snippet}`;
+
+    for (const rawCandidate of extractDestinationCandidatesFromText(text)) {
+      const proof = destinationCandidateProof(query, rawCandidate, [source.title, source.snippet]);
+      const name = proof.canonicalName;
+
+      if (!proof.accepted) {
+        continue;
+      }
+
+      if (proof.requiresMultipleSources) {
+        const items = repeatedContextual.get(name) ?? [];
+        if (!items.some((item) => item.sourceUrl === source.url)) {
+          items.push({ name, sourceUrl: source.url, sourceQuality: source.sourceQuality ?? 1.2 });
+          repeatedContextual.set(name, items);
+        }
+        continue;
+      }
+
+      bySourceAndName.set(`${source.url}::${name.toLowerCase()}`, { name, sourceUrl: source.url, sourceQuality: source.sourceQuality ?? 1.2 });
+    }
+  }
+
+  for (const items of repeatedContextual.values()) {
+    if (new Set(items.map((item) => item.sourceUrl)).size < 2) {
+      continue;
+    }
+
+    for (const item of items) {
+      bySourceAndName.set(`${item.sourceUrl}::${item.name.toLowerCase()}`, item);
+    }
+  }
+
+  const byName = new Map();
+
+  for (const signal of bySourceAndName.values()) {
+    const item = byName.get(signal.name) ?? { name: signal.name, sourceUrls: [], quality: 0, positives: 0, score: 0 };
+    item.sourceUrls.push(signal.sourceUrl);
+    item.quality += signal.sourceQuality;
+    item.positives += 1;
+    item.score += signal.sourceQuality * 4;
+    byName.set(signal.name, item);
+  }
+
+  return Array.from(byName.values())
+    .map((item) =>
+      contender(item.name, {
+        positives: item.positives,
+        sourceUrls: item.sourceUrls,
+        quality: item.quality,
+        score: item.score
+      })
+    )
+    .sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.sourceCount - a.sourceCount || a.name.localeCompare(b.name));
 }
 
 const cases = [
@@ -152,13 +213,28 @@ const caribbeanText = [
   "Anguilla, Aruba, Grand Cayman, and the Exuma Bahamas are repeatedly mentioned."
 ].join(" ");
 const caribbeanCandidates = extractDestinationCandidatesFromText(caribbeanText).map(canonicalDestinationName);
-const acceptedCaribbeanCandidates = caribbeanCandidates.filter((candidate) => !isGenericDestinationContenderName("Best all inclusive Caribbean island", candidate));
+const acceptedCaribbeanCandidates = caribbeanCandidates.filter((candidate) => destinationCandidateFitsQuery("Best all inclusive Caribbean island", candidate, [caribbeanText]));
 
 for (const expected of ["St. Lucia", "Jamaica", "Antigua", "Anguilla", "Aruba", "Grand Cayman", "Bahamas"]) {
   assert.ok(caribbeanCandidates.includes(expected), `Expected destination extraction to include ${expected}`);
 }
 
-for (const invalid of ["Underrated Beaches", "the Top Portugal Beaches", "Best Islands in Portugal", "Visiting Portugal's Islands"]) {
+for (const invalid of [
+  "Fi",
+  "For",
+  "Visit This Year",
+  "Underrated Beaches",
+  "the Top Portugal Beaches",
+  "Best Islands in Portugal",
+  "Visiting Portugal's Islands",
+  "What Islands",
+  "All-Inclusive Island",
+  "Which Caribbean Island",
+  "West Coast",
+  "Best Caribbean Islands",
+  "Discover the Best Islands",
+  "Jamaica and Pigeon Island"
+]) {
   assert.equal(isGenericDestinationContenderName("Best beaches in Portugal for vacation", invalid), true, `${invalid} should be rejected as generic`);
 }
 
@@ -168,6 +244,148 @@ assert.equal(acceptedCaribbeanCandidates.includes("Sugar Beach"), false, "Sugar 
 for (const valid of ["Praia da Marinha", "Comporta Beach", "São Miguel Island", "Costa Nova"]) {
   assert.equal(isGenericDestinationContenderName("Best beaches in Portugal for vacation", valid), false, `${valid} should remain a valid destination name`);
 }
+
+const broadDestinationExtractionCases = [
+  {
+    query: "Best neighborhood to stay in Rome",
+    text: "The best neighborhoods to stay in Rome include Trastevere, Monti, Prati, and Centro Storico for different trip styles.",
+    expected: ["Trastevere", "Monti", "Prati", "Centro Storico"]
+  },
+  {
+    query: "Best islands in Greece",
+    text: "Top Greek islands include Naxos, Paros, Santorini, Crete, and Milos for beaches, food, and scenery.",
+    expected: ["Naxos", "Paros", "Santorini", "Crete", "Milos"]
+  },
+  {
+    query: "Best ski destinations in Colorado",
+    text: "Colorado ski destinations often include Aspen, Vail, Breckenridge, and Telluride.",
+    expected: ["Aspen", "Vail", "Breckenridge", "Telluride"]
+  }
+];
+
+for (const item of broadDestinationExtractionCases) {
+  const candidates = extractDestinationCandidatesFromText(item.text)
+    .map(canonicalDestinationName)
+    .filter((candidate) => destinationCandidateFitsQuery(item.query, candidate, [item.text]));
+
+  for (const expected of item.expected) {
+    assert.ok(candidates.includes(expected), `${item.query} should preserve ${expected}`);
+  }
+
+  console.log(JSON.stringify({ broadDestinationExtraction: { query: item.query, candidates } }, null, 2));
+}
+
+const productionCaribbeanSources = [
+  {
+    title: "Caribbean All-Inclusive Resorts 2026 Guide By Caribbean Journey",
+    url: "https://caribbeanjourney.com/all-inclusive-resorts",
+    sourceQuality: 1.35,
+    snippet:
+      "Jamaica, the Dominican Republic, St. Lucia, and Antigua are among the most popular Caribbean destinations for all-inclusive vacations because they can support larger resort properties."
+  },
+  {
+    title: "The Travelers Guide to All Inclusive Resorts in The Caribbean",
+    url: "https://www.theexcellencecollection.com/blog/the-travelers-guide-to-all-inclusive-resorts-in-the-caribbean",
+    sourceQuality: 1.2,
+    snippet: "The best destination for your All Inclusive escape. Punta Cana, the Dominican Republic."
+  },
+  {
+    title: "THE 10 BEST All Inclusive Resorts in The Caribbean",
+    url: "https://www.tripadvisor.com/HotelsList-Caribbean-All-Inclusive-Resorts-zfp746393.html",
+    sourceQuality: 1,
+    snippet: "Aruba is the quintessential Caribbean island, all sun and sea and stretches of powdery white sand."
+  },
+  {
+    title: "Looking for best first Caribbean island to go to : r/travel",
+    url: "https://www.reddit.com/r/travel/comments/1499usj/looking_for_best_first_caribbean_island_to_go_to",
+    sourceQuality: 1,
+    snippet: "Bahamas, St. Lucia, Grenada, Jamaica and Turks and Caicos. Negril in Jamaica and Pigeon Island in St. Lucia are awesome too."
+  },
+  {
+    title: "Best Caribbean Islands To Travel 2026 4K",
+    url: "https://www.youtube.com/watch?v=P5lWBhSl23Y",
+    sourceQuality: 0.85,
+    snippet: "Best Caribbean Islands travel ideas include Jamaica, St Maarten, St Thomas, Aruba, Dominican Republic and much more."
+  },
+  {
+    title: "How to Choose the Right All-Inclusive Resort Destination | ShermansTravel",
+    url: "https://www.shermanstravel.com/advice/all-inclusive-resort-destination-guide-mexico-caribbean",
+    sourceQuality: 1.2,
+    snippet: "Divers and snorkelers especially love Aruba. Turks and Caicos is another all-inclusive destination, and the Dominican Republic has a large concentration of resorts."
+  },
+  {
+    title: "Caribbean Travel Guide - Expert Picks for your Vacation | Fodor’s Travel",
+    url: "https://www.fodors.com/world/caribbean",
+    sourceQuality: 1.35,
+    snippet:
+      "Top destination guides include Aruba, St. Thomas, St. Martin and St. Maarten, Bermuda, Cayman Islands, Turks and Caicos Islands, Punta Cana, St. John, Barbados, Curaçao, St. Kitts."
+  },
+  {
+    title: "Which Caribbean island?? Planning to book soon : r/travel",
+    url: "https://www.reddit.com/r/travel/comments/1cl39yh/which_caribbean_island_planning_to_book_soon",
+    sourceQuality: 1,
+    snippet: "Anguilla, the best island in the Caribbean for beaches, clear water and cuisine was left off. Aruba, which is a great choice. Bahamas are okay."
+  }
+];
+
+const productionCaribbeanContenders = destinationContendersFromSources("Best all inclusive Caribbean island", productionCaribbeanSources);
+const productionCaribbeanByName = Object.fromEntries(
+  productionCaribbeanContenders.map((item) => [item.name, { sourceCount: item.sourceCount, positiveMentionCount: item.positiveMentionCount, sourceUrls: item.sourceUrls }])
+);
+const productionCaribbeanClassification = classifyRegressionCase({
+  query: "Best all inclusive Caribbean island",
+  evidenceType: "destination_recommendation",
+  contenders: productionCaribbeanContenders,
+  sourceCount: productionCaribbeanSources.length
+});
+
+assert.equal(productionCaribbeanClassification.mode, "split_consensus", "Full-source Caribbean recovery should support split consensus");
+
+for (const expected of ["Aruba", "Dominican Republic", "Jamaica", "St. Lucia", "Turks and Caicos"]) {
+  assert.ok(productionCaribbeanByName[expected]?.sourceCount >= 2, `${expected} should accumulate multi-source support`);
+}
+
+for (const invalid of ["Fi", "For", "Visit This Year", "What Islands", "All-Inclusive Island", "Which Caribbean Island", "West Coast", "Best Caribbean Islands", "Discover the Best Islands", "Jamaica and Pigeon Island"]) {
+  assert.equal(Boolean(productionCaribbeanByName[invalid]), false, `${invalid} should not survive full-source destination recovery`);
+}
+
+const singleSourceUnknown = destinationContendersFromSources("Best places to visit in Europe", [
+  {
+    title: "A travel forum answer",
+    url: "single-unknown",
+    sourceQuality: 1.2,
+    snippet: "This travel guide recommends Luminara for a quiet vacation."
+  }
+]);
+assert.equal(singleSourceUnknown.some((item) => item.name === "Luminara"), false, "One-source unknown proper nouns should not be recovered");
+
+const repeatedSameSourceContenders = destinationContendersFromSources("Best all inclusive Caribbean island", [
+  {
+    title: "Aruba travel guide",
+    url: "same-source",
+    sourceQuality: 1.35,
+    snippet: "Aruba is popular. Aruba is sunny. Aruba has resorts."
+  }
+]);
+assert.equal(repeatedSameSourceContenders.find((item) => item.name === "Aruba")?.sourceCount, 1, "Repeated destination mentions within one URL should count once");
+
+console.log(
+  JSON.stringify(
+    {
+      productionCaribbeanFullSourceRecovery: {
+        mode: productionCaribbeanClassification.mode,
+        contenders: productionCaribbeanContenders.map((item) => ({
+          name: item.name,
+          sourceCount: item.sourceCount,
+          positiveMentionCount: item.positiveMentionCount,
+          sourceUrls: item.sourceUrls
+        }))
+      }
+    },
+    null,
+    2
+  )
+);
 
 console.log(
   JSON.stringify(
