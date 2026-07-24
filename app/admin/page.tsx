@@ -542,7 +542,7 @@ function paramsForLinks(filters: Awaited<ReturnType<typeof getAdminDashboardData
   const params = new URLSearchParams();
 
   Object.entries(filters).forEach(([key, value]) => {
-    if (!value || value === "all" || value === "newest" || (key === "dateRange" && value === "7d")) {
+    if (shouldOmitAdminParam(key, value)) {
       return;
     }
 
@@ -556,7 +556,7 @@ function adminHref(baseParams: URLSearchParams, updates: Record<string, string>)
   const params = new URLSearchParams(baseParams);
 
   Object.entries(updates).forEach(([key, value]) => {
-    if (!value || value === "all" || value === "newest" || (key === "dateRange" && value === "7d")) {
+    if (shouldOmitAdminParam(key, value)) {
       params.delete(key);
       return;
     }
@@ -566,4 +566,10 @@ function adminHref(baseParams: URLSearchParams, updates: Record<string, string>)
 
   const query = params.toString();
   return (query ? `/admin?${query}` : "/admin") as Route;
+}
+
+function shouldOmitAdminParam(key: string, value: string) {
+  if (!value) return true;
+  if (key === "dateRange") return value === "7d";
+  return value === "all" || value === "newest";
 }
