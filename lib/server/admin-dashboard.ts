@@ -5,7 +5,6 @@ import type { ConsensusResponse } from "@/lib/types";
 export type AdminSearchEvent = {
   id: string;
   created_at: string;
-  actor_id: string | null;
   search_id: string | null;
   original_query: string | null;
   normalized_query: string | null;
@@ -69,10 +68,6 @@ export type AdminDashboardData = {
     totalSearches: number;
     searchesToday: number;
     searchesLast7Days: number;
-    uniqueSessions: number;
-    newUsersToday: number;
-    returningUsersToday: number;
-    uniqueUsersLast7Days: number;
     cacheHitRate: number;
     noConsensusRate: number;
     averageResponseMs: number | null;
@@ -139,16 +134,10 @@ export async function getAdminDashboardData(filters: AdminDashboardFilters = {})
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const dateBounds = dateBoundsForFilters(normalizedFilters, now);
 
-  const [today, last7, filteredResult, actorActivityResult, totalFeedback, recentFeedback] = await Promise.all([
+  const [today, last7, filteredResult, totalFeedback, recentFeedback] = await Promise.all([
     countSearchEvents(supabase, { createdAfter: todayStart.toISOString() }),
     countSearchEvents(supabase, { createdAfter: sevenDaysAgo.toISOString() }),
     buildSearchEventsQuery(supabase, normalizedFilters, dateBounds)
-      .order("created_at", { ascending: false })
-      .limit(breakdownLimit),
-    supabase
-      .from("search_events")
-      .select("actor_id, created_at")
-      .not("actor_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(breakdownLimit),
     countFeedbackEvents(),
@@ -166,16 +155,6 @@ export async function getAdminDashboardData(filters: AdminDashboardFilters = {})
   const successfulTimedEvents = filteredEvents.filter((event) => !event.error && typeof event.total_ms === "number");
   const cacheKnownEvents = filteredEvents.filter((event) => typeof event.cache_hit === "boolean");
   const noConsensusEvents = filteredEvents.filter((event) => event.consensus_mode === "no_reliable_consensus");
-  const userMetrics = buildUserMetrics(
-    actorActivityResult.error ? [] : ((actorActivityResult.data ?? []) as unknown as AdminActorActivityRow[]),
-    todayStart,
-    sevenDaysAgo
-  );
-  const uniqueSessions = new Set(filteredEvents.map((event) => event.actor_id?.trim()).filter(Boolean)).size;
-
-  if (actorActivityResult.error) {
-    console.warn("[vera:admin] actor activity lookup failed", { error: actorActivityResult.error.message });
-  }
 
   return {
     filters: normalizedFilters,
@@ -184,10 +163,6 @@ export async function getAdminDashboardData(filters: AdminDashboardFilters = {})
       totalSearches: filteredEvents.length,
       searchesToday: today,
       searchesLast7Days: last7,
-      uniqueSessions,
-      newUsersToday: userMetrics.newUsersToday,
-      returningUsersToday: userMetrics.returningUsersToday,
-      uniqueUsersLast7Days: userMetrics.uniqueUsersLast7Days,
       cacheHitRate: ratio(
         cacheKnownEvents.filter((event) => event.cache_hit).length,
         cacheKnownEvents.length
@@ -224,11 +199,6 @@ export async function getAdminDashboardData(filters: AdminDashboardFilters = {})
 type SearchEventCountOptions = {
   createdAfter?: string;
   hasError?: boolean;
-};
-
-type AdminActorActivityRow = {
-  actor_id: string | null;
-  created_at: string | null;
 };
 
 async function countSearchEvents(supabase: AdminSupabase, options: SearchEventCountOptions = {}) {
@@ -564,53 +534,6 @@ function decisionBucketForEvent(event: Pick<AdminSearchEvent, "original_query" |
   return "Other";
 }
 
-function buildUserMetrics(rows: AdminActorActivityRow[], todayStart: Date, sevenDaysAgo: Date) {
-  const firstSeenByActor = new Map<string, number>();
-  const todayActors = new Set<string>();
-  const last7Actors = new Set<string>();
-  const todayStartMs = todayStart.getTime();
-  const sevenDaysAgoMs = sevenDaysAgo.getTime();
-
-  rows.forEach((row) => {
-    const actorId = row.actor_id?.trim();
-    const createdAtMs = row.created_at ? new Date(row.created_at).getTime() : Number.NaN;
-
-    if (!actorId || Number.isNaN(createdAtMs)) {
-      return;
-    }
-
-    firstSeenByActor.set(actorId, Math.min(firstSeenByActor.get(actorId) ?? createdAtMs, createdAtMs));
-
-    if (createdAtMs >= todayStartMs) {
-      todayActors.add(actorId);
-    }
-
-    if (createdAtMs >= sevenDaysAgoMs) {
-      last7Actors.add(actorId);
-    }
-  });
-
-  let newUsersToday = 0;
-  let returningUsersToday = 0;
-
-  todayActors.forEach((actorId) => {
-    const firstSeenAt = firstSeenByActor.get(actorId);
-
-    if (firstSeenAt !== undefined && firstSeenAt >= todayStartMs) {
-      newUsersToday += 1;
-      return;
-    }
-
-    returningUsersToday += 1;
-  });
-
-  return {
-    newUsersToday,
-    returningUsersToday,
-    uniqueUsersLast7Days: last7Actors.size
-  };
-}
-
 function emptyDashboardData(unavailableReason: string, filters: Required<AdminDashboardFilters> = normalizeDashboardFilters({})): AdminDashboardData {
   return {
     unavailableReason,
@@ -620,10 +543,6 @@ function emptyDashboardData(unavailableReason: string, filters: Required<AdminDa
       totalSearches: 0,
       searchesToday: 0,
       searchesLast7Days: 0,
-      uniqueSessions: 0,
-      newUsersToday: 0,
-      returningUsersToday: 0,
-      uniqueUsersLast7Days: 0,
       cacheHitRate: 0,
       noConsensusRate: 0,
       averageResponseMs: null,
@@ -666,7 +585,6 @@ function average(values: number[]) {
 const searchEventSelect = [
   "id",
   "created_at",
-  "actor_id",
   "search_id",
   "original_query",
   "normalized_query",

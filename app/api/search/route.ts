@@ -37,7 +37,6 @@ export async function POST(request: Request) {
   const canonicalQuery = canonicalizeQuery(body.data.query);
   const evidenceType = inferQueryEvidenceType(body.data.query);
   const queryIntent = inferQueryIntent(body.data.query);
-  const actorId = body.data.actorId ?? null;
   console.log("ORIGINAL_QUERY", body.data.query);
   console.log("NORMALIZED_QUERY", normalizedQuery);
   console.log("CANONICAL_QUERY", canonicalQuery);
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       searchId: fakeResult.id,
       consensusMode: fakeResult.mode,
       cacheHit: true,
@@ -110,7 +109,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       searchId: consensus.id,
       consensusMode: consensus.mode,
       cacheHit: false,
@@ -143,7 +142,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       searchId: consensus.id,
       consensusMode: consensus.mode,
       cacheHit: false,
@@ -177,7 +176,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       searchId: consensus.id,
       consensusMode: consensus.mode,
       cacheHit: false,
@@ -225,7 +224,7 @@ export async function POST(request: Request) {
       });
       console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
       await recordSearchEvent({
-        ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+        ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
         searchId: response.id,
         consensusMode: response.mode,
         cacheHit: true,
@@ -244,7 +243,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       cacheHit: false,
       cacheHitType: "cache_lookup_error",
       cacheVersion: getCacheVersion(),
@@ -269,7 +268,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       cacheHit: false,
       cacheHitType: "setup_missing",
       cacheVersion: getCacheVersion(),
@@ -416,7 +415,7 @@ export async function POST(request: Request) {
         });
         console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
         await recordSearchEvent({
-          ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+          ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
           searchId: stale.id,
           consensusMode: stale.mode,
           cacheHit: true,
@@ -501,7 +500,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       searchId: consensus.id,
       consensusMode: consensus.mode,
       cacheHit: false,
@@ -527,7 +526,7 @@ export async function POST(request: Request) {
         });
         console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
         await recordSearchEvent({
-          ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+          ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
           searchId: stale.id,
           consensusMode: stale.mode,
           cacheHit: true,
@@ -561,7 +560,7 @@ export async function POST(request: Request) {
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
     await recordSearchEvent({
-      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts, actorId),
+      ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       cacheHit: false,
       cacheHitType: "error",
       cacheVersion: getCacheVersion(),
@@ -922,11 +921,9 @@ function baseSearchEvent(
   normalizedQuery: string,
   canonicalQuery: string,
   evidenceType: ReturnType<typeof inferQueryEvidenceType>,
-  externalCallCounts: ReturnType<typeof createExternalCallCounts>,
-  actorId: string | null
+  externalCallCounts: ReturnType<typeof createExternalCallCounts>
 ) {
   return {
-    actorId,
     originalQuery,
     normalizedQuery,
     canonicalQuery,

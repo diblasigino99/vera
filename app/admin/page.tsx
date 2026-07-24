@@ -129,7 +129,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
         <section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard label="Total searches" value={formatNumber(data.overview.totalSearches)} />
-          <MetricCard label="Unique sessions" value={formatNumber(data.overview.uniqueSessions)} />
+          <MetricCard label="Unique sessions" value="Unavailable" />
           <MetricCard label="Avg search time" value={formatMs(data.overview.averageResponseMs)} />
           <MetricCard label="No-consensus rate" value={formatPercent(data.overview.noConsensusRate)} />
           <MetricCard label="Cached searches" value={formatPercent(data.overview.cacheHitRate)} />

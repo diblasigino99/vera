@@ -3,7 +3,6 @@ import { getSupabaseAdmin } from "@/lib/server/supabase";
 const searchEventInsertTimeoutMs = 300;
 
 export type SearchEventInput = {
-  actorId?: string | null;
   searchId?: string | null;
   originalQuery?: string | null;
   normalizedQuery?: string | null;
@@ -36,7 +35,6 @@ export async function recordSearchEvent(event: SearchEventInput) {
   try {
     const { error } = await withSearchEventTimeout(
       supabase.from("search_events").insert({
-        actor_id: event.actorId ?? null,
         search_id: event.searchId ?? null,
         original_query: event.originalQuery ?? null,
         normalized_query: event.normalizedQuery ?? null,
