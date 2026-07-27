@@ -374,13 +374,21 @@ export async function POST(request: Request) {
       if (recoveredSources.length > sources.length) {
         sources = recoveredSources;
         try {
-          consensus = await analyzeConsensus(body.data.query, sources, externalCallCounts);
+          const preRecoveryConsensus = consensus;
+          const recoveredConsensus = await analyzeConsensus(body.data.query, sources, externalCallCounts);
+          if (validLocalResultCount(recoveredConsensus) >= validLocalResultCount(preRecoveryConsensus)) {
+            consensus = recoveredConsensus;
+          } else {
+            consensus = preRecoveryConsensus;
+          }
           console.log("[vera:search] local sparse recovery analysis returned", {
             query: body.data.query,
-            resultCount: consensus.results.length,
+            resultCount: recoveredConsensus.results.length,
+            keptResultCount: consensus.results.length,
             elapsedMs: Date.now() - recoveryStartedAt,
-            storedSources: consensus.sources.length,
-            results: consensus.results.map((result) => result.name)
+            storedSources: recoveredConsensus.sources.length,
+            results: recoveredConsensus.results.map((result) => result.name),
+            keptPreviousConsensus: consensus === preRecoveryConsensus
           });
         } catch (error) {
           if (!isTimeoutError(error)) {

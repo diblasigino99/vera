@@ -41,6 +41,10 @@ export function normalizeLocalQueryIntent(query: string) {
     .replace(/\bbrunch spot\b/g, "brunch restaurant")
     .replace(/\bcoffee spot\b/g, "coffee shop")
     .replace(/\bcocktail spot\b/g, "cocktail bar")
+    .replace(/\bhair stylist\b/g, "hair salon")
+    .replace(/\bhaircut\b/g, "hair salon")
+    .replace(/\bskilled nursing facility\b/g, "nursing home")
+    .replace(/\bnursing facility\b/g, "nursing home")
     .replace(/\bdrinks\b/g, "cocktail bar")
     .replace(/\bpizza place\b/g, "pizza")
     .replace(/\bpizzeria\b/g, "pizza italian restaurant")
@@ -89,6 +93,8 @@ function normalizeLocalCategoryPhrase(value: string) {
 
   if (/\b(espresso martini|dirty martini|martini|cocktail bar|cocktail)\b/.test(normalized)) return "cocktail bar";
   if (/\b(coffee shop|coffee|cafe|cafes|café)\b/.test(normalized)) return "coffee shop";
+  if (/\b(nursing home|skilled nursing|assisted living|memory care|senior care)\b/.test(normalized)) return "nursing home";
+  if (/\b(hair salon|salon|spa)\b/.test(normalized)) return "hair salon";
   if (/\b(tattoo shop|tattoo studio|tattoo)\b/.test(normalized)) return "tattoo shop";
   if (/\b(golf course|golf)\b/.test(normalized)) return "golf course";
   if (/\b(dentist|dental)\b/.test(normalized)) return "dentist";
@@ -114,7 +120,7 @@ function normalizeLocalCategoryPhrase(value: string) {
 function cleanLocalLocationPhrase(value: string) {
   return normalizeQuery(value)
     .replace(
-      /\b(best|top|recommended|reviews?|reddit|yelp|tripadvisor|google maps|eater|infatuation|booking|opentable|restaurants?|restaurant|bars?|bar|coffee shops?|coffee|cafes?|hotels?|hotel|tattoo shops?|tattoo|near me)\b/g,
+      /\b(best|top|recommended|reviews?|reddit|yelp|tripadvisor|google maps|eater|infatuation|booking|opentable|restaurants?|restaurant|bars?|bar|coffee shops?|coffee|cafes?|hotels?|hotel|tattoo shops?|tattoo|hair salons?|salons?|nursing homes?|skilled nursing|near me)\b/g,
       " "
     )
     .replace(/\s+/g, " ")
@@ -285,7 +291,7 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   }
 
   if (
-    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|dirty martini|martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store|place to eat|place to stay|near me)\b/.test(
+    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|dirty martini|martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|hair salon|nursing home|nursing homes|skilled nursing|assisted living|memory care|senior care|clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store|place to eat|place to stay|near me)\b/.test(
       normalized
     ) ||
     /\b\d{5}(?:-\d{4})?\b/.test(normalized)

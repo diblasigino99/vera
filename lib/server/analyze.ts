@@ -3221,6 +3221,8 @@ function localCategoryForQuery(query: string) {
   if (/\b(bakery|bakeries)\b/.test(normalized)) return "bakery";
   if (/\b(bar|bars|pub|cocktail|brewery|taproom)\b/.test(normalized)) return "bar";
   if (/\b(gym|gyms|fitness)\b/.test(normalized)) return "gym";
+  if (/\b(nursing home|nursing homes|skilled nursing|assisted living|memory care|senior care)\b/.test(normalized)) return "nursing_home";
+  if (/\b(hair salon|hair salons|salon|salons|spa)\b/.test(normalized)) return "salon";
   if (/\b(tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo)\b/.test(normalized)) return "tattoo";
   if (/\b(dentist|dentists|dental)\b/.test(normalized)) return "dentist";
   if (/\b(plumber|plumbers|plumbing)\b/.test(normalized)) return "plumber";

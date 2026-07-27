@@ -762,6 +762,8 @@ function localRetrievalCategory(normalized: string) {
   if (/\b(bakery|bakeries)\b/.test(normalized)) return "bakery";
   if (/\b(bar|bars|pub|cocktail|brewery|taproom|espresso martini|dirty martini|martini)\b/.test(normalized)) return "bar";
   if (/\b(gym|gyms|fitness)\b/.test(normalized)) return "gym";
+  if (/\b(nursing home|nursing homes|skilled nursing|assisted living|memory care|senior care)\b/.test(normalized)) return "nursing_home";
+  if (/\b(hair salon|hair salons|salon|salons|spa)\b/.test(normalized)) return "salon";
   if (/\b(tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo)\b/.test(normalized)) return "tattoo";
   if (/\b(dentist|dentists|dental)\b/.test(normalized)) return "dentist";
   if (/\b(plumber|plumbers|plumbing)\b/.test(normalized)) return "plumber";
@@ -817,6 +819,14 @@ function localRetrievalLanes(category: string) {
 
   if (category === "tattoo") {
     return ["Google Maps tattoo shop reviews", "Yelp tattoo shop reviews", "Reddit local tattoo recommendations", "local tattoo studio reviews"];
+  }
+
+  if (category === "salon") {
+    return ["Google Maps hair salon reviews", "Yelp hair salons reviews", "Reddit local salon recommendations", "local hair salon reviews"];
+  }
+
+  if (category === "nursing_home") {
+    return ["U.S. News nursing home ratings", "Medicare nursing home ratings", "Yelp skilled nursing reviews", "Reddit local nursing home recommendations"];
   }
 
   if (category === "dentist") {
@@ -956,6 +966,8 @@ function localRecoveryCategoryLabel(category: string, normalizedQuery: string) {
   if (category === "dentist") return "dentist";
   if (category === "plumber") return "plumber";
   if (category === "tattoo") return "tattoo shop";
+  if (category === "salon") return "hair salon";
+  if (category === "nursing_home") return "nursing home";
   return category.replace(/_/g, " ");
 }
 

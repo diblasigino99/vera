@@ -905,7 +905,7 @@ function placesTextQuery(query: string, inputName: string) {
 }
 
 function placesCacheKey(query: string, inputName: string) {
-  return ["places", "v1", placesCandidateKey(inputName), localLocationLabelForPlaces(query), localCategoryLabelForPlaces(query)].map(normalizeQuery).join(":");
+  return ["places", "v2", placesCandidateKey(inputName), localLocationLabelForPlaces(query), localCategoryLabelForPlaces(query)].map(normalizeQuery).join(":");
 }
 
 function placesCandidateKey(value: string) {
@@ -1079,6 +1079,14 @@ function scoreLocationMatch(query: string, formattedAddress: string) {
     return 0.05;
   }
 
+  if (isLongIslandAreaRequest(query) && isNassauOrSuffolkAddress(address)) {
+    return 0.86;
+  }
+
+  if (isManhattanAreaRequest(query) && isManhattanAddress(address)) {
+    return 0.86;
+  }
+
   const boroughNeighborhoodMatch = localBoroughNeighborhoodLocationMatch(query, address);
 
   if (boroughNeighborhoodMatch.matched) {
@@ -1097,6 +1105,32 @@ function scoreLocationMatch(query: string, formattedAddress: string) {
   if (matched > 0) return 0.72;
   if (/\bnew york\b/.test(address) && tokens.some((token) => ["nyc", "manhattan", "brooklyn", "williamsburg"].includes(token))) return 0.78;
   return 0.12;
+}
+
+function isNassauOrSuffolkAddress(address: string) {
+  const zip = address.match(/\b(\d{5})(?:-\d{4})?\b/)?.[1];
+
+  if (zip && /^(?:110|115|117|118|119)\d{2}$/.test(zip)) {
+    return true;
+  }
+
+  return /\b(?:nassau|suffolk|hempstead|west hempstead|north hempstead|garden city|mineola|rockville centre|levittown|wantagh|seaford|massapequa|farmingdale|huntington|smithtown|bay shore|patchogue|medford|yaphank|west islip|lindenhurst|northport|melville)\b/.test(
+    address
+  );
+}
+
+function isManhattanAreaRequest(query: string) {
+  return /\bmanhattan\b/.test(normalizeQuery(localLocationLabelForPlaces(query)));
+}
+
+function isManhattanAddress(address: string) {
+  const zip = address.match(/\b(\d{5})(?:-\d{4})?\b/)?.[1];
+
+  if (zip && /^(?:100|101|102)\d{2}$/.test(zip)) {
+    return true;
+  }
+
+  return /\bmanhattan\b/.test(address);
 }
 
 function localBoroughNeighborhoodLocationMatch(query: string, normalizedAddress: string) {
@@ -1159,13 +1193,15 @@ function scoreCategoryMatch(query: string, types: string[], displayName: string)
   if (category === "hotel") return /\b(lodging|hotel|motel|resort|inn)\b/.test(normalizedTypes) ? 1 : 0.05;
   if (category === "coffee") return /\b(cafe|coffee_shop|bakery|restaurant|food|store)\b/.test(normalizedTypes) || /\b(coffee|cafe|espresso|roaster)\b/.test(normalizedName) ? 1 : 0.15;
   if (category === "bar") return /\b(bar|night_club|restaurant|food)\b/.test(normalizedTypes) || /\b(bar|cocktail|pub|lounge|tavern)\b/.test(normalizedName) ? 1 : 0.15;
+  if (category === "salon") return /\b(hair_care|beauty_salon|spa|store)\b/.test(normalizedTypes) || /\b(salon|hair|spa)\b/.test(normalizedName) ? 1 : 0.15;
+  if (category === "nursing_home") return /\b(nursing_home|assisted_living_facility|health|doctor|hospital|point_of_interest|establishment)\b/.test(normalizedTypes) ? 1 : 0.15;
   if (category === "retail")
     return /\b(store|clothing_store|shoe_store|jewelry_store|book_store|furniture_store|home_goods_store|shopping_mall)\b/.test(normalizedTypes) ||
       /\b(boutique|clothing|jewelry|jewellery|shoes?|gift|home decor|bookstore|book shop|furniture|market|shop|store)\b/.test(normalizedName)
       ? 1
       : 0.12;
   if (category === "service")
-    return /\b(plumber|electrician|roofing_contractor|general_contractor|laundry|car_repair|health|doctor|dentist|tattoo_shop)\b/.test(normalizedTypes) ||
+    return /\b(plumber|electrician|roofing_contractor|general_contractor|laundry|car_repair|health|doctor|dentist|tattoo_shop|hair_care|beauty_salon)\b/.test(normalizedTypes) ||
       /\b(tattoo|ink|body art)\b/.test(normalizedName)
       ? 1
       : 0.15;
@@ -1175,7 +1211,7 @@ function scoreCategoryMatch(query: string, types: string[], displayName: string)
 
 function isNonBusinessPlace(types: string[]) {
   const normalizedTypes = normalizeQuery(types.join(" "));
-  const hasBusinessType = /\b(point_of_interest|establishment|restaurant|food|bar|cafe|bakery|lodging|store|clothing_store|shoe_store|jewelry_store|book_store|furniture_store|home_goods_store|dentist|doctor|plumber|health|tourist_attraction)\b/.test(
+  const hasBusinessType = /\b(point_of_interest|establishment|restaurant|food|bar|cafe|bakery|lodging|store|clothing_store|shoe_store|jewelry_store|book_store|furniture_store|home_goods_store|dentist|doctor|plumber|health|tourist_attraction|hair_care|beauty_salon|nursing_home|assisted_living_facility)\b/.test(
     normalizedTypes
   );
   const hasLocationOnlyType = /\b(neighborhood|locality|political|administrative_area|postal_code|route|street_address|geocode)\b/.test(normalizedTypes);
@@ -1219,6 +1255,8 @@ function localCategoryLabelForPlaces(query: string) {
   if (/\b(bar|pub)\b/.test(normalized)) return "bar";
   if (/\b(coffee|cafe)\b/.test(normalized)) return "coffee shop";
   if (/\b(hotel|hotels)\b/.test(normalized)) return "hotel";
+  if (/\b(nursing home|nursing homes|skilled nursing|assisted living|memory care|senior care)\b/.test(normalized)) return "nursing home";
+  if (/\b(hair salon|hair salons|salon|salons|spa)\b/.test(normalized)) return "hair salon";
   if (/\b(tattoo shop|tattoo studio|tattoo)\b/.test(normalized)) return "tattoo shop";
   if (/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(normalized))
     return normalized.match(/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/)?.[1] ?? "retail store";
@@ -1233,6 +1271,8 @@ function localCategoryForPlaces(query: string) {
   if (/\bhotel\b/.test(label)) return "hotel";
   if (/\bcoffee|cafe\b/.test(label)) return "coffee";
   if (/\bbar|cocktail|pub\b/.test(label)) return "bar";
+  if (/\bnursing home|skilled nursing|assisted living|memory care|senior care\b/.test(label)) return "nursing_home";
+  if (/\bhair salon|salon|spa\b/.test(label)) return "salon";
   if (/\bboutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store\b/.test(label)) return "retail";
   if (/\bdentist|dental|plumber|plumbing|gym|fitness|tattoo\b/.test(label)) return "service";
   if (/\brestaurant|italian|sushi|seafood|pizza|brunch|ramen|taco|mexican|steakhouse\b/.test(label)) return "restaurant";
