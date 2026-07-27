@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     originalQuery: body.data.query,
     normalizedQuery,
     canonicalQuery,
-    cacheVersion: getCacheVersion(),
+    cacheVersion: getCacheVersion(body.data.query),
     timestamp: new Date().toISOString()
   });
   console.log("[vera:search] request started", {
@@ -894,7 +894,7 @@ function logSearchCostAudit({
     query,
     normalizedQuery,
     evidenceType,
-    cacheVersion: getCacheVersion(),
+    cacheVersion: getCacheVersion(query),
     cached,
     cacheHit,
     abortedBeforeLiveSearch,

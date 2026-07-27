@@ -10,7 +10,7 @@ const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
 const localCacheVersion = 73;
-const localSpecificIntentCacheVersion = 91;
+const localRecommendationCacheVersion = 92;
 const destinationRecommendationCacheVersion = 87;
 const negativeIntentCacheVersion = 78;
 const providerOrBrandCacheVersion = 81;
@@ -56,34 +56,40 @@ type LocalSavesFile = Record<
 
 const memorySaves = new Map<string, LocalSavesFile[string]>();
 
-export function getCacheVersion() {
-  console.log("CACHE_VERSION", { cacheVersion: localCacheVersion });
-  return localCacheVersion;
+export function getCacheVersion(query?: string) {
+  const cacheVersion = query ? cacheVersionForQuery(query) : localCacheVersion;
+  console.log("CACHE_VERSION", { cacheVersion });
+  return cacheVersion;
 }
 
 function cacheVersionForQuery(query: string) {
-  const normalized = normalizeQuery(query);
   if (inferQueryIntent(query) !== "positive_recommendation") {
     return negativeIntentCacheVersion;
   }
 
-  if (inferQueryEvidenceType(query) === "destination_recommendation") {
+  const evidenceType = inferQueryEvidenceType(query);
+
+  if (evidenceType === "local_recommendation") {
+    return localRecommendationCacheVersion;
+  }
+
+  if (evidenceType === "destination_recommendation") {
     return destinationRecommendationCacheVersion;
   }
 
-  if (inferQueryEvidenceType(query) === "provider_or_brand_recommendation") {
+  if (evidenceType === "provider_or_brand_recommendation") {
     return providerOrBrandCacheVersion;
   }
 
-  const hasSpecificLocalIntent =
-    /\b(italian|mexican|seafood|sushi|pizza|pizzeria|brunch|coffee|cafe|bar|cocktail|espresso martini|steakhouse|steak house|live music|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(
-      normalized
-    );
-  const hasLocalLocation =
-    /\b(?:in|near|around)\b/.test(normalized) ||
-    /\b(seaford|huntington|massapequa|williamsburg|brooklyn|manhattan|nyc|new york|long island|seattle|austin)\b/.test(normalized);
+  return localCacheVersion;
+}
 
-  return hasSpecificLocalIntent && hasLocalLocation ? localSpecificIntentCacheVersion : localCacheVersion;
+function canServeStaleCachedConsensus(query: string, consensus: ConsensusResponse, rowCacheVersion?: number | null) {
+  if (inferQueryEvidenceType(query) !== "local_recommendation") {
+    return true;
+  }
+
+  return (rowCacheVersion ?? consensus.cacheVersion) === cacheVersionForQuery(query);
 }
 
 export async function getCachedConsensus(query: string, callCounts?: ExternalCallCounts) {
@@ -186,6 +192,18 @@ export async function getStaleCachedConsensus(query: string, callCounts?: Extern
   const local = memorySearches.get(canonicalQuery) ?? memorySearches.get(normalizedQuery);
 
   if (local) {
+    if (!canServeStaleCachedConsensus(query, local)) {
+      console.log("[vera:cache] stale local cache bypassed", {
+        normalizedQuery,
+        canonicalQuery,
+        store: "memory",
+        searchId: local.id,
+        cacheVersion: local.cacheVersion ?? null,
+        currentCacheVersion: cacheVersionForQuery(query)
+      });
+      return null;
+    }
+
     console.log("[vera:cache] stale cache hit", {
       normalizedQuery,
       canonicalQuery,
@@ -200,6 +218,18 @@ export async function getStaleCachedConsensus(query: string, callCounts?: Extern
   const localFileHit = localFileCache[canonicalQuery] ?? localFileCache[normalizedQuery];
 
   if (localFileHit?.result) {
+    if (!canServeStaleCachedConsensus(query, localFileHit.result, localFileHit.cache_version)) {
+      console.log("[vera:cache] stale local cache bypassed", {
+        normalizedQuery,
+        canonicalQuery,
+        store: "local-json",
+        searchId: localFileHit.result.id,
+        cacheVersion: localFileHit.cache_version ?? null,
+        currentCacheVersion: cacheVersionForQuery(query)
+      });
+      return null;
+    }
+
     const sanitizedHit = sanitizeCachedLocalConsensus(localFileHit.result);
     memorySearches.set(normalizedQuery, sanitizedHit);
     memorySearches.set(canonicalQuery, sanitizedHit);
@@ -256,6 +286,18 @@ export async function getStaleCachedConsensus(query: string, callCounts?: Extern
   const hit = consensusFromSupabaseRow(row);
 
   if (!hit) {
+    return null;
+  }
+
+  if (!canServeStaleCachedConsensus(query, hit, row?.cache_version)) {
+    console.log("[vera:cache] stale local cache bypassed", {
+      normalizedQuery,
+      canonicalQuery,
+      store: "supabase",
+      searchId: hit.id,
+      cacheVersion: row?.cache_version ?? hit.cacheVersion ?? null,
+      currentCacheVersion: cacheVersionForQuery(query)
+    });
     return null;
   }
 
