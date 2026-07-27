@@ -8,6 +8,7 @@ import {
   buildProductFallbackConsensus
 } from "@/lib/server/analyze";
 import { cacheConsensus, getCachedConsensus, getCacheVersion, getStaleCachedConsensus } from "@/lib/server/cache";
+import { runConsensusEngine } from "@/lib/server/consensus-engine";
 import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
@@ -33,6 +34,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a more specific search." }, { status: 400 });
   }
 
+  const searchData = body.data;
+
+  return runConsensusEngine(searchData.query, {
+    actorId: searchData.actorId,
+    execute: executeExistingSearchPipeline
+  });
+
+async function executeExistingSearchPipeline() {
+  const body = { data: searchData };
   const normalizedQuery = normalizeQuery(body.data.query);
   const canonicalQuery = canonicalizeQuery(body.data.query);
   const evidenceType = inferQueryEvidenceType(body.data.query);
@@ -578,6 +588,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ error: "Vera couldn't complete this search. Please try again." }, { status: 500 });
   }
+}
 }
 
 function isTimeoutError(error: unknown) {
