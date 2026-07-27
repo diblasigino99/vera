@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
+import { confidenceExplanationForMode, editorializeTrustCopy, resultGeneratedLabel } from "@/lib/trust-copy";
 
 type ResultClientFallbackProps = {
   searchId: string;
@@ -62,6 +63,7 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
   const sources = uniqueSources(result.sources.length ? result.sources : consensus.sources);
   const sourceTypes = sourceDiversity(sources);
   const contenders = consensus.results.filter((item) => item.id !== result.id);
+  const generatedLabel = resultGeneratedLabel(consensus);
 
   return (
     <main className="min-h-screen bg-white px-5 py-8 text-ink">
@@ -91,6 +93,8 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
               {result.consensusPercentage ? ` · ${result.consensusPercentage}%` : ""}
             </span>
             <span>{sourceTypes.length ? `Based on ${sourceTypes.join(", ").toLowerCase()}.` : "Based on the stored source set."}</span>
+            {consensus.mode !== "no_reliable_consensus" ? <span>{confidenceExplanationForMode(consensus.mode)}</span> : null}
+            {generatedLabel ? <span>{generatedLabel}</span> : null}
           </div>
         </header>
 
@@ -286,10 +290,10 @@ function buildTrustFacts(result: ConsensusResult, sources: VeraSource[], sourceT
   ];
 
   if (result.metrics) {
-    facts.splice(1, 0, { label: "Positive recommendations", value: String(result.metrics.positiveMentionCount) });
+    facts.splice(1, 0, { label: "Supporting recommendations", value: String(result.metrics.positiveMentionCount) });
 
     if (result.metrics.negativeMentionCount > 0) {
-      facts.push({ label: "Negative mentions", value: String(result.metrics.negativeMentionCount) });
+      facts.push({ label: "Critical notes", value: String(result.metrics.negativeMentionCount) });
     }
   }
 
@@ -298,7 +302,9 @@ function buildTrustFacts(result: ConsensusResult, sources: VeraSource[], sourceT
 
 function buildConfidenceExplanation(consensus: ConsensusResponse, result: ConsensusResult, sourceCount: number) {
   if (result.metrics) {
-    return `${result.name} appeared in ${result.metrics.positiveMentionCount} positive recommendation${result.metrics.positiveMentionCount === 1 ? "" : "s"} across ${result.metrics.sourceCount} source${result.metrics.sourceCount === 1 ? "" : "s"}. Vera classifies this as ${modeLabel[consensus.mode].toLowerCase()} because the stored source signal, source diversity, and gap between contenders support that level of confidence.`;
+    return editorializeTrustCopy(
+      `${result.name} appeared in ${result.metrics.positiveMentionCount} supporting recommendation${result.metrics.positiveMentionCount === 1 ? "" : "s"} across ${result.metrics.sourceCount} source${result.metrics.sourceCount === 1 ? "" : "s"}. ${confidenceExplanationForMode(consensus.mode)}`
+    );
   }
 
   if (consensus.mode === "split_consensus") {

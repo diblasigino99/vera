@@ -68,7 +68,7 @@ export function FeedbackWidget({
   if (status === "submitted") {
     return (
       <section className={cn("border-t border-[#ECECF0] pt-8", compact ? "mt-8" : "mt-12")}>
-        <p className="text-sm font-medium text-[#111114]">Thanks for the signal.</p>
+        <p className="text-sm font-medium text-[#111114]">Thanks for the feedback.</p>
         <p className="mt-2 text-sm leading-6 text-[#73737C]">We’ll use it to review Vera’s launch results.</p>
       </section>
     );

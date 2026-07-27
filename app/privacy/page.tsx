@@ -5,7 +5,7 @@ const sections = [
     title: "What Vera Collects",
     body: [
       "Search queries you submit to Vera.",
-      "Anonymous usage analytics, such as response times, cache hits, result classifications, and error signals.",
+      "Anonymous usage analytics, such as response times, cache hits, result classifications, and error reports.",
       "Feedback submissions you choose to send, including optional text."
     ]
   },

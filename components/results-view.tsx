@@ -12,6 +12,7 @@ import { SearchExperience } from "@/components/search-experience";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { buildResultSlug } from "@/lib/result-slug";
 import { getAnonymousId } from "@/lib/client/anonymous-id";
+import { confidenceExplanationForMode, editorializeTrustCopy, resultGeneratedLabel } from "@/lib/trust-copy";
 
 type ResultsViewProps = {
   query: string;
@@ -32,19 +33,19 @@ const emptySavedState: SavedState = {
 const modeCopy = {
   clear_consensus: {
     label: "Clear Consensus",
-    description: "One winner is clearly supported by the sources."
+    description: confidenceExplanationForMode("clear_consensus")
   },
   strong_consensus: {
     label: "Strong Consensus",
-    description: "One option leads, with credible alternatives below."
+    description: confidenceExplanationForMode("strong_consensus")
   },
   moderate_consensus: {
     label: "Moderate Consensus",
-    description: "One option has a meaningful lead, but the field is not settled."
+    description: confidenceExplanationForMode("moderate_consensus")
   },
   split_consensus: {
     label: "Split Consensus",
-    description: "Several options are strongly recommended. The best choice depends on what you value most."
+    description: confidenceExplanationForMode("split_consensus")
   },
   no_reliable_consensus: {
     label: NO_RELIABLE_CONSENSUS_TITLE,
@@ -180,6 +181,8 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
   const sourceMixLine = useMemo(() => {
     return result ? buildSourceMixLine(result) : "";
   }, [result]);
+  const confidenceLine = result ? confidenceExplanationForMode(result.mode) : "";
+  const generatedLabel = result ? resultGeneratedLabel(result) : "";
 
   const howVeraDecided = useMemo(() => {
     return result ? buildDecisionBullets(result) : [];
@@ -255,6 +258,8 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
                 {winner?.consensusPercentage ? ` · ${winner.consensusPercentage}%` : ""}
               </span>
               <span>{sourceMixLine || "Based on public discussions, reviews, and expert sources."}</span>
+              {result.mode !== "no_reliable_consensus" ? <span>{confidenceLine}</span> : null}
+              {generatedLabel ? <span>{generatedLabel}</span> : null}
             </div>
           </div>
 
@@ -378,14 +383,14 @@ function buildEditorialExplanation(result: ConsensusResponse, winner?: Consensus
   }
 
   if (result.mode === "split_consensus") {
-    return conciseEditorialText(explanation || "Several options received meaningful support, but no single choice clearly outperformed the rest.");
+    return editorializeTrustCopy(conciseEditorialText(explanation || "Several options received meaningful support, but no single choice clearly outperformed the rest."));
   }
 
   if (!winner) {
-    return conciseEditorialText(explanation);
+    return editorializeTrustCopy(conciseEditorialText(explanation));
   }
 
-  return conciseEditorialText(explanation);
+  return editorializeTrustCopy(conciseEditorialText(explanation));
 }
 
 function conciseEditorialText(text: string) {
@@ -466,7 +471,7 @@ function buildRankingExplanation(result: ConsensusResponse) {
     const secondScore = scoreLabel(second);
 
     if (topScore && secondScore) {
-      return `Top contenders are close: ${top.name} ${topScore}, ${second.name} ${secondScore}. The internet appears divided.`;
+      return `${top.name} and ${second.name} both received credible support. The internet appears divided.`;
     }
 
     return "Top contenders are close. The internet appears divided.";
@@ -475,11 +480,11 @@ function buildRankingExplanation(result: ConsensusResponse) {
   const metrics = top?.metrics;
 
   if (!metrics) {
-    return "Vera ranked these results by recurring recommendations, source support, and visible disagreement.";
+    return "Vera compared recurring recommendations, independent support, and visible disagreement.";
   }
 
   const support = sourceSupportLabel(result, metrics.sourceTypes);
-  const mentions = pluralize(metrics.positiveMentionCount, "positive mention");
+  const mentions = pluralize(metrics.positiveMentionCount, "supporting recommendation");
   const sources = pluralize(metrics.sourceCount, "source");
 
   return `Vera found ${mentions} across ${sources}${support ? `, with support from ${support}` : ""}.`;
@@ -520,10 +525,10 @@ function buildDecisionBullets(result: ConsensusResponse) {
 function buildEvidenceSummary(result: ConsensusResponse) {
   const signalCount = result.structuredConsensus?.signals.length ?? result.results.reduce((total, item) => total + (item.metrics?.mentionCount ?? 0), 0);
   const support = sourceSupportLabel(result, sourceTypesFromResult(result));
-  const primary = `Vera analyzed ${pluralize(result.sources.length, "source")} and found ${pluralize(signalCount, "recommendation signal")}.`;
+  const primary = `Vera reviewed ${pluralize(result.sources.length, "source")} and found ${pluralize(signalCount, "recurring recommendation")}.`;
 
   return {
-    primary,
+    primary: editorializeTrustCopy(primary),
     secondary: support ? `Sources included ${support}.` : ""
   };
 }

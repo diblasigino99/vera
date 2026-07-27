@@ -8,6 +8,7 @@ import { NO_RELIABLE_CONSENSUS_BODY, NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/t
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
 import { ResultClientFallback } from "./result-client-fallback";
 import { FeedbackWidget } from "@/components/feedback-widget";
+import { confidenceExplanationForMode, editorializeTrustCopy, resultGeneratedLabel } from "@/lib/trust-copy";
 
 type ResultPageProps = {
   params: Promise<{
@@ -54,6 +55,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
   const sourceTypes = sourceDiversity(sourceSet);
   const patternSummaries = buildPatternSummaries(result, sourceSet);
   const trustFacts = buildTrustFacts(result, sourceSet, sourceTypes, discussionSources, communities);
+  const generatedLabel = resultGeneratedLabel(consensus);
 
   return (
     <main className="min-h-screen bg-white px-5 py-8 text-ink">
@@ -85,6 +87,8 @@ export default async function ResultPage({ params }: ResultPageProps) {
               {result.consensusPercentage ? ` · ${result.consensusPercentage}%` : ""}
             </span>
             <span>{sourceTypes.length ? `Based on ${sourceTypes.join(", ").toLowerCase()}.` : "Based on the stored source set."}</span>
+            {consensus.mode !== "no_reliable_consensus" ? <span>{confidenceExplanationForMode(consensus.mode)}</span> : null}
+            {generatedLabel ? <span>{generatedLabel}</span> : null}
           </div>
         </header>
 
@@ -272,10 +276,10 @@ function buildTrustFacts(
   ];
 
   if (result.metrics) {
-    facts.splice(1, 0, { label: "Positive recommendations", value: String(result.metrics.positiveMentionCount) });
+    facts.splice(1, 0, { label: "Supporting recommendations", value: String(result.metrics.positiveMentionCount) });
 
     if (result.metrics.negativeMentionCount > 0) {
-      facts.push({ label: "Negative mentions", value: String(result.metrics.negativeMentionCount) });
+      facts.push({ label: "Critical notes", value: String(result.metrics.negativeMentionCount) });
     }
   }
 
@@ -352,10 +356,10 @@ function buildConsensusStory(
   }
 
   if (consensus.mode === "clear_consensus") {
-    return `${recommendation} ${agreement} Unlike the alternatives, it shows a clear lead in both score and consistency.`;
+    return `${recommendation} ${agreement} Unlike the alternatives, it shows a clear lead in both frequency and consistency.`;
   }
 
-  return `${recommendation} ${agreement} The result is a useful consensus signal, while still leaving room for personal preference.`;
+  return `${recommendation} ${agreement} The result is a useful consensus pattern, while still leaving room for personal preference.`;
 }
 
 function buildBestFor(consensus: ConsensusResponse, result: ConsensusResult) {
@@ -403,7 +407,7 @@ function metricComparison(item: ConsensusResult) {
     return "";
   }
 
-  return `; it has ${item.metrics.positiveMentionCount} positive mention${item.metrics.positiveMentionCount === 1 ? "" : "s"} across ${item.metrics.sourceCount} source${item.metrics.sourceCount === 1 ? "" : "s"}`;
+  return `; it appeared in ${item.metrics.positiveMentionCount} supporting recommendation${item.metrics.positiveMentionCount === 1 ? "" : "s"} across ${item.metrics.sourceCount} source${item.metrics.sourceCount === 1 ? "" : "s"}`;
 }
 
 function buildPatternSummaries(result: ConsensusResult, sources: VeraSource[]) {
@@ -457,7 +461,7 @@ function patternSentence(reason: string, source: string) {
   const snippet = shorten(source, 135);
 
   if (lowerReason.includes("atmosphere") || lowerReason.includes("vibe") || lowerReason.includes("ambiance")) {
-    return `Atmosphere is a repeated signal. ${snippet}`;
+    return `Atmosphere is a repeated theme. ${snippet}`;
   }
 
   if (lowerReason.includes("cocktail") || lowerReason.includes("drink")) {
@@ -496,13 +500,14 @@ function buildConfidenceExplanation(consensus: ConsensusResponse, result: Consen
 
   if (contender) {
     const runnerUpText = runnerUp
-      ? ` ${runnerUp.name} appeared in ${runnerUp.positiveMentionCount} positive recommendation${runnerUp.positiveMentionCount === 1 ? "" : "s"} across ${runnerUp.sourceCount} source${runnerUp.sourceCount === 1 ? "" : "s"}.`
+      ? ` ${runnerUp.name} appeared in ${runnerUp.positiveMentionCount} supporting recommendation${runnerUp.positiveMentionCount === 1 ? "" : "s"} across ${runnerUp.sourceCount} source${runnerUp.sourceCount === 1 ? "" : "s"}.`
       : "";
 
-    return `${result.name} appeared in ${contender.positiveMentionCount} positive recommendation${contender.positiveMentionCount === 1 ? "" : "s"} across ${contender.sourceCount} source${contender.sourceCount === 1 ? "" : "s"}.${runnerUpText} Vera classifies this as ${modeLabel[consensus.mode].toLowerCase()} because the weighted source signal, source diversity, and gap between contenders support that level of confidence.`;
+    return editorializeTrustCopy(
+      `${result.name} appeared in ${contender.positiveMentionCount} supporting recommendation${contender.positiveMentionCount === 1 ? "" : "s"} across ${contender.sourceCount} source${contender.sourceCount === 1 ? "" : "s"}.${runnerUpText} ${confidenceExplanationForMode(consensus.mode)}`
+    );
   }
 
-  const score = result.consensusPercentage ? `${result.consensusPercentage}% consensus score` : "qualitative agreement";
   const themes = result.reasons.slice(0, 3).join(", ").toLowerCase();
 
   if (consensus.mode === "clear_consensus") {
@@ -510,38 +515,14 @@ function buildConfidenceExplanation(consensus: ConsensusResponse, result: Consen
   }
 
   if (consensus.mode === "strong_consensus" || consensus.mode === "moderate_consensus") {
-    return `Vera has ${confidenceLevel(consensus, result).toLowerCase()} confidence because ${result.name} has a meaningful pattern of support, but alternatives still appear in the evidence. The current signal is based on ${score}.`;
+    return `${confidenceExplanationForMode(consensus.mode)} ${result.name} has a meaningful pattern of support, but alternatives still appear in the evidence.`;
   }
 
   if (consensus.mode === "split_consensus") {
-    return `Vera has measured confidence in this recommendation because the evidence supports ${result.name}, but other contenders are also repeatedly recommended. This is a tradeoff decision, not a runaway winner.`;
+    return `${confidenceExplanationForMode(consensus.mode)} This is a tradeoff decision, not a runaway winner.`;
   }
 
   return NO_RELIABLE_CONSENSUS_BODY;
-}
-
-function confidenceLevel(consensus: ConsensusResponse, result: ConsensusResult) {
-  if (consensus.mode === "clear_consensus") {
-    return "High";
-  }
-
-  if (consensus.mode === "strong_consensus") {
-    return "Medium-high";
-  }
-
-  if (consensus.mode === "moderate_consensus") {
-    return "Medium";
-  }
-
-  if (result.consensusPercentage && result.consensusPercentage >= 70) {
-    return "Medium";
-  }
-
-  if (consensus.mode === "split_consensus") {
-    return "Mixed";
-  }
-
-  return "Low";
 }
 
 function uniqueSources(sources: VeraSource[]) {
