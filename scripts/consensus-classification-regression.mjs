@@ -17,6 +17,7 @@ Module._resolveFilename = function resolveAlias(request, parent, isMain, options
 
 const jiti = (await import("jiti")).default(process.cwd() + "/");
 const { resolveEntityNamesForRegression } = jiti("./lib/server/analyze.ts");
+const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
 
 const minimumSourceCount = 3;
 const minimumTopPositiveMentions = 3;
@@ -289,6 +290,99 @@ for (const item of entityResolutionCases) {
   }
 
   console.log(JSON.stringify({ entityResolution: { query: item.query, resolvedNames: resolved.resolvedNames, diagnostics: resolved.diagnostics } }, null, 2));
+}
+
+function sourceFixture(domain, path, title, snippet, queryVariant = "primary") {
+  return {
+    title,
+    url: `https://${domain}/${path}`,
+    domain,
+    snippet,
+    queryVariant,
+    canonicalUrl: `https://${domain}/${path}`
+  };
+}
+
+const sourceSelectionCases = [
+  {
+    name: "specialist beats generic listicle",
+    query: "Best laptop for college students",
+    limit: 3,
+    sources: [
+      sourceFixture("generic-a.example", "best-laptops", "Top 10 Best Laptops Buying Guide", "Generic affiliate listicle with a broad buying guide and repeated product summaries.", "primary"),
+      sourceFixture("generic-b.example", "best-laptops", "15 Best Laptops For Students", "Another generic ranked listicle with similar affiliate-style descriptions and little testing.", "primary"),
+      sourceFixture("consumerreports.org", "electronics/laptops", "Survey Results: The Most Reliable Laptops", "Consumer Reports reliability survey with structured laptop evidence and testing context.", "primary"),
+      sourceFixture("notebookcheck.net", "college-laptop-tests", "Best Student Laptops Tested", "Specialist laptop publication with benchmark testing and long-term evidence.", "primary")
+    ],
+    mustRetainDomains: ["consumerreports.org", "notebookcheck.net"],
+    expectedCount: 3
+  },
+  {
+    name: "community and editorial diversity",
+    query: "Best CRM software",
+    limit: 3,
+    sources: [
+      sourceFixture("generic-crm.example", "list-1", "Best CRM Software List", "Generic CRM software list with repeated vendor summaries.", "expert"),
+      sourceFixture("pcmag.com", "crm/reviews", "Best CRM Software Reviews", "Editorial CRM reviews comparing sales pipeline and contact-management products.", "expert"),
+      sourceFixture("reddit.com", "r/sales/crm", "CRM recommendations from sales teams", "Community discussion comparing HubSpot, Salesforce, Pipedrive and Zoho CRM.", "community"),
+      sourceFixture("generic-crm.example", "list-2", "Top CRM Tools", "Similar CRM listicle from the same generic domain.", "expert")
+    ],
+    mustRetainDomains: ["pcmag.com", "reddit.com"],
+    expectedCount: 3
+  },
+  {
+    name: "multiple results from one domain",
+    query: "Best carry on luggage",
+    limit: 3,
+    sources: [
+      sourceFixture("same.example", "a", "Best Carry On Luggage A", "Generic luggage list with similar recommendations.", "primary"),
+      sourceFixture("same.example", "b", "Best Carry On Luggage B", "Another generic luggage page from the same domain.", "primary"),
+      sourceFixture("same.example", "c", "Best Carry On Luggage C", "Third generic luggage page from same domain.", "primary"),
+      sourceFixture("wirecutter.com", "carry-on-luggage", "Best Carry-On Luggage", "Specialist editorial testing for carry-on luggage.", "primary"),
+      sourceFixture("reddit.com", "r/travel/luggage", "Carry-on luggage recommendations", "Community travel recommendations for carry-on luggage.", "community")
+    ],
+    mustRetainDomains: ["wirecutter.com", "reddit.com"],
+    expectedCount: 3
+  },
+  {
+    name: "credible retail structured evidence",
+    query: "Best laptop",
+    limit: 3,
+    sources: [
+      sourceFixture("generic-laptop.example", "top", "Top 10 Laptop Deals", "Generic deal-oriented buying guide with affiliate descriptions.", "primary"),
+      sourceFixture("bestbuy.com", "site/laptops", "Laptop Computers and Reviews", "Structured retail laptop listings with reviews and availability context.", "primary"),
+      sourceFixture("nytimes.com", "wirecutter/laptops", "Best Laptops Reviews by Wirecutter", "Independent editorial laptop tests and product evidence.", "primary"),
+      sourceFixture("generic-laptop.example", "list", "Best Laptop List", "Repeated generic listicle from same domain.", "primary")
+    ],
+    mustRetainDomains: ["bestbuy.com", "nytimes.com"],
+    expectedCount: 3
+  },
+  {
+    name: "local authority preservation",
+    query: "Best pizza on Long Island",
+    limit: 3,
+    sources: [
+      sourceFixture("generic-local.example", "pizza", "Best Pizza List", "Generic local pizza listicle without strong local authority.", "primary"),
+      sourceFixture("eater.com", "long-island-pizza", "Best Pizza on Long Island", "Local editorial guide naming Long Island pizzerias and neighborhood context.", "primary"),
+      sourceFixture("reddit.com", "r/longisland/pizza", "Best pizza on Long Island discussion", "Community discussion from Long Island locals naming favorite pizzerias.", "community"),
+      sourceFixture("yelp.com", "search-pizza-long-island", "Best Pizza near Long Island", "Structured review listing with local ratings and business listings.", "primary")
+    ],
+    mustRetainDomains: ["eater.com", "reddit.com"],
+    expectedCount: 3
+  }
+];
+
+for (const item of sourceSelectionCases) {
+  const result = compareConsensusSourceSelectionForRegression(item.query, item.sources, item.limit);
+  assert.equal(result.selected.length, item.expectedCount, `${item.name} should preserve source limit`);
+
+  for (const domain of item.mustRetainDomains) {
+    assert.ok(result.selected.some((url) => url.includes(domain)), `${item.name} should retain ${domain}`);
+  }
+
+  assert.ok(result.diagnostics.some((diagnostic) => diagnostic.stage === "consensus_source_selection" && diagnostic.retained), `${item.name} should report retained source diagnostics`);
+
+  console.log(JSON.stringify({ sourceSelection: { name: item.name, selected: result.selected, newlyRetained: result.newlyRetained, displaced: result.displaced } }, null, 2));
 }
 
 for (const invalid of [

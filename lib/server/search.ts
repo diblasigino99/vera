@@ -5,6 +5,7 @@ import {
   evidenceStrategyFor,
   inferQueryEvidenceType,
   isSpecializedDominantPlatformQuery,
+  normalizeQuery,
   normalizeLocalQueryIntent,
   parseLocalIntent,
   parseLocalQueryConstraints
@@ -133,11 +134,9 @@ export async function searchPublicWeb(
   const rawSources = [...responses.flat(), ...namedDiscoveryResponses.flat()];
   const dedupedSources = dedupeSources(rawSources, diagnostics);
   const filteredSources = filterSources(dedupedSources, diagnostics);
-  const domainBalancedSources = reduceDuplicateDomains(filteredSources);
   const sourceLimit = evidenceType === "local_recommendation" ? 28 : 18;
-  const balancedSources = domainBalancedSources.slice(0, sourceLimit);
-  recordSourceLimitDiagnostics(domainBalancedSources, balancedSources, sourceLimit, diagnostics);
-  const finalSources = evidenceType === "local_recommendation" ? await enrichLocalAuthoritySources(effectiveQuery, balancedSources) : balancedSources;
+  const selectedSources = selectConsensusSources(effectiveQuery, filteredSources, sourceLimit, diagnostics);
+  const finalSources = evidenceType === "local_recommendation" ? await enrichLocalAuthoritySources(effectiveQuery, selectedSources) : selectedSources;
   if (diagnostics) {
     diagnostics.retainedSources = finalSources;
   }
@@ -154,7 +153,7 @@ export async function searchPublicWeb(
     tavilyResults: rawSources.length,
     afterUrlDedupe: dedupedSources.length,
     afterFiltering: filteredSources.length,
-    afterDomainBalancing: balancedSources.length,
+    afterDomainBalancing: selectedSources.length,
     afterEnrichment: finalSources.length,
     openAIInput: finalSources.length,
     tavilyMs,
@@ -470,9 +469,7 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
 
   const deduped = dedupeSources([...existingSources, ...recoveredSources], diagnostics);
   const filtered = filterSources(deduped, diagnostics);
-  const domainBalanced = reduceDuplicateDomains(filtered);
-  const merged = domainBalanced.slice(0, 34);
-  recordSourceLimitDiagnostics(domainBalanced, merged, 34, diagnostics);
+  const merged = selectConsensusSources(query, filtered, 34, diagnostics);
   if (diagnostics) {
     diagnostics.retainedSources = merged;
   }
@@ -1234,12 +1231,153 @@ function reduceDuplicateDomains(sources: VeraSource[]) {
   return [...primaryPass, ...overflow];
 }
 
-function recordSourceLimitDiagnostics(candidates: VeraSource[], retained: VeraSource[], limit: number, diagnostics?: SearchDiagnostics) {
-  if (!diagnostics || candidates.length <= retained.length) return;
+export function compareConsensusSourceSelectionForRegression(query: string, sources: VeraSource[], limit: number) {
+  const diagnostics = createSearchDiagnostics();
+  const legacy = reduceDuplicateDomains(sources).slice(0, limit);
+  const selected = selectConsensusSources(query, sources, limit, diagnostics);
+
+  return {
+    legacy: legacy.map((source) => source.url),
+    selected: selected.map((source) => source.url),
+    newlyRetained: selected.filter((source) => !legacy.some((legacySource) => legacySource.url === source.url)).map((source) => source.url),
+    displaced: legacy.filter((source) => !selected.some((selectedSource) => selectedSource.url === source.url)).map((source) => source.url),
+    diagnostics: diagnostics.sourceDiagnostics
+  };
+}
+
+function selectConsensusSources(query: string, sources: VeraSource[], limit: number, diagnostics?: SearchDiagnostics) {
+  if (sources.length <= limit) {
+    recordConsensusSourceSelectionDiagnostics(query, sources, sources, limit, diagnostics);
+    return sources;
+  }
+
+  const candidates = sources.map((source, index) => sourceSelectionCandidate(query, source, index, sources));
+  const selected: typeof candidates = [];
+  const selectedUrls = new Set<string>();
+  const selectedDomains = new Map<string, number>();
+  const selectedLanes = new Map<string, number>();
+  const selectedTypes = new Map<string, number>();
+
+  const ordered = [...candidates].sort((a, b) => b.score - a.score || a.initialRank - b.initialRank);
+
+  for (const candidate of ordered) {
+    if (selected.length >= limit) break;
+    if (selectedUrls.has(candidate.source.url)) continue;
+
+    const domainCount = selectedDomains.get(candidate.source.domain) ?? 0;
+    const laneCount = selectedLanes.get(candidate.laneKey) ?? 0;
+    const typeCount = selectedTypes.get(candidate.sourceType) ?? 0;
+    const mustPreserve = candidate.preserveReasons.some((reason) => /specialist|authority|structured|community|editorial|retail|local/.test(reason));
+
+    if (!mustPreserve && domainCount >= 2 && selected.length < Math.max(1, limit - 3)) {
+      continue;
+    }
+    if (!mustPreserve && laneCount >= Math.ceil(limit * 0.7) && selected.length < Math.max(1, limit - 2)) {
+      continue;
+    }
+    if (!mustPreserve && typeCount >= Math.ceil(limit * 0.65) && selected.length < Math.max(1, limit - 2)) {
+      continue;
+    }
+
+    selected.push(candidate);
+    selectedUrls.add(candidate.source.url);
+    selectedDomains.set(candidate.source.domain, domainCount + 1);
+    selectedLanes.set(candidate.laneKey, laneCount + 1);
+    selectedTypes.set(candidate.sourceType, typeCount + 1);
+  }
+
+  if (selected.length < limit) {
+    for (const candidate of ordered) {
+      if (selected.length >= limit) break;
+      if (selectedUrls.has(candidate.source.url)) continue;
+      selected.push(candidate);
+      selectedUrls.add(candidate.source.url);
+    }
+  }
+
+  const selectedSources = selected.sort((a, b) => a.initialRank - b.initialRank).map((candidate) => candidate.source);
+  recordConsensusSourceSelectionDiagnostics(query, sources, selectedSources, limit, diagnostics);
+  return selectedSources;
+}
+
+function sourceSelectionCandidate(query: string, source: VeraSource, index: number, allSources: VeraSource[]) {
+  const evidenceType = inferQueryEvidenceType(query);
+  const sourceType = sourceSelectionType(source);
+  const laneKey = normalizeQuery(source.queryVariant ?? "default");
+  const domainCount = allSources.filter((item) => item.domain === source.domain).length;
+  const laneCount = allSources.filter((item) => normalizeQuery(item.queryVariant ?? "default") === laneKey).length;
+  const queryAlignment = sourceQueryAlignmentScore(query, source);
+  const authorityScore = sourceAuthoritySelectionScore(query, source, sourceType);
+  const rankScore = Math.max(0, 16 - index * 0.45);
+  const diversityScore = (domainCount === 1 ? 5 : domainCount === 2 ? 2.5 : 0) + (laneCount === 1 ? 2 : 0);
+  const uniqueMetadata = sourceHasUniquePreAnalysisMetadata(source, allSources);
+  const uniqueScore = uniqueMetadata ? 4 : 0;
+  const localBoost = evidenceType === "local_recommendation" && isHighAuthorityLocalPage(source) ? 4 : 0;
+  const genericPenalty = genericListiclePenalty(source);
+  const redundancyPenalty = Math.max(0, domainCount - 2) * 1.4;
+  const score = round2(rankScore + queryAlignment + authorityScore + diversityScore + uniqueScore + localBoost - genericPenalty - redundancyPenalty);
+  const preserveReasons = sourcePreservationReasons(query, source, sourceType, uniqueMetadata, queryAlignment, authorityScore, localBoost);
+
+  return {
+    source,
+    initialRank: index + 1,
+    sourceType,
+    laneKey,
+    score,
+    diversityContribution: {
+      uniqueDomain: domainCount === 1,
+      domainCount,
+      uniqueLane: laneCount === 1,
+      laneCount,
+      sourceType
+    },
+    preserveReasons,
+    uniqueMetadata
+  };
+}
+
+function recordConsensusSourceSelectionDiagnostics(
+  query: string,
+  candidates: VeraSource[],
+  retained: VeraSource[],
+  limit: number,
+  diagnostics?: SearchDiagnostics
+) {
+  if (!diagnostics) return;
 
   const retainedUrls = new Set(retained.map((source) => source.url));
+  const retainedRankByUrl = new Map(retained.map((source, index) => [source.url, index + 1]));
+  const selectionByUrl = new Map(candidates.map((source, index) => {
+    const candidate = sourceSelectionCandidate(query, source, index, candidates);
+    return [source.url, candidate] as const;
+  }));
+
+  for (const source of retained) {
+    const candidate = selectionByUrl.get(source.url);
+    recordSourceDiagnostic(diagnostics, {
+      source: toSourceDiagnosticSource(source),
+      url: source.url,
+      domain: source.domain,
+      queryVariant: source.queryVariant,
+      retained: true,
+      stage: "consensus_source_selection",
+      message: "Source retained by consensus-aware source selector.",
+      metadata: {
+        selectionScore: candidate?.score ?? null,
+        rankBeforeSelection: candidate?.initialRank ?? null,
+        rankAfterSelection: retainedRankByUrl.get(source.url) ?? null,
+        sourceType: candidate?.sourceType ?? sourceSelectionType(source),
+        diversityContribution: candidate?.diversityContribution ?? null,
+        preservationReason: candidate?.preserveReasons ?? [],
+        suppliedUniqueMetadata: candidate?.uniqueMetadata ?? false,
+        limit
+      }
+    });
+  }
+
   for (const source of candidates) {
     if (retainedUrls.has(source.url)) continue;
+    const candidate = selectionByUrl.get(source.url);
     recordSourceDiagnostic(diagnostics, {
       source: toSourceDiagnosticSource(source),
       url: source.url,
@@ -1247,11 +1385,117 @@ function recordSourceLimitDiagnostics(candidates: VeraSource[], retained: VeraSo
       queryVariant: source.queryVariant,
       retained: false,
       reasonCode: "source_balance_removal",
-      stage: "source_limit",
-      message: "Source removed by existing post-balancing source limit.",
-      metadata: { limit }
+      stage: "consensus_source_selection",
+      message: "Source displaced by consensus-aware source selector at the existing source limit.",
+      metadata: {
+        selectionScore: candidate?.score ?? null,
+        rankBeforeSelection: candidate?.initialRank ?? null,
+        rankAfterSelection: null,
+        sourceType: candidate?.sourceType ?? sourceSelectionType(source),
+        diversityContribution: candidate?.diversityContribution ?? null,
+        preservationReason: candidate?.preserveReasons ?? [],
+        suppliedUniqueMetadata: candidate?.uniqueMetadata ?? false,
+        discardReason: sourceSelectionDiscardReason(source, candidates, retained),
+        limit
+      }
     });
   }
+}
+
+function sourceSelectionType(source: VeraSource) {
+  const value = `${source.domain} ${source.title} ${source.url} ${source.snippet ?? ""}`.toLowerCase();
+
+  if (/\breddit|forum|community|quora\b/.test(value)) return "community";
+  if (/\bconsumerreports|consumer reports|wirecutter|nytimes|pcmag|rtings|notebookcheck|tomshardware|tom s hardware|techradar|cnet|the verge|car and driver|edmunds|kbb|jd power|j.d. power|golfdigest|golfweek|healthgrades|zocdoc\b/.test(value)) return "specialist";
+  if (/\beater|infatuation|timeout|time out|cntraveler|conde nast|travelandleisure|forbes|wired|bgr|sprudge|seattlemet|nymag\b/.test(value)) return "editorial";
+  if (/\bbestbuy|amazon|walmart|target|newegg|bhphotovideo|adorama|rei|backcountry|costco|homedepot|lowes\b/.test(value)) return "retail_or_structured";
+  if (/\byelp|tripadvisor|opentable|booking|expedia|resy|google\.com\/maps\b/.test(value)) return "review_or_listing";
+  if (/\b.gov|\.edu|official|tourism|visit\b/.test(value)) return "official_or_authoritative";
+
+  return "general";
+}
+
+function sourceAuthoritySelectionScore(query: string, source: VeraSource, sourceType: string) {
+  const evidenceType = inferQueryEvidenceType(query);
+  let score = 0;
+
+  if (sourceType === "specialist") score += 8;
+  if (sourceType === "editorial") score += 5.5;
+  if (sourceType === "community") score += 4.5;
+  if (sourceType === "official_or_authoritative") score += 5;
+  if (sourceType === "review_or_listing") score += evidenceType === "local_recommendation" ? 5 : 2;
+  if (sourceType === "retail_or_structured") score += evidenceType === "product_recommendation" || evidenceType === "provider_or_brand_recommendation" ? 4 : 1;
+
+  return score;
+}
+
+function sourceQueryAlignmentScore(query: string, source: VeraSource) {
+  const queryTokens = new Set(
+    normalizeQuery(query)
+      .split(/\s+/)
+      .filter((token) => token.length >= 4 && !/^(best|good|great|recommend|recommendation|recommendations|phase|trace|entity|resolution|live)$/.test(token))
+  );
+  if (!queryTokens.size) return 0;
+
+  const text = normalizeQuery(`${source.title} ${source.snippet ?? ""} ${source.url} ${source.queryVariant ?? ""}`);
+  const matches = Array.from(queryTokens).filter((token) => text.includes(token)).length;
+  return round2(Math.min(8, (matches / queryTokens.size) * 8));
+}
+
+function sourceHasUniquePreAnalysisMetadata(source: VeraSource, sources: VeraSource[]) {
+  const signature = normalizeQuery(`${source.title} ${source.snippet ?? ""}`)
+    .split(/\s+/)
+    .filter((token) => token.length >= 5)
+    .slice(0, 16)
+    .join(" ");
+
+  if (!signature) return false;
+
+  return sources.filter((candidate) => {
+    if (candidate.url === source.url) return false;
+    const otherSignature = normalizeQuery(`${candidate.title} ${candidate.snippet ?? ""}`)
+      .split(/\s+/)
+      .filter((token) => token.length >= 5)
+      .slice(0, 16)
+      .join(" ");
+    return otherSignature === signature;
+  }).length === 0;
+}
+
+function genericListiclePenalty(source: VeraSource) {
+  const value = normalizeQuery(`${source.title} ${source.url}`);
+  if (/\b(top 10|top ten|best .* amazon|buying guide|affiliate|deals|coupon|promo|sponsored)\b/.test(value)) return 4;
+  if (/\b\d+\s+best\b/.test(value) && !/\bwirecutter|consumer reports|pcmag|rtings|notebookcheck|eater|infatuation\b/.test(value)) return 2;
+  return 0;
+}
+
+function sourcePreservationReasons(query: string, source: VeraSource, sourceType: string, uniqueMetadata: boolean, queryAlignment: number, authorityScore: number, localBoost: number) {
+  const reasons: string[] = [];
+  if (sourceType === "specialist") reasons.push("specialist_publication");
+  if (sourceType === "editorial") reasons.push("editorial_source");
+  if (sourceType === "community") reasons.push("community_source");
+  if (sourceType === "retail_or_structured") reasons.push("credible_retail_or_structured_source");
+  if (sourceType === "official_or_authoritative") reasons.push("authoritative_source");
+  if (sourceType === "review_or_listing") reasons.push("structured_review_or_listing_source");
+  if (uniqueMetadata) reasons.push("unique_pre_analysis_metadata");
+  if (queryAlignment >= 5) reasons.push("strong_query_alignment");
+  if (authorityScore >= 5) reasons.push("authority_score");
+  if (localBoost > 0) reasons.push("local_authority_source");
+  if (!reasons.length) reasons.push("retrieval_rank_and_diversity");
+  return reasons;
+}
+
+function sourceSelectionDiscardReason(source: VeraSource, candidates: VeraSource[], retained: VeraSource[]) {
+  const sameDomainCandidates = candidates.filter((candidate) => candidate.domain === source.domain).length;
+  const sameDomainRetained = retained.filter((candidate) => candidate.domain === source.domain).length;
+  if (sameDomainCandidates > 2 && sameDomainRetained >= 2) return "excessive_sources_from_one_domain";
+  if (!sourceHasUniquePreAnalysisMetadata(source, candidates)) return "near_duplicate_or_redundant_metadata";
+  if (genericListiclePenalty(source) > 0) return "generic_listicle_lower_priority";
+  return "lower_selection_score_at_existing_limit";
+}
+
+function round2(value: number) {
+  return Math.round(value * 100) / 100;
 }
 
 function recordSourceFilterRejection(

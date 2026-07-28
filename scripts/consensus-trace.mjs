@@ -112,12 +112,31 @@ output.push("Sources");
 output.push(`  retrievedCount: ${trace.retrievedSourceCount ?? "unknown"}`);
 output.push(`  retained: ${trace.retainedSources.length}`);
 for (const source of trace.retainedSources.slice(0, 10)) {
+  const selectionDiagnostic = trace.sourceDiagnostics.find(
+    (diagnostic) => diagnostic.retained && diagnostic.stage === "consensus_source_selection" && (diagnostic.url ?? diagnostic.source?.url) === source.url
+  );
+  const metadata = selectionDiagnostic?.metadata ?? {};
+  const score = metadata.selectionScore ?? "n/a";
+  const beforeRank = metadata.rankBeforeSelection ?? "n/a";
+  const afterRank = metadata.rankAfterSelection ?? "n/a";
   output.push(`    - ${source.domain}: ${source.title} (${source.url})`);
+  output.push(`      selection: score=${score}, rankBefore=${beforeRank}, rankAfter=${afterRank}, type=${metadata.sourceType ?? "n/a"}`);
+  if (Array.isArray(metadata.preservationReason) && metadata.preservationReason.length) {
+    output.push(`      preserve: ${metadata.preservationReason.join(", ")}`);
+  }
 }
 output.push(`  discarded: ${trace.discardedSources.length}`);
 for (const item of trace.sourceDiagnostics.filter((diagnostic) => !diagnostic.retained).slice(0, 12)) {
   output.push(`    discarded - ${item.reasonCode ?? "unknown"}: ${item.domain ?? item.source?.domain ?? "unknown"} ${item.url ?? item.source?.url ?? ""}`);
   if (item.queryVariant) output.push(`      lane: ${item.queryVariant}`);
+  if (item.metadata?.selectionScore !== undefined || item.metadata?.rankBeforeSelection !== undefined) {
+    output.push(
+      `      selection: score=${item.metadata.selectionScore ?? "n/a"}, rankBefore=${item.metadata.rankBeforeSelection ?? "n/a"}, reason=${item.metadata.discardReason ?? "n/a"}`
+    );
+  }
+  if (Array.isArray(item.metadata?.preservationReason) && item.metadata.preservationReason.length) {
+    output.push(`      preserve: ${item.metadata.preservationReason.join(", ")}`);
+  }
   if (item.message) output.push(`      ${item.message}`);
 }
 output.push("");

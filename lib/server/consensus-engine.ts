@@ -72,7 +72,14 @@ export type SourceFilterDiagnostic = {
   queryVariant?: string;
   retained: boolean;
   reasonCode?: DiscardReasonCode;
-  stage: "tavily_result_mapping" | "url_dedupe" | "source_filtering" | "domain_balancing" | "source_limit" | "local_enrichment";
+  stage:
+    | "tavily_result_mapping"
+    | "url_dedupe"
+    | "source_filtering"
+    | "domain_balancing"
+    | "source_limit"
+    | "consensus_source_selection"
+    | "local_enrichment";
   message?: string;
   metadata?: Record<string, unknown>;
 };
