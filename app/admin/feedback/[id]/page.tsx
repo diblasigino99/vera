@@ -35,11 +35,21 @@ export default async function AdminFeedbackDetailPage({ params }: AdminFeedbackD
           <h2 className="font-serif text-2xl tracking-[-0.03em] text-[#111114]">Submission</h2>
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <Field label="Search query" value={feedback.search_query} />
+            <Field label="Search id" value={feedback.search_id} />
             <Field label="Result slug" value={feedback.result_slug} />
+            <Field label="Anonymous session" value={feedback.actor_id} />
             <Field label="Feedback type" value={feedbackTypeLabel(feedback.feedback_type)} />
+            <Field label="Helpful" value={formatHelpful(feedback.helpful)} />
+            <Field label="Reason" value={feedbackReasonLabel(feedback.feedback_reason)} />
             <Field label="Evidence type" value={feedback.evidence_type} />
             <Field label="Classification" value={feedback.consensus_classification?.replaceAll("_", " ")} />
+            <Field label="Cache version" value={typeof feedback.cache_version === "number" ? String(feedback.cache_version) : null} />
+            <Field label="Engine version" value={feedback.engine_version} />
             <Field label="Timestamp" value={formatDate(feedback.created_at)} />
+          </div>
+          <div className="mt-7 border-t border-[#ECE8E0] pt-5">
+            <p className="text-xs uppercase tracking-[0.16em] text-[#9B9B92]">Displayed contenders</p>
+            <p className="mt-2 text-sm leading-7 text-[#3D3D38]">{formatContenders(feedback.displayed_contenders)}</p>
           </div>
           <div className="mt-7 border-t border-[#ECE8E0] pt-5">
             <p className="text-xs uppercase tracking-[0.16em] text-[#9B9B92]">User note</p>
@@ -62,8 +72,28 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 
 function feedbackTypeLabel(value: string) {
   if (value === "report_issue") return "Report issue";
-  if (value === "yes") return "Useful";
-  return "Not useful";
+  if (value === "yes") return "Helpful";
+  return "Not helpful";
+}
+
+function feedbackReasonLabel(value?: string | null) {
+  if (value === "wrong_recommendations") return "Wrong recommendations";
+  if (value === "missing_obvious") return "Missing something obvious";
+  if (value === "unconvincing_sources") return "Sources weren't convincing";
+  if (value === "misunderstood_search") return "Didn't understand search";
+  if (value === "other") return "Other";
+  return "—";
+}
+
+function formatHelpful(value?: boolean | null) {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  return "—";
+}
+
+function formatContenders(value?: string[] | null) {
+  if (!value?.length) return "—";
+  return value.join(", ");
 }
 
 function formatDate(value?: string | null) {

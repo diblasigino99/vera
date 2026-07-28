@@ -168,9 +168,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <ProblemLink href={adminHref(baseParams, { filter: "slow" })} label="Slow over 15 seconds" count={data.problemSearches.slow.length} />
               <ProblemLink href={adminHref(baseParams, { filter: "errors" })} label="Errors" count={data.problemSearches.errors.length} />
               <div className="rounded-lg border border-[#E7E3DB] bg-white p-4 sm:col-span-2">
-                <span className="block text-sm text-[#3D3D38]">Reported results</span>
+                <span className="block text-sm text-[#3D3D38]">Negative feedback</span>
                 <span className="mt-2 block font-mono text-lg text-[#111114]">
-                  {formatNumber(data.feedback.recent.filter((item) => item.feedback_type === "report_issue").length)}
+                  {formatNumber(data.feedback.recent.filter((item) => item.helpful === false || item.feedback_type === "report_issue").length)}
                 </span>
               </div>
             </div>
@@ -243,7 +243,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </section>
 
         <section className="mt-10">
-          <SectionHeading title="Recent feedback" subtitle="Newest feedback submissions from public result pages." />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <SectionHeading title="Recent feedback" subtitle="Newest feedback submissions from public result pages." />
+            <FeedbackFilters filters={data.filters} params={baseParams} />
+          </div>
           <FeedbackTable rows={data.feedback.recent} />
         </section>
       </div>
@@ -453,31 +456,33 @@ function FeedbackTable({ rows }: { rows: AdminFeedbackEvent[] }) {
           <thead className="bg-[#F5F3EE] text-xs uppercase tracking-[0.16em] text-[#8B887F]">
             <tr>
               <th className="px-4 py-3 font-medium">Feedback</th>
+              <th className="px-4 py-3 font-medium">Reason</th>
               <th className="px-4 py-3 font-medium">Query</th>
-              <th className="px-4 py-3 font-medium">Evidence</th>
               <th className="px-4 py-3 font-medium">Classification</th>
+              <th className="px-4 py-3 font-medium">Contenders</th>
               <th className="px-4 py-3 font-medium">Created</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#ECE8E0]">
             {rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-[#77776F]" colSpan={5}>
+                <td className="px-4 py-6 text-[#77776F]" colSpan={6}>
                   No feedback submitted yet.
                 </td>
               </tr>
             ) : (
               rows.map((row) => (
-                <tr key={row.id} className="transition hover:bg-[#FAF9F6]">
+                <tr key={row.id} className={`transition hover:bg-[#FAF9F6] ${row.helpful === false ? "bg-[#FFF9F6]" : ""}`}>
                   <td className="px-4 py-3">
-                    <Link href={`/admin/feedback/${row.id}`} className="font-medium text-[#111114] hover:underline">
+                    <Link href={`/admin/feedback/${row.id}`} className={`font-medium hover:underline ${row.helpful === false ? "text-[#8B3A2B]" : "text-[#111114]"}`}>
                       {feedbackTypeLabel(row.feedback_type)}
                     </Link>
                     {row.feedback_text ? <p className="mt-1 max-w-xs truncate text-xs text-[#8B887F]">{row.feedback_text}</p> : null}
                   </td>
+                  <td className="px-4 py-3 text-[#62625C]">{feedbackReasonLabel(row.feedback_reason)}</td>
                   <td className="max-w-[24rem] px-4 py-3 text-[#3D3D38]">{row.search_query || "—"}</td>
-                  <td className="px-4 py-3 text-[#62625C]">{row.evidence_type || "—"}</td>
                   <td className="px-4 py-3 text-[#62625C]">{row.consensus_classification?.replaceAll("_", " ") || "—"}</td>
+                  <td className="max-w-[20rem] px-4 py-3 text-[#62625C]">{formatContenders(row.displayed_contenders)}</td>
                   <td className="px-4 py-3 text-[#62625C]">{formatDate(row.created_at)}</td>
                 </tr>
               ))
@@ -485,6 +490,59 @@ function FeedbackTable({ rows }: { rows: AdminFeedbackEvent[] }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function FeedbackFilters({
+  filters,
+  params
+}: {
+  filters: Awaited<ReturnType<typeof getAdminDashboardData>>["filters"];
+  params: URLSearchParams;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {[
+        { value: "all", label: "All" },
+        { value: "negative", label: "Not helpful" },
+        { value: "positive", label: "Helpful" }
+      ].map((item) => (
+        <Link
+          href={adminHref(params, { feedbackSentiment: item.value })}
+          key={item.value}
+          className={`rounded-full border px-3 py-1.5 text-xs transition ${
+            filters.feedbackSentiment === item.value
+              ? "border-[#111114] bg-[#111114] text-white"
+              : "border-[#E1DDD5] bg-white text-[#62625C] hover:border-[#BEB7AA] hover:text-[#111114]"
+          }`}
+        >
+          {item.label}
+        </Link>
+      ))}
+      <form className="flex gap-2">
+        {Array.from(params.entries())
+          .filter(([key]) => key !== "feedbackReason")
+          .map(([key, value]) => (
+            <input key={`${key}-${value}`} name={key} type="hidden" value={value} />
+          ))}
+        <select
+          aria-label="Feedback reason"
+          className="h-8 rounded-full border border-[#E1DDD5] bg-white px-3 text-xs text-[#62625C] outline-none"
+          defaultValue={filters.feedbackReason}
+          name="feedbackReason"
+        >
+          <option value="all">All reasons</option>
+          <option value="wrong_recommendations">Wrong recommendations</option>
+          <option value="missing_obvious">Missing something obvious</option>
+          <option value="unconvincing_sources">Sources weren't convincing</option>
+          <option value="misunderstood_search">Didn't understand my search</option>
+          <option value="other">Other</option>
+        </select>
+        <button className="h-8 rounded-full border border-[#E1DDD5] bg-white px-3 text-xs text-[#62625C] transition hover:border-[#BEB7AA] hover:text-[#111114]">
+          Filter
+        </button>
+      </form>
     </div>
   );
 }
@@ -534,8 +592,22 @@ function formatDate(value?: string | null) {
 
 function feedbackTypeLabel(value: AdminFeedbackEvent["feedback_type"]) {
   if (value === "report_issue") return "Report issue";
-  if (value === "yes") return "Useful";
-  return "Not useful";
+  if (value === "yes") return "Helpful";
+  return "Not helpful";
+}
+
+function feedbackReasonLabel(value?: AdminFeedbackEvent["feedback_reason"]) {
+  if (value === "wrong_recommendations") return "Wrong recommendations";
+  if (value === "missing_obvious") return "Missing something obvious";
+  if (value === "unconvincing_sources") return "Sources weren't convincing";
+  if (value === "misunderstood_search") return "Didn't understand search";
+  if (value === "other") return "Other";
+  return "—";
+}
+
+function formatContenders(value?: string[] | null) {
+  if (!value?.length) return "—";
+  return value.slice(0, 4).join(", ");
 }
 
 function paramsForLinks(filters: Awaited<ReturnType<typeof getAdminDashboardData>>["filters"]) {

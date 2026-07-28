@@ -322,8 +322,11 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
 
               <SourcesSection sources={result.sources} />
               <FeedbackWidget
+                cacheVersion={result.cacheVersion}
                 consensusClassification={result.mode}
+                displayedContenders={result.results.map((item) => item.name)}
                 evidenceType={result.structuredConsensus?.queryEvidenceType}
+                searchId={result.id}
                 searchQuery={result.query}
               />
             </div>

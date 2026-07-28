@@ -1,26 +1,56 @@
 import { getSupabaseAdmin } from "@/lib/server/supabase";
 
 export type FeedbackType = "yes" | "no" | "report_issue";
+export type FeedbackReason =
+  | "wrong_recommendations"
+  | "missing_obvious"
+  | "unconvincing_sources"
+  | "misunderstood_search"
+  | "other";
+
+export type FeedbackSentimentFilter = "all" | "positive" | "negative";
 
 export type FeedbackEventInput = {
+  searchId?: string | null;
+  actorId?: string | null;
   searchQuery?: string | null;
   resultSlug?: string | null;
   feedbackType: FeedbackType;
+  helpful?: boolean | null;
+  feedbackReason?: FeedbackReason | null;
   feedbackText?: string | null;
   evidenceType?: string | null;
   consensusClassification?: string | null;
+  displayedContenders?: string[] | null;
+  cacheVersion?: number | null;
+  engineVersion?: string | null;
 };
 
 export type AdminFeedbackEvent = {
   id: string;
   created_at: string;
+  search_id: string | null;
+  actor_id: string | null;
   search_query: string | null;
   result_slug: string | null;
   feedback_type: FeedbackType;
+  helpful: boolean | null;
+  feedback_reason: FeedbackReason | null;
   feedback_text: string | null;
   evidence_type: string | null;
   consensus_classification: string | null;
+  displayed_contenders: string[] | null;
+  cache_version: number | null;
+  engine_version: string | null;
 };
+
+export type FeedbackEventFilters = {
+  sentiment?: FeedbackSentimentFilter;
+  reason?: FeedbackReason | "all";
+};
+
+const feedbackSelect =
+  "id, created_at, search_id, actor_id, search_query, result_slug, feedback_type, helpful, feedback_reason, feedback_text, evidence_type, consensus_classification, displayed_contenders, cache_version, engine_version";
 
 export async function recordFeedbackEvent(input: FeedbackEventInput) {
   const supabase = getSupabaseAdmin();
@@ -30,12 +60,19 @@ export async function recordFeedbackEvent(input: FeedbackEventInput) {
   }
 
   const { error } = await supabase.from("feedback_events").insert({
+    search_id: input.searchId ?? null,
+    actor_id: input.actorId ?? null,
     search_query: input.searchQuery ?? null,
     result_slug: input.resultSlug ?? null,
     feedback_type: input.feedbackType,
+    helpful: input.helpful ?? feedbackTypeToHelpful(input.feedbackType),
+    feedback_reason: input.feedbackReason ?? null,
     feedback_text: input.feedbackText?.trim() || null,
     evidence_type: input.evidenceType ?? null,
-    consensus_classification: input.consensusClassification ?? null
+    consensus_classification: input.consensusClassification ?? null,
+    displayed_contenders: input.displayedContenders?.length ? input.displayedContenders : null,
+    cache_version: input.cacheVersion ?? null,
+    engine_version: input.engineVersion ?? null
   });
 
   if (error) {
@@ -43,18 +80,21 @@ export async function recordFeedbackEvent(input: FeedbackEventInput) {
   }
 }
 
-export async function getRecentFeedbackEvents(limit = 25) {
+export async function getRecentFeedbackEvents(limit = 25, filters: FeedbackEventFilters = {}) {
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("feedback_events")
-    .select("id, created_at, search_query, result_slug, feedback_type, feedback_text, evidence_type, consensus_classification")
+  const query = applyFeedbackFilters(
+    (supabase as any).from("feedback_events").select(feedbackSelect),
+    filters
+  )
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  const { data, error } = await query;
 
   if (error) {
     console.warn("[vera:feedback] recent lookup failed", { error: error.message });
@@ -71,9 +111,9 @@ export async function getFeedbackEvent(id: string) {
     return null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("feedback_events")
-    .select("id, created_at, search_query, result_slug, feedback_type, feedback_text, evidence_type, consensus_classification")
+    .select(feedbackSelect)
     .eq("id", id)
     .maybeSingle();
 
@@ -85,14 +125,17 @@ export async function getFeedbackEvent(id: string) {
   return data as unknown as AdminFeedbackEvent | null;
 }
 
-export async function countFeedbackEvents() {
+export async function countFeedbackEvents(filters: FeedbackEventFilters = {}) {
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
     return 0;
   }
 
-  const { count, error } = await supabase.from("feedback_events").select("id", { count: "exact", head: true });
+  const { count, error } = await applyFeedbackFilters(
+    (supabase as any).from("feedback_events").select("id", { count: "exact", head: true }),
+    filters
+  );
 
   if (error) {
     console.warn("[vera:feedback] count failed", { error: error.message });
@@ -100,4 +143,26 @@ export async function countFeedbackEvents() {
   }
 
   return count ?? 0;
+}
+
+function feedbackTypeToHelpful(type: FeedbackType) {
+  if (type === "yes") return true;
+  if (type === "no" || type === "report_issue") return false;
+  return null;
+}
+
+function applyFeedbackFilters(query: any, filters: FeedbackEventFilters) {
+  let next = query;
+
+  if (filters.sentiment === "positive") {
+    next = next.eq("helpful", true);
+  } else if (filters.sentiment === "negative") {
+    next = next.eq("helpful", false);
+  }
+
+  if (filters.reason && filters.reason !== "all") {
+    next = next.eq("feedback_reason", filters.reason);
+  }
+
+  return next;
 }

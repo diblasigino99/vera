@@ -1,5 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/server/supabase";
-import { countFeedbackEvents, getRecentFeedbackEvents, type AdminFeedbackEvent } from "@/lib/server/feedback";
+import { countFeedbackEvents, getRecentFeedbackEvents, type AdminFeedbackEvent, type FeedbackReason, type FeedbackSentimentFilter } from "@/lib/server/feedback";
 import type { ConsensusResponse } from "@/lib/types";
 
 export type AdminSearchEvent = {
@@ -58,6 +58,8 @@ export type AdminDashboardFilters = {
   consensus?: string;
   cache?: AdminCacheFilter;
   sort?: AdminLatencySort;
+  feedbackSentiment?: FeedbackSentimentFilter;
+  feedbackReason?: FeedbackReason | "all";
 };
 
 export type AdminDashboardData = {
@@ -142,7 +144,10 @@ export async function getAdminDashboardData(filters: AdminDashboardFilters = {})
       .order("created_at", { ascending: false })
       .limit(breakdownLimit),
     countFeedbackEvents(),
-    getRecentFeedbackEvents(25)
+    getRecentFeedbackEvents(25, {
+      sentiment: normalizedFilters.feedbackSentiment,
+      reason: normalizedFilters.feedbackReason
+    })
   ]);
 
   if (filteredResult.error) {
@@ -390,6 +395,9 @@ function normalizeDashboardFilters(filters: AdminDashboardFilters): Required<Adm
   const dateRange = isDateRange(filters.dateRange) ? filters.dateRange : "7d";
   const cache = filters.cache === "hit" || filters.cache === "miss" ? filters.cache : "all";
   const sort = filters.sort === "slowest" || filters.sort === "fastest" ? filters.sort : "newest";
+  const feedbackSentiment =
+    filters.feedbackSentiment === "positive" || filters.feedbackSentiment === "negative" ? filters.feedbackSentiment : "all";
+  const feedbackReason = isFeedbackReason(filters.feedbackReason) ? filters.feedbackReason : "all";
 
   return {
     dateRange,
@@ -399,8 +407,21 @@ function normalizeDashboardFilters(filters: AdminDashboardFilters): Required<Adm
     category: filters.category?.trim() ?? "all",
     consensus: filters.consensus?.trim() ?? "all",
     cache,
-    sort
+    sort,
+    feedbackSentiment,
+    feedbackReason
   };
+}
+
+function isFeedbackReason(value?: string): value is FeedbackReason | "all" {
+  return (
+    value === "all" ||
+    value === "wrong_recommendations" ||
+    value === "missing_obvious" ||
+    value === "unconvincing_sources" ||
+    value === "misunderstood_search" ||
+    value === "other"
+  );
 }
 
 function isDateRange(value?: string): value is AdminDateRangeKey {

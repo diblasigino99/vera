@@ -181,10 +181,13 @@ export default async function ResultPage({ params }: ResultPageProps) {
           </DetailSection>
 
           <FeedbackWidget
+            cacheVersion={consensus.cacheVersion}
             compact
             consensusClassification={consensus.mode}
+            displayedContenders={consensus.results.map((item) => item.name)}
             evidenceType={consensus.structuredConsensus?.queryEvidenceType}
             resultSlug={slug}
+            searchId={consensus.id}
             searchQuery={consensus.query}
           />
         </div>
