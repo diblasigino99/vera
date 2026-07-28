@@ -52,6 +52,21 @@ export type FeedbackEventFilters = {
 const feedbackSelect =
   "id, created_at, search_id, actor_id, search_query, result_slug, feedback_type, helpful, feedback_reason, feedback_text, evidence_type, consensus_classification, displayed_contenders, cache_version, engine_version";
 
+type FeedbackQuery = {
+  eq: (column: string, value: unknown) => FeedbackQuery;
+  order: (column: string, options: { ascending: boolean }) => FeedbackQuery;
+  limit: (limit: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
+};
+
+type FeedbackSingleQuery = {
+  eq: (column: string, value: unknown) => FeedbackSingleQuery;
+  maybeSingle: () => PromiseLike<{ data: unknown | null; error: { message: string } | null }>;
+};
+
+type FeedbackCountQuery = {
+  eq: (column: string, value: unknown) => FeedbackCountQuery;
+} & PromiseLike<{ count: number | null; error: { message: string } | null }>;
+
 export async function recordFeedbackEvent(input: FeedbackEventInput) {
   const supabase = getSupabaseAdmin();
 
@@ -88,7 +103,7 @@ export async function getRecentFeedbackEvents(limit = 25, filters: FeedbackEvent
   }
 
   const query = applyFeedbackFilters(
-    (supabase as any).from("feedback_events").select(feedbackSelect),
+    supabase.from("feedback_events").select(feedbackSelect) as unknown as FeedbackQuery,
     filters
   )
     .order("created_at", { ascending: false })
@@ -111,10 +126,10 @@ export async function getFeedbackEvent(id: string) {
     return null;
   }
 
-  const { data, error } = await (supabase as any)
+  const { data, error } = await (supabase
     .from("feedback_events")
     .select(feedbackSelect)
-    .eq("id", id)
+    .eq("id", id) as unknown as FeedbackSingleQuery)
     .maybeSingle();
 
   if (error) {
@@ -133,7 +148,7 @@ export async function countFeedbackEvents(filters: FeedbackEventFilters = {}) {
   }
 
   const { count, error } = await applyFeedbackFilters(
-    (supabase as any).from("feedback_events").select("id", { count: "exact", head: true }),
+    supabase.from("feedback_events").select("id", { count: "exact", head: true }) as unknown as FeedbackCountQuery,
     filters
   );
 
@@ -151,7 +166,7 @@ function feedbackTypeToHelpful(type: FeedbackType) {
   return null;
 }
 
-function applyFeedbackFilters(query: any, filters: FeedbackEventFilters) {
+function applyFeedbackFilters<TQuery extends { eq: (column: string, value: unknown) => TQuery }>(query: TQuery, filters: FeedbackEventFilters) {
   let next = query;
 
   if (filters.sentiment === "positive") {

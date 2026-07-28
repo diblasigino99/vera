@@ -535,8 +535,8 @@ function FeedbackFilters({
           <option value="all">All reasons</option>
           <option value="wrong_recommendations">Wrong recommendations</option>
           <option value="missing_obvious">Missing something obvious</option>
-          <option value="unconvincing_sources">Sources weren't convincing</option>
-          <option value="misunderstood_search">Didn't understand my search</option>
+          <option value="unconvincing_sources">Sources weren&apos;t convincing</option>
+          <option value="misunderstood_search">Didn&apos;t understand my search</option>
           <option value="other">Other</option>
         </select>
         <button className="h-8 rounded-full border border-[#E1DDD5] bg-white px-3 text-xs text-[#62625C] transition hover:border-[#BEB7AA] hover:text-[#111114]">
