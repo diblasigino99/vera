@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { SourceSignal } from "@/lib/types";
+import type { DiscardReasonCode, EntityValidationDiagnostic } from "@/lib/server/consensus-engine";
 import { normalizeLocalQueryIntent, normalizeQuery, parseLocalIntent } from "@/lib/utils";
 import { getSupabaseAdmin } from "@/lib/server/supabase";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
@@ -42,6 +43,16 @@ export type PlacesValidationSnapshot = Pick<
   | "overallConfidence"
   | "rejectionReason"
 >;
+
+export type PlacesValidationDiagnostics = {
+  outcomes: EntityValidationDiagnostic[];
+};
+
+export function createPlacesValidationDiagnostics(): PlacesValidationDiagnostics {
+  return {
+    outcomes: []
+  };
+}
 
 type PlacesApiPlace = {
   id?: string;
@@ -89,7 +100,13 @@ const downgradedCacheTtlMs = 14 * 24 * 60 * 60 * 1000;
 const memoryPlacesCache = new Map<string, PlacesValidation>();
 const localPlacesCachePath = join(process.cwd(), ".vera-cache", "places-validation.json");
 
-export async function validateLocalSignalsWithPlaces(query: string, signals: SourceSignal[], rankedCandidateNames: string[] = [], callCounts?: ExternalCallCounts) {
+export async function validateLocalSignalsWithPlaces(
+  query: string,
+  signals: SourceSignal[],
+  rankedCandidateNames: string[] = [],
+  callCounts?: ExternalCallCounts,
+  diagnostics?: PlacesValidationDiagnostics
+) {
   const key = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
 
   if (!signals.length) return signals;
@@ -115,6 +132,7 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
     console.log("PLACES_VALIDATIONS_REJECTED", 0);
     console.log("FINAL_VERIFIED_CONTENDERS", []);
     recordPlacesSummary(callCounts, 0, 0, 0, []);
+    recordPlacesMissingKeyDiagnostics(diagnostics, groups);
     return signals;
   }
 
@@ -148,6 +166,7 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
 
       if (response.status === "fulfilled") {
         const validation = response.value;
+        recordPlacesValidationDiagnostic(diagnostics, group.displayName, validation);
         validations.set(group.normalizedName, validation);
         for (const alias of group.aliases) {
           validations.set(alias, validation);
@@ -159,6 +178,7 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
         }
       } else {
         rejected += 1;
+        recordPlacesValidationFailureDiagnostic(diagnostics, group.displayName, response.reason);
         console.warn("PLACES_VALIDATION_FAILED_SOFT", {
           query,
           candidate: group.displayName,
@@ -204,6 +224,7 @@ export async function validateLocalSignalsWithPlaces(query: string, signals: Sou
       }
 
       rejectedSignals += 1;
+      recordPlacesUnattemptedDiagnostic(diagnostics, signal);
       console.log("PLACES_UNATTEMPTED_SIGNAL_REJECTED", {
         candidate: signal.contenderName,
         reason: "unverified_generic_or_fragment"
@@ -358,6 +379,96 @@ function groupSignalsForPlacesValidation(query: string, signals: SourceSignal[],
     aliases: group.aliases,
     evidenceText: group.evidenceText
   }));
+}
+
+function recordPlacesMissingKeyDiagnostics(
+  diagnostics: PlacesValidationDiagnostics | undefined,
+  groups: Array<{ displayName: string; normalizedName: string; signalCount: number; sourceCount: number; evidenceText: string }>
+) {
+  if (!diagnostics) return;
+
+  for (const group of groups) {
+    diagnostics.outcomes.push({
+      status: "downgraded",
+      reasonCode: "stale_or_unavailable",
+      originalName: group.displayName,
+      validator: "google_places",
+      metadata: {
+        normalizedName: group.normalizedName,
+        signalCount: group.signalCount,
+        sourceCount: group.sourceCount,
+        reason: "missing_google_places_api_key"
+      }
+    });
+  }
+}
+
+function recordPlacesValidationDiagnostic(diagnostics: PlacesValidationDiagnostics | undefined, originalName: string, validation: PlacesValidation) {
+  if (!diagnostics) return;
+
+  diagnostics.outcomes.push({
+    status: validation.status === "verified" ? "accepted" : validation.status,
+    reasonCode: placesReasonCode(validation),
+    canonicalName: validation.canonicalName,
+    originalName,
+    validator: "google_places",
+    metadata: {
+      inputName: validation.inputName,
+      normalizedInputName: validation.normalizedInputName,
+      formattedAddress: validation.formattedAddress,
+      types: validation.types,
+      businessStatus: validation.businessStatus,
+      locationConfidence: validation.locationConfidence,
+      categoryConfidence: validation.categoryConfidence,
+      nameConfidence: validation.nameConfidence,
+      overallConfidence: validation.overallConfidence,
+      rejectionReason: validation.rejectionReason
+    }
+  });
+}
+
+function recordPlacesValidationFailureDiagnostic(diagnostics: PlacesValidationDiagnostics | undefined, originalName: string, error: unknown) {
+  if (!diagnostics) return;
+
+  diagnostics.outcomes.push({
+    status: "rejected",
+    reasonCode: "stale_or_unavailable",
+    originalName,
+    validator: "google_places",
+    metadata: {
+      error: error instanceof Error ? error.message : String(error)
+    }
+  });
+}
+
+function recordPlacesUnattemptedDiagnostic(diagnostics: PlacesValidationDiagnostics | undefined, signal: SourceSignal) {
+  if (!diagnostics) return;
+
+  diagnostics.outcomes.push({
+    status: "rejected",
+    reasonCode: "invalid_business",
+    originalName: signal.contenderName,
+    validator: "google_places_unattempted_signal_guard",
+    sourceUrl: signal.sourceUrl,
+    metadata: {
+      reason: "unverified_generic_or_fragment",
+      sourceTitle: signal.sourceTitle,
+      domain: signal.domain
+    }
+  });
+}
+
+function placesReasonCode(validation: PlacesValidation): DiscardReasonCode {
+  if (validation.status === "verified") return "unknown";
+
+  const reason = validation.rejectionReason ?? "";
+  if (/non_business|business/i.test(reason)) return "invalid_business";
+  if (/location/i.test(reason)) return "wrong_geography";
+  if (/category/i.test(reason)) return "category_mismatch";
+  if (/name/i.test(reason)) return "wrong_entity_type";
+  if (/confidence/i.test(reason)) return "insufficient_evidence";
+
+  return validation.status === "downgraded" ? "insufficient_evidence" : "unknown";
 }
 
 function localPlacesSignalEvidenceText(signal: SourceSignal) {

@@ -1,4 +1,5 @@
 import type { VeraSource } from "@/lib/types";
+import type { SourceFilterDiagnostic } from "@/lib/server/consensus-engine";
 import {
   domainFromUrl,
   evidenceStrategyFor,
@@ -32,7 +33,28 @@ export type SearchPublicWebTimings = {
   filteringMs: number;
 };
 
-export async function searchPublicWeb(query: string, callCounts?: ExternalCallCounts, timings?: SearchPublicWebTimings): Promise<VeraSource[]> {
+export type SearchDiagnostics = {
+  retainedSources: VeraSource[];
+  discardedSources: SourceFilterDiagnostic[];
+  sourceDiagnostics: SourceFilterDiagnostic[];
+  retrievalLanes: string[];
+};
+
+export function createSearchDiagnostics(): SearchDiagnostics {
+  return {
+    retainedSources: [],
+    discardedSources: [],
+    sourceDiagnostics: [],
+    retrievalLanes: []
+  };
+}
+
+export async function searchPublicWeb(
+  query: string,
+  callCounts?: ExternalCallCounts,
+  timings?: SearchPublicWebTimings,
+  diagnostics?: SearchDiagnostics
+): Promise<VeraSource[]> {
   const key = process.env.TAVILY_API_KEY;
 
   if (!key) {
@@ -47,6 +69,9 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
   const tavilyCallLimit = evidenceType === "local_recommendation" ? maxLocalTavilyCallsPerRequest : maxTavilyCallsPerRequest;
   const variants = buildSearchVariants(effectiveQuery);
   const guardedVariants = variants.slice(0, tavilyCallLimit);
+  if (diagnostics) {
+    diagnostics.retrievalLanes.push(...guardedVariants);
+  }
 
   if (variants.length > tavilyCallLimit) {
     console.warn("[vera:sources] Tavily variant cap applied", {
@@ -76,7 +101,7 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
     variantsToFetch.map((variant) =>
       searchVariantWithRetry(variant, key, callCounts, {
         retry: false
-      })
+      }, diagnostics)
     )
   );
   const failures = settledResponses.filter((response) => response.status === "rejected");
@@ -100,16 +125,22 @@ export async function searchPublicWeb(query: string, callCounts?: ExternalCallCo
   let namedDiscoveryResponses: VeraSource[][] = [];
 
   if (evidenceType === "local_recommendation" && shouldRunLocalNamedCandidateDiscovery(effectiveQuery, responses.flat())) {
-    namedDiscoveryResponses = await runLocalNamedCandidateDiscovery(effectiveQuery, key, callCounts);
+    namedDiscoveryResponses = await runLocalNamedCandidateDiscovery(effectiveQuery, key, callCounts, diagnostics);
   }
 
   tavilyMs = Date.now() - startedAt;
   const filteringStartedAt = Date.now();
   const rawSources = [...responses.flat(), ...namedDiscoveryResponses.flat()];
-  const dedupedSources = dedupeSources(rawSources);
-  const filteredSources = filterSources(dedupedSources);
-  const balancedSources = reduceDuplicateDomains(filteredSources).slice(0, evidenceType === "local_recommendation" ? 28 : 18);
+  const dedupedSources = dedupeSources(rawSources, diagnostics);
+  const filteredSources = filterSources(dedupedSources, diagnostics);
+  const domainBalancedSources = reduceDuplicateDomains(filteredSources);
+  const sourceLimit = evidenceType === "local_recommendation" ? 28 : 18;
+  const balancedSources = domainBalancedSources.slice(0, sourceLimit);
+  recordSourceLimitDiagnostics(domainBalancedSources, balancedSources, sourceLimit, diagnostics);
   const finalSources = evidenceType === "local_recommendation" ? await enrichLocalAuthoritySources(effectiveQuery, balancedSources) : balancedSources;
+  if (diagnostics) {
+    diagnostics.retainedSources = finalSources;
+  }
   const filteringMs = Date.now() - filteringStartedAt;
 
   if (timings) {
@@ -383,7 +414,7 @@ function localEnrichmentSourceScore(source: VeraSource) {
   return editorialBoost + tourismBoost + reviewPlatformBoost + listPageBoost - yelpPenalty;
 }
 
-export async function recoverLocalSparseSources(query: string, existingSources: VeraSource[], callCounts?: ExternalCallCounts): Promise<VeraSource[]> {
+export async function recoverLocalSparseSources(query: string, existingSources: VeraSource[], callCounts?: ExternalCallCounts, diagnostics?: SearchDiagnostics): Promise<VeraSource[]> {
   if (inferQueryEvidenceType(query) !== "local_recommendation") {
     return existingSources;
   }
@@ -420,8 +451,11 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
   for (const variant of variants) {
     console.log("LOCAL_SPARSE_RECOVERY_QUERY", variant);
   }
+  if (diagnostics) {
+    diagnostics.retrievalLanes.push(...variants);
+  }
 
-  const settledResponses = await Promise.allSettled(variants.map((variant) => searchVariantWithRetry(variant, key, callCounts, { retry: false })));
+  const settledResponses = await Promise.allSettled(variants.map((variant) => searchVariantWithRetry(variant, key, callCounts, { retry: false }, diagnostics)));
   const recoveredSources = settledResponses.flatMap((response) => (response.status === "fulfilled" ? response.value : []));
   const failures = settledResponses.filter((response) => response.status === "rejected");
 
@@ -434,7 +468,14 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
     });
   }
 
-  const merged = reduceDuplicateDomains(filterSources(dedupeSources([...existingSources, ...recoveredSources]))).slice(0, 34);
+  const deduped = dedupeSources([...existingSources, ...recoveredSources], diagnostics);
+  const filtered = filterSources(deduped, diagnostics);
+  const domainBalanced = reduceDuplicateDomains(filtered);
+  const merged = domainBalanced.slice(0, 34);
+  recordSourceLimitDiagnostics(domainBalanced, merged, 34, diagnostics);
+  if (diagnostics) {
+    diagnostics.retainedSources = merged;
+  }
   console.log("LOCAL_SPARSE_RECOVERY_FINAL_COUNT", {
     query,
     recoveredRawSources: recoveredSources.length,
@@ -452,7 +493,7 @@ export async function recoverLocalSparseSources(query: string, existingSources: 
   return merged;
 }
 
-async function runLocalNamedCandidateDiscovery(query: string, key: string, callCounts?: ExternalCallCounts): Promise<VeraSource[][]> {
+async function runLocalNamedCandidateDiscovery(query: string, key: string, callCounts?: ExternalCallCounts, diagnostics?: SearchDiagnostics): Promise<VeraSource[][]> {
   const remainingLocalCalls = Math.max(0, maxLocalTotalTavilyCallsPerRequest - (callCounts?.tavilyCalls ?? 0));
   const variants = buildLocalNamedCandidateVariants(query).slice(0, Math.min(maxLocalNamedDiscoveryCalls, remainingLocalCalls));
 
@@ -466,7 +507,11 @@ async function runLocalNamedCandidateDiscovery(query: string, key: string, callC
     return [];
   }
 
-  const settledResponses = await Promise.allSettled(variants.map((variant) => searchVariantWithRetry(variant, key, callCounts, { retry: false })));
+  if (diagnostics) {
+    diagnostics.retrievalLanes.push(...variants);
+  }
+
+  const settledResponses = await Promise.allSettled(variants.map((variant) => searchVariantWithRetry(variant, key, callCounts, { retry: false }, diagnostics)));
   const failures = settledResponses.filter((response) => response.status === "rejected");
 
   if (failures.length) {
@@ -581,10 +626,11 @@ async function searchVariantWithRetry(
   queryVariant: string,
   key: string,
   callCounts?: ExternalCallCounts,
-  options: { retry?: boolean } = { retry: true }
+  options: { retry?: boolean } = { retry: true },
+  diagnostics?: SearchDiagnostics
 ): Promise<VeraSource[]> {
   try {
-    return await searchVariant(queryVariant, key, callCounts);
+    return await searchVariant(queryVariant, key, callCounts, diagnostics);
   } catch (error) {
     if (!options.retry || !isRetryableTavilyError(error)) {
       throw error;
@@ -595,11 +641,11 @@ async function searchVariantWithRetry(
       error: error instanceof Error ? error.message : String(error)
     });
     await sleep(tavilyRetryDelayMs);
-    return searchVariant(queryVariant, key, callCounts);
+    return searchVariant(queryVariant, key, callCounts, diagnostics);
   }
 }
 
-async function searchVariant(queryVariant: string, key: string, callCounts?: ExternalCallCounts): Promise<VeraSource[]> {
+async function searchVariant(queryVariant: string, key: string, callCounts?: ExternalCallCounts, diagnostics?: SearchDiagnostics): Promise<VeraSource[]> {
   const evidenceType = inferQueryEvidenceType(queryVariant);
   if (callCounts) {
     callCounts.tavilyCalls += 1;
@@ -642,7 +688,22 @@ async function searchVariant(queryVariant: string, key: string, callCounts?: Ext
   const body = (await response.json()) as { results?: TavilyResult[] };
 
   return (body.results ?? [])
-    .filter((item): item is Required<Pick<TavilyResult, "title" | "url">> & TavilyResult => Boolean(item.title && item.url))
+    .filter((item): item is Required<Pick<TavilyResult, "title" | "url">> & TavilyResult => {
+      const valid = Boolean(item.title && item.url);
+      if (!valid) {
+        recordSourceDiagnostic(diagnostics, {
+          url: item.url,
+          domain: item.url ? domainFromUrl(item.url) : undefined,
+          queryVariant,
+          retained: false,
+          reasonCode: item.url ? "unsupported_content" : "invalid_url",
+          stage: "tavily_result_mapping",
+          message: item.url ? "Tavily result missing title." : "Tavily result missing URL.",
+          metadata: { hasTitle: Boolean(item.title), hasUrl: Boolean(item.url) }
+        });
+      }
+      return valid;
+    })
     .map((item) => ({
       title: item.title,
       url: item.url,
@@ -1093,7 +1154,7 @@ function normalizeProductSearchQuery(query: string) {
   return query;
 }
 
-function dedupeSources(sources: VeraSource[]) {
+function dedupeSources(sources: VeraSource[], diagnostics?: SearchDiagnostics) {
   const byUrl = new Map<string, VeraSource>();
 
   for (const source of sources) {
@@ -1105,6 +1166,17 @@ function dedupeSources(sources: VeraSource[]) {
       continue;
     }
 
+    recordSourceDiagnostic(diagnostics, {
+      source: toSourceDiagnosticSource(source),
+      url: source.url,
+      domain: source.domain,
+      queryVariant: source.queryVariant,
+      retained: false,
+      reasonCode: "duplicate_url",
+      stage: "url_dedupe",
+      message: "Canonical URL matched an already retained source.",
+      metadata: { canonicalUrl: key, retainedUrl: existing.url }
+    });
     byUrl.set(key, {
       ...existing,
       snippet: longer(existing.snippet, source.snippet),
@@ -1115,7 +1187,7 @@ function dedupeSources(sources: VeraSource[]) {
   return Array.from(byUrl.values());
 }
 
-function filterSources(sources: VeraSource[]) {
+function filterSources(sources: VeraSource[], diagnostics?: SearchDiagnostics) {
   return sources.filter((source) => {
     const snippet = source.snippet?.trim() ?? "";
     const domain = source.domain.toLowerCase();
@@ -1124,18 +1196,22 @@ function filterSources(sources: VeraSource[]) {
     const queryVariant = (source.queryVariant ?? "").toLowerCase();
 
     if (!snippet || snippet.length < 80) {
+      recordSourceFilterRejection(diagnostics, source, "weak_relevance", "Source snippet is missing or too short.", { snippetLength: snippet.length });
       return false;
     }
 
     if (domain.includes("pinterest") || domain.includes("facebook") || domain.includes("instagram") || domain.includes("tiktok")) {
+      recordSourceFilterRejection(diagnostics, source, "blocked_domain", "Source domain is blocked for consensus retrieval.");
       return false;
     }
 
     if (queryVariant.includes("williamsburg brooklyn") && /\b(williamsburg,\s*va|williamsburg va|virginia|23185)\b/.test(combined)) {
+      recordSourceFilterRejection(diagnostics, source, "geography_mismatch", "Source matched Williamsburg, Virginia for a Williamsburg, Brooklyn query.");
       return false;
     }
 
     if (title.includes("coupon") || title.includes("promo code") || title.includes("sale")) {
+      recordSourceFilterRejection(diagnostics, source, "low_quality_source", "Source title indicates coupon, promo, or sale content.");
       return false;
     }
 
@@ -1156,6 +1232,65 @@ function reduceDuplicateDomains(sources: VeraSource[]) {
   const overflow = Array.from(byDomain.values()).flatMap((items) => items.slice(2));
 
   return [...primaryPass, ...overflow];
+}
+
+function recordSourceLimitDiagnostics(candidates: VeraSource[], retained: VeraSource[], limit: number, diagnostics?: SearchDiagnostics) {
+  if (!diagnostics || candidates.length <= retained.length) return;
+
+  const retainedUrls = new Set(retained.map((source) => source.url));
+  for (const source of candidates) {
+    if (retainedUrls.has(source.url)) continue;
+    recordSourceDiagnostic(diagnostics, {
+      source: toSourceDiagnosticSource(source),
+      url: source.url,
+      domain: source.domain,
+      queryVariant: source.queryVariant,
+      retained: false,
+      reasonCode: "source_balance_removal",
+      stage: "source_limit",
+      message: "Source removed by existing post-balancing source limit.",
+      metadata: { limit }
+    });
+  }
+}
+
+function recordSourceFilterRejection(
+  diagnostics: SearchDiagnostics | undefined,
+  source: VeraSource,
+  reasonCode: SourceFilterDiagnostic["reasonCode"],
+  message: string,
+  metadata?: Record<string, unknown>
+) {
+  recordSourceDiagnostic(diagnostics, {
+    source: toSourceDiagnosticSource(source),
+    url: source.url,
+    domain: source.domain,
+    queryVariant: source.queryVariant,
+    retained: false,
+    reasonCode,
+    stage: "source_filtering",
+    message,
+    metadata
+  });
+}
+
+function recordSourceDiagnostic(diagnostics: SearchDiagnostics | undefined, diagnostic: SourceFilterDiagnostic) {
+  if (!diagnostics) return;
+  diagnostics.sourceDiagnostics.push(diagnostic);
+  if (!diagnostic.retained) {
+    diagnostics.discardedSources.push(diagnostic);
+  }
+}
+
+function toSourceDiagnosticSource(source: VeraSource) {
+  return {
+    title: source.title,
+    url: source.url,
+    domain: source.domain,
+    queryVariant: source.queryVariant,
+    relevanceScore: source.relevanceScore,
+    supportingContender: source.supportingContender
+  };
 }
 
 function domainCounts(sources: VeraSource[]) {

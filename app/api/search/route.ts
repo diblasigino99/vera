@@ -5,17 +5,25 @@ import {
   buildDominantPlatformFallbackConsensus,
   buildLocalFallbackConsensus,
   buildNoReliableConsensus,
-  buildProductFallbackConsensus
+  buildProductFallbackConsensus,
+  createAnalyzeDiagnostics
 } from "@/lib/server/analyze";
 import { cacheConsensus, getCachedConsensus, getCacheVersion, getStaleCachedConsensus } from "@/lib/server/cache";
-import { runConsensusEngine } from "@/lib/server/consensus-engine";
+import {
+  addConsensusDiscard,
+  mapDiscardReasonCode,
+  recordConsensusStage,
+  runConsensusEngine,
+  updateConsensusTrace
+} from "@/lib/server/consensus-engine";
 import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
-import { recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
+import { createSearchDiagnostics, recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
 import { recordSearchEvent } from "@/lib/server/search-events";
 import { canonicalizeQuery, inferQueryEvidenceType, inferQueryIntent, normalizeQuery } from "@/lib/utils";
 import { NO_RELIABLE_CONSENSUS_BODY } from "@/lib/types";
-import type { ConsensusResponse } from "@/lib/types";
+import type { ConsensusResponse, ContenderMetrics } from "@/lib/types";
+import type { ConsensusTrace, DiscardReason } from "@/lib/server/consensus-engine";
 import type { SearchPublicWebTimings } from "@/lib/server/search";
 
 const SearchBody = z.object({
@@ -38,15 +46,43 @@ export async function POST(request: Request) {
 
   return runConsensusEngine(searchData.query, {
     actorId: searchData.actorId,
-    execute: executeExistingSearchPipeline
+    execute: ({ trace }) => executeExistingSearchPipeline(trace)
   });
 
-async function executeExistingSearchPipeline() {
+async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
   const body = { data: searchData };
   const normalizedQuery = normalizeQuery(body.data.query);
   const canonicalQuery = canonicalizeQuery(body.data.query);
   const evidenceType = inferQueryEvidenceType(body.data.query);
   const queryIntent = inferQueryIntent(body.data.query);
+  updateConsensusTrace(trace, {
+    retrievalPlan: {
+      query: body.data.query,
+      normalizedQuery,
+      canonicalQuery,
+      evidenceType,
+      queryIntent,
+      cacheVersion: getCacheVersion(body.data.query),
+      strategy: "existing route pipeline: cache lookup, searchPublicWeb, analyzeConsensus, existing fallbacks",
+      unavailable: [
+        "Exact Tavily query variants are internal to searchPublicWeb and are not returned to the route.",
+        "Pre-filter raw Tavily result rows and source discard reasons are logged inside searchPublicWeb but are not returned."
+      ]
+    },
+    cache: {
+      status: "not_checked",
+      cacheVersion: getCacheVersion(body.data.query)
+    },
+    callCounts: snapshotExternalCallCounts(externalCallCounts)
+  });
+  recordConsensusStage(trace, {
+    stage: "parse_task",
+    status: "completed",
+    startedAt: new Date(requestStartedAt).toISOString(),
+    completedAt: new Date().toISOString(),
+    durationMs: Date.now() - requestStartedAt,
+    output: { normalizedQuery, canonicalQuery, evidenceType, queryIntent }
+  });
   console.log("ORIGINAL_QUERY", body.data.query);
   console.log("NORMALIZED_QUERY", normalizedQuery);
   console.log("CANONICAL_QUERY", canonicalQuery);
@@ -84,6 +120,12 @@ async function executeExistingSearchPipeline() {
       totalElapsedMs: Date.now() - requestStartedAt
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    updateTraceFromConsensus(trace, fakeResult, "cache_test");
+    updateConsensusTrace(trace, {
+      cache: { status: "write_completed", cacheHitType: "cache_test", cacheVersion: getCacheVersion(), searchId: fakeResult.id },
+      latency: { cacheWriteMs: Date.now() - cacheWriteStartedAt, totalMs: Date.now() - requestStartedAt },
+      callCounts: snapshotExternalCallCounts(externalCallCounts)
+    });
     await recordSearchEvent({
       ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       searchId: fakeResult.id,
@@ -118,6 +160,17 @@ async function executeExistingSearchPipeline() {
       category: "adult_local"
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    updateTraceFromConsensus(trace, consensus, "unsupported_category_safety");
+    addConsensusDiscard(trace, {
+      stage: "safety_bypass",
+      code: "category_mismatch",
+      message: "Unsupported adult local category bypassed before live search."
+    });
+    updateConsensusTrace(trace, {
+      cache: { status: "bypassed", cacheHitType: "unsupported_category_safety", cacheVersion: getCacheVersion() },
+      latency: { totalMs: totalElapsedMs },
+      callCounts: snapshotExternalCallCounts(externalCallCounts)
+    });
     await recordSearchEvent({
       ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       searchId: consensus.id,
@@ -151,6 +204,17 @@ async function executeExistingSearchPipeline() {
       evidenceType
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    updateTraceFromConsensus(trace, consensus, "negative_intent_safety");
+    addConsensusDiscard(trace, {
+      stage: "safety_bypass",
+      code: "outside_constraint",
+      message: `Unsupported query intent bypassed before live search: ${queryIntent}.`
+    });
+    updateConsensusTrace(trace, {
+      cache: { status: "bypassed", cacheHitType: "negative_intent_safety", cacheVersion: getCacheVersion() },
+      latency: { totalMs: totalElapsedMs },
+      callCounts: snapshotExternalCallCounts(externalCallCounts)
+    });
     await recordSearchEvent({
       ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       searchId: consensus.id,
@@ -185,6 +249,17 @@ async function executeExistingSearchPipeline() {
       reason: vagueQueryExplanation
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    updateTraceFromConsensus(trace, consensus, "vague_query_safety");
+    addConsensusDiscard(trace, {
+      stage: "safety_bypass",
+      code: "insufficient_evidence",
+      message: vagueQueryExplanation
+    });
+    updateConsensusTrace(trace, {
+      cache: { status: "bypassed", cacheHitType: "vague_query_safety", cacheVersion: getCacheVersion() },
+      latency: { totalMs: totalElapsedMs },
+      callCounts: snapshotExternalCallCounts(externalCallCounts)
+    });
     await recordSearchEvent({
       ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       searchId: consensus.id,
@@ -208,6 +283,14 @@ async function executeExistingSearchPipeline() {
       normalizedQuery,
       hit: Boolean(cached),
       elapsedMs: cacheElapsedMs
+    });
+    recordConsensusStage(trace, {
+      stage: "cache_lookup",
+      status: "completed",
+      startedAt: new Date(cacheStartedAt).toISOString(),
+      completedAt: new Date().toISOString(),
+      durationMs: cacheElapsedMs,
+      output: { hit: Boolean(cached), cacheVersion: cached?.cacheVersion ?? getCacheVersion(body.data.query) }
     });
 
     if (cached) {
@@ -233,6 +316,18 @@ async function executeExistingSearchPipeline() {
         externalCallCounts
       });
       console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+      updateTraceFromConsensus(trace, response, "cache_hit");
+      updateConsensusTrace(trace, {
+        cache: {
+          status: "hit",
+          cacheVersion: response.cacheVersion ?? getCacheVersion(),
+          searchId: response.id,
+          elapsedMs: cacheElapsedMs,
+          cacheHitType: "hit"
+        },
+        latency: { cacheMs: cacheElapsedMs, totalMs: Date.now() - requestStartedAt },
+        callCounts: snapshotExternalCallCounts(externalCallCounts)
+      });
       await recordSearchEvent({
         ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
         searchId: response.id,
@@ -252,6 +347,17 @@ async function executeExistingSearchPipeline() {
       stack: error instanceof Error ? error.stack : null
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    updateConsensusTrace(trace, {
+      cache: {
+        status: "error",
+        cacheVersion: getCacheVersion(),
+        elapsedMs: cacheElapsedMs,
+        cacheHitType: "cache_lookup_error",
+        error: error instanceof Error ? error.message : String(error)
+      },
+      latency: { cacheMs: cacheElapsedMs, totalMs: Date.now() - requestStartedAt },
+      callCounts: snapshotExternalCallCounts(externalCallCounts)
+    });
     await recordSearchEvent({
       ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       cacheHit: false,
@@ -277,6 +383,11 @@ async function executeExistingSearchPipeline() {
       abortedBeforeLiveSearch: true
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    updateConsensusTrace(trace, {
+      cache: { status: "miss", cacheVersion: getCacheVersion(), elapsedMs: cacheElapsedMs, cacheHitType: "setup_missing" },
+      latency: { cacheMs: cacheElapsedMs, totalMs: Date.now() - requestStartedAt },
+      callCounts: snapshotExternalCallCounts(externalCallCounts)
+    });
     await recordSearchEvent({
       ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       cacheHit: false,
@@ -298,7 +409,9 @@ async function executeExistingSearchPipeline() {
   try {
     const tavilyStartedAt = Date.now();
     const sourceTimings: SearchPublicWebTimings = { tavilyMs: 0, filteringMs: 0 };
-    let sources = await searchPublicWeb(body.data.query, externalCallCounts, sourceTimings);
+    const searchDiagnostics = trace?.enabled ? createSearchDiagnostics() : undefined;
+    const analyzeDiagnostics = trace?.enabled ? createAnalyzeDiagnostics() : undefined;
+    let sources = await searchPublicWeb(body.data.query, externalCallCounts, sourceTimings, searchDiagnostics);
     const searchElapsedMs = Date.now() - tavilyStartedAt;
     const tavilyElapsedMs = sourceTimings.tavilyMs || searchElapsedMs;
     const filteringElapsedMs = sourceTimings.filteringMs;
@@ -310,11 +423,34 @@ async function executeExistingSearchPipeline() {
       filteringMs: filteringElapsedMs,
       urls: sources.map((source) => source.url)
     });
+    recordConsensusStage(trace, {
+      stage: "retrieval",
+      status: "completed",
+      startedAt: new Date(tavilyStartedAt).toISOString(),
+      completedAt: new Date().toISOString(),
+      durationMs: searchElapsedMs,
+      output: {
+        retainedSourceCount: sources.length,
+        tavilyMs: tavilyElapsedMs,
+        filteringMs: filteringElapsedMs
+      }
+    });
+    updateConsensusTrace(trace, {
+      cache: { status: "miss", cacheVersion: getCacheVersion(), elapsedMs: cacheElapsedMs },
+      retrievedSourceCount: sources.length,
+      retainedSources: sources.map(toTraceSource),
+      discardedSources: searchDiagnostics?.discardedSources.flatMap((item) => (item.source ? [item.source] : [])) ?? [],
+      sourceDiagnostics: searchDiagnostics?.sourceDiagnostics ?? [],
+      latency: { cacheMs: cacheElapsedMs, tavilyMs: tavilyElapsedMs, filteringMs: filteringElapsedMs },
+      callCounts: snapshotExternalCallCounts(externalCallCounts)
+    });
     const openAIStartedAt = Date.now();
     let consensus: ConsensusResponse;
     let openAITimedOut = false;
     try {
-      consensus = await analyzeConsensus(body.data.query, sources, externalCallCounts);
+      consensus = await analyzeConsensus(body.data.query, sources, externalCallCounts, analyzeDiagnostics);
+      updateTraceFromConsensus(trace, consensus, "initial_analysis");
+      updateTraceFromAnalyzeDiagnostics(trace, analyzeDiagnostics);
     } catch (error) {
       openAITimedOut = isTimeoutError(error);
 
@@ -347,9 +483,19 @@ async function executeExistingSearchPipeline() {
           externalCallCounts
         )) ??
         buildNoReliableConsensus(body.data.query, sources);
+      updateTraceFromConsensus(trace, consensus, openAITimedOut ? "timeout_fallback" : "analysis_fallback");
+      updateTraceFromAnalyzeDiagnostics(trace, analyzeDiagnostics);
     }
 
     const openAIElapsedMs = Date.now() - openAIStartedAt;
+    recordConsensusStage(trace, {
+      stage: "analysis",
+      status: "completed",
+      startedAt: new Date(openAIStartedAt).toISOString(),
+      completedAt: new Date().toISOString(),
+      durationMs: openAIElapsedMs,
+      output: { mode: consensus.mode, resultCount: consensus.results.length, timedOut: openAITimedOut }
+    });
     if (evidenceType === "product_recommendation" && consensus.results.length === 0) {
       consensus =
         buildProductFallbackConsensus(
@@ -357,6 +503,8 @@ async function executeExistingSearchPipeline() {
           sources,
           NO_RELIABLE_CONSENSUS_BODY
         ) ?? consensus;
+      updateTraceFromConsensus(trace, consensus, "product_fallback");
+      updateTraceFromAnalyzeDiagnostics(trace, analyzeDiagnostics);
     }
     if (evidenceType === "local_recommendation" && consensus.results.length < 3) {
       consensus =
@@ -366,13 +514,15 @@ async function executeExistingSearchPipeline() {
           "Vera found local sources, but not enough clean business-specific agreement to rank confidently.",
           externalCallCounts
         )) ?? consensus;
+      updateTraceFromConsensus(trace, consensus, "local_fallback");
+      updateTraceFromAnalyzeDiagnostics(trace, analyzeDiagnostics);
     }
     if (evidenceType === "local_recommendation" && validLocalResultCount(consensus) < 3) {
       const recoveryStartedAt = Date.now();
       let recoveredSources = sources;
 
       try {
-        recoveredSources = await recoverLocalSparseSources(body.data.query, sources, externalCallCounts);
+        recoveredSources = await recoverLocalSparseSources(body.data.query, sources, externalCallCounts, searchDiagnostics);
       } catch (error) {
         console.warn("[vera:search] local sparse recovery failed softly", {
           query: body.data.query,
@@ -383,9 +533,16 @@ async function executeExistingSearchPipeline() {
 
       if (recoveredSources.length > sources.length) {
         sources = recoveredSources;
+        updateConsensusTrace(trace, {
+          retrievedSourceCount: sources.length,
+          retainedSources: sources.map(toTraceSource),
+          discardedSources: searchDiagnostics?.discardedSources.flatMap((item) => (item.source ? [item.source] : [])) ?? [],
+          sourceDiagnostics: searchDiagnostics?.sourceDiagnostics ?? [],
+          callCounts: snapshotExternalCallCounts(externalCallCounts)
+        });
         try {
           const preRecoveryConsensus = consensus;
-          const recoveredConsensus = await analyzeConsensus(body.data.query, sources, externalCallCounts);
+          const recoveredConsensus = await analyzeConsensus(body.data.query, sources, externalCallCounts, analyzeDiagnostics);
           if (validLocalResultCount(recoveredConsensus) >= validLocalResultCount(preRecoveryConsensus)) {
             consensus = recoveredConsensus;
           } else {
@@ -400,6 +557,20 @@ async function executeExistingSearchPipeline() {
             results: recoveredConsensus.results.map((result) => result.name),
             keptPreviousConsensus: consensus === preRecoveryConsensus
           });
+          recordConsensusStage(trace, {
+            stage: "local_sparse_recovery",
+            status: "completed",
+            startedAt: new Date(recoveryStartedAt).toISOString(),
+            completedAt: new Date().toISOString(),
+            durationMs: Date.now() - recoveryStartedAt,
+            output: {
+              recoveredSourceCount: recoveredSources.length,
+              resultCount: recoveredConsensus.results.length,
+              keptPreviousConsensus: consensus === preRecoveryConsensus
+            }
+          });
+          updateTraceFromConsensus(trace, consensus, "local_sparse_recovery");
+          updateTraceFromAnalyzeDiagnostics(trace, analyzeDiagnostics);
         } catch (error) {
           if (!isTimeoutError(error)) {
             throw error;
@@ -419,6 +590,8 @@ async function executeExistingSearchPipeline() {
               "Vera found additional local evidence, but still could not confidently separate the strongest local contenders.",
               externalCallCounts
             )) ?? consensus;
+          updateTraceFromConsensus(trace, consensus, "local_sparse_recovery_timeout_fallback");
+          updateTraceFromAnalyzeDiagnostics(trace, analyzeDiagnostics);
         }
       }
     }
@@ -432,6 +605,17 @@ async function executeExistingSearchPipeline() {
           cacheVersion: stale.cacheVersion ?? null
         });
         console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+        updateTraceFromConsensus(trace, stale, "stale_empty_local");
+        updateConsensusTrace(trace, {
+          cache: {
+            status: "stale_hit",
+            cacheVersion: stale.cacheVersion ?? null,
+            searchId: stale.id,
+            cacheHitType: "stale_empty_local"
+          },
+          latency: { cacheMs: cacheElapsedMs, tavilyMs: tavilyElapsedMs, openAiMs: openAIElapsedMs, totalMs: Date.now() - requestStartedAt },
+          callCounts: snapshotExternalCallCounts(externalCallCounts)
+        });
         await recordSearchEvent({
           ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
           searchId: stale.id,
@@ -468,6 +652,7 @@ async function executeExistingSearchPipeline() {
       results: consensus.results.map((result) => result.name)
     });
     consensus = withHelpfulNoConsensusCopy(consensus, body.data.query, evidenceType, queryIntent);
+    updateTraceFromConsensus(trace, consensus, "final_before_cache");
     const cacheWriteStartedAt = Date.now();
     consensus = await cacheConsensus(consensus, externalCallCounts);
     const cacheWriteElapsedMs = Date.now() - cacheWriteStartedAt;
@@ -517,6 +702,25 @@ async function executeExistingSearchPipeline() {
       externalCallCounts
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    updateTraceFromConsensus(trace, consensus, "final");
+    updateConsensusTrace(trace, {
+      cache: {
+        status: "write_completed",
+        cacheVersion: consensus.cacheVersion ?? getCacheVersion(),
+        searchId: consensus.id,
+        elapsedMs: cacheElapsedMs,
+        cacheHitType: "miss"
+      },
+      latency: {
+        cacheMs: cacheElapsedMs,
+        tavilyMs: tavilyElapsedMs,
+        filteringMs: filteringElapsedMs,
+        openAiMs: openAIElapsedMs,
+        cacheWriteMs: cacheWriteElapsedMs,
+        totalMs: Date.now() - requestStartedAt
+      },
+      callCounts: snapshotExternalCallCounts(externalCallCounts)
+    });
     await recordSearchEvent({
       ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       searchId: consensus.id,
@@ -543,6 +747,18 @@ async function executeExistingSearchPipeline() {
           cacheVersion: stale.cacheVersion ?? null
         });
         console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+        updateTraceFromConsensus(trace, stale, "stale_error_fallback");
+        updateConsensusTrace(trace, {
+          cache: {
+            status: "stale_hit",
+            cacheVersion: stale.cacheVersion ?? null,
+            searchId: stale.id,
+            cacheHitType: "stale_error_fallback",
+            error: error instanceof Error ? error.message : String(error)
+          },
+          latency: { cacheMs: cacheElapsedMs, totalMs: Date.now() - requestStartedAt },
+          callCounts: snapshotExternalCallCounts(externalCallCounts)
+        });
         await recordSearchEvent({
           ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
           searchId: stale.id,
@@ -577,6 +793,11 @@ async function executeExistingSearchPipeline() {
       stack: error instanceof Error ? error.stack : null
     });
     console.log("EXTERNAL_CALL_COUNTS", externalCallCounts);
+    updateConsensusTrace(trace, {
+      cache: { status: "error", cacheVersion: getCacheVersion(), cacheHitType: "error", error: error instanceof Error ? error.message : String(error) },
+      latency: { cacheMs: cacheElapsedMs, totalMs: Date.now() - requestStartedAt },
+      callCounts: snapshotExternalCallCounts(externalCallCounts)
+    });
     await recordSearchEvent({
       ...baseSearchEvent(body.data.query, normalizedQuery, canonicalQuery, evidenceType, externalCallCounts),
       cacheHit: false,
@@ -589,6 +810,233 @@ async function executeExistingSearchPipeline() {
     return NextResponse.json({ error: "Vera couldn't complete this search. Please try again." }, { status: 500 });
   }
 }
+}
+
+function updateTraceFromConsensus(trace: ConsensusTrace | undefined, consensus: ConsensusResponse, source: string) {
+  const structured = consensus.structuredConsensus;
+  const extractionCandidates = structured?.localPlaceExtraction?.candidates ?? [];
+  const rejectedEntities = extractionCandidates
+    .filter((candidate) => !candidate.accepted)
+    .map((candidate) => {
+      const discardReason = localExtractionDiscard(candidate.rejectionReason, candidate.name, candidate.sourceUrl);
+      return {
+        name: candidate.name,
+        sourceUrl: candidate.sourceUrl,
+        sourceTitle: candidate.sourceTitle,
+        status: "rejected" as const,
+        discardReason,
+        metadata: {
+          extractionSource: candidate.extractionSource,
+          confidence: candidate.confidence,
+          rejectionReason: candidate.rejectionReason
+        }
+      };
+    });
+  const acceptedExtractionEntities = extractionCandidates
+    .filter((candidate) => candidate.accepted)
+    .map((candidate) => ({
+      name: candidate.name,
+      sourceUrl: candidate.sourceUrl,
+      sourceTitle: candidate.sourceTitle,
+      status: "accepted" as const,
+      metadata: {
+        extractionSource: candidate.extractionSource,
+        confidence: candidate.confidence
+      }
+    }));
+  const finalistEntities = consensus.results.map((result) => ({
+    name: result.name,
+    status: "finalist" as const,
+    metadata: {
+      rank: result.rank,
+      consensusPercentage: result.consensusPercentage,
+      verifiedAddress: result.verifiedAddress
+    }
+  }));
+  const contenderMetrics: ContenderMetrics[] = structured?.contenders ?? consensus.results.flatMap((result) => (result.metrics ? [result.metrics] : []));
+  const aggregationEntrants = contenderMetrics
+    .map((metrics) => ({
+      name: metrics.name,
+      status: "entered_aggregation" as const,
+      metadata: {
+        sourceCount: metrics.sourceCount,
+        positiveMentionCount: metrics.positiveMentionCount,
+        negativeMentionCount: metrics.negativeMentionCount,
+        netWeightedScore: metrics.netWeightedScore,
+        localFinalScore: metrics.localRanking?.finalScore
+      }
+    }));
+
+  for (const entity of rejectedEntities) {
+    if (entity.discardReason) addConsensusDiscard(trace, entity.discardReason);
+  }
+
+  updateConsensusTrace(trace, {
+    retainedSources: trace?.retainedSources.length ? trace.retainedSources : consensus.sources.map(toTraceSource),
+    extractedSignals: structured?.signals ?? [],
+    candidateEntities: mergeTraceEntities(trace?.candidateEntities ?? [], [...acceptedExtractionEntities, ...rejectedEntities, ...aggregationEntrants, ...finalistEntities]),
+    validationOutcomes: mergeTraceEntities(trace?.validationOutcomes ?? [], [...acceptedExtractionEntities, ...rejectedEntities, ...finalistEntities]),
+    acceptedEntities: mergeTraceEntities(trace?.acceptedEntities ?? [], [...acceptedExtractionEntities, ...finalistEntities]),
+    rejectedEntities: mergeTraceEntities(trace?.rejectedEntities ?? [], rejectedEntities),
+    downgradedEntities: trace?.downgradedEntities ?? [],
+    aggregationEntrants,
+    contenderScores: contenderMetrics.map((metrics) => ({
+      name: metrics.name,
+      netWeightedScore: metrics.netWeightedScore,
+      weightedPositiveScore: metrics.weightedPositiveScore,
+      weightedNegativeScore: metrics.weightedNegativeScore,
+      sourceCount: metrics.sourceCount,
+      positiveMentionCount: metrics.positiveMentionCount,
+      negativeMentionCount: metrics.negativeMentionCount,
+      localFinalScore: metrics.localRanking?.finalScore,
+      localBaseScore: metrics.localRanking?.baseScore,
+      metrics
+    })),
+    classification: {
+      mode: consensus.mode,
+      resultNames: consensus.results.map((result) => result.name),
+      resultCount: consensus.results.length,
+      rationale: structured?.confidenceReasoning ?? consensus.explanation,
+      source,
+      decisionPath: trace?.classification?.decisionPath
+    },
+    unavailable: [
+      "Some fallback consensus builders do not expose the same classifier internals as the main analyzer path."
+    ]
+  });
+}
+
+function updateTraceFromAnalyzeDiagnostics(trace: ConsensusTrace | undefined, diagnostics: ReturnType<typeof createAnalyzeDiagnostics> | undefined) {
+  if (!diagnostics) return;
+
+  const rejectedEntities = diagnostics.entityValidationDiagnostics
+    .filter((outcome) => outcome.status === "rejected")
+    .map((outcome) => ({
+      name: outcome.originalName,
+      sourceUrl: outcome.sourceUrl,
+      status: "rejected" as const,
+      discardReason: {
+        stage: outcome.validator,
+        code: outcome.reasonCode,
+        message: String(outcome.metadata?.reason ?? outcome.metadata?.rejectionReason ?? outcome.reasonCode),
+        contenderName: outcome.originalName,
+        sourceUrl: outcome.sourceUrl,
+        metadata: outcome.metadata
+      }
+    }));
+  const acceptedEntities = diagnostics.entityValidationDiagnostics
+    .filter((outcome) => outcome.status === "accepted")
+    .map((outcome) => ({
+      name: outcome.canonicalName ?? outcome.originalName,
+      sourceUrl: outcome.sourceUrl,
+      status: "accepted" as const,
+      metadata: {
+        validator: outcome.validator,
+        originalName: outcome.originalName,
+        ...outcome.metadata
+      }
+    }));
+  const downgradedEntities = diagnostics.entityValidationDiagnostics
+    .filter((outcome) => outcome.status === "downgraded")
+    .map((outcome) => ({
+      name: outcome.canonicalName ?? outcome.originalName,
+      sourceUrl: outcome.sourceUrl,
+      status: "downgraded" as const,
+      metadata: {
+        validator: outcome.validator,
+        reasonCode: outcome.reasonCode,
+        originalName: outcome.originalName,
+        ...outcome.metadata
+      }
+    }));
+  const cleanupDiscards: DiscardReason[] = diagnostics.cleanupDiagnostics.map((cleanup) => ({
+    stage: cleanup.stage,
+    code: cleanup.reasonCode,
+    message: cleanup.message,
+    contenderName: cleanup.contenderName,
+    metadata: cleanup.metadata
+  }));
+
+  for (const entity of rejectedEntities) {
+    addConsensusDiscard(trace, entity.discardReason);
+  }
+  for (const discard of cleanupDiscards) {
+    addConsensusDiscard(trace, discard);
+  }
+
+  updateConsensusTrace(trace, {
+    entityResolutionDiagnostics: diagnostics.entityResolutionDiagnostics,
+    entityValidationDiagnostics: diagnostics.entityValidationDiagnostics,
+    validationOutcomes: mergeTraceEntities(trace?.validationOutcomes ?? [], [...acceptedEntities, ...rejectedEntities, ...downgradedEntities]),
+    acceptedEntities: mergeTraceEntities(trace?.acceptedEntities ?? [], acceptedEntities),
+    rejectedEntities: mergeTraceEntities(trace?.rejectedEntities ?? [], rejectedEntities),
+    downgradedEntities: mergeTraceEntities(trace?.downgradedEntities ?? [], downgradedEntities),
+    cleanupDiagnostics: diagnostics.cleanupDiagnostics,
+    finalCleanupRemovals: cleanupDiscards,
+    classification: diagnostics.classificationDecision
+      ? {
+          ...(trace?.classification ?? {
+            mode: diagnostics.classificationDecision.finalClassification,
+            resultNames: [],
+            resultCount: 0
+          }),
+          decisionPath: diagnostics.classificationDecision
+        }
+      : trace?.classification
+  });
+}
+
+function mergeTraceEntities<T extends { name: string; status?: string; sourceUrl?: string }>(existing: T[], next: T[]) {
+  const merged = [...existing];
+  const keys = new Set(existing.map((item) => `${item.status ?? ""}|${item.name}|${item.sourceUrl ?? ""}`));
+
+  for (const item of next) {
+    const key = `${item.status ?? ""}|${item.name}|${item.sourceUrl ?? ""}`;
+    if (keys.has(key)) continue;
+    keys.add(key);
+    merged.push(item);
+  }
+
+  return merged;
+}
+
+function localExtractionDiscard(reason: string | undefined, contenderName: string, sourceUrl: string): DiscardReason {
+  return {
+    stage: "local_place_extraction",
+    code: mapDiscardReasonCode(reason),
+    message: reason ?? "Local place extraction rejected this candidate without a structured reason.",
+    contenderName,
+    sourceUrl,
+    metadata: { rawReason: reason ?? null }
+  };
+}
+
+function toTraceSource(source: ConsensusResponse["sources"][number]) {
+  return {
+    title: source.title,
+    url: source.url,
+    domain: source.domain,
+    queryVariant: source.queryVariant,
+    relevanceScore: source.relevanceScore,
+    supportingContender: source.supportingContender
+  };
+}
+
+function snapshotExternalCallCounts(externalCallCounts: ReturnType<typeof createExternalCallCounts>) {
+  return {
+    supabaseReads: externalCallCounts.supabaseReads,
+    tavilyCalls: externalCallCounts.tavilyCalls,
+    openAiCalls: externalCallCounts.openAiCalls,
+    placesApiCalls: externalCallCounts.placesApiCalls,
+    placesCacheHits: externalCallCounts.placesCacheHits,
+    placesValidationAttempts: externalCallCounts.placesValidationAttempts,
+    placesValidationsSucceeded: externalCallCounts.placesValidationsSucceeded,
+    placesValidationsRejected: externalCallCounts.placesValidationsRejected,
+    supabaseWrites: externalCallCounts.supabaseWrites,
+    tavilyCallReasons: externalCallCounts.tavilyCallReasons,
+    openAiCallReasons: externalCallCounts.openAiCallReasons,
+    finalVerifiedPlacesContenders: externalCallCounts.finalVerifiedPlacesContenders
+  };
 }
 
 function isTimeoutError(error: unknown) {

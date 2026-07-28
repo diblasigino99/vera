@@ -1,6 +1,22 @@
 import assert from "node:assert/strict";
+import path from "node:path";
+import Module from "node:module";
 import { diagnoseMultiContenderSplitEvidence } from "../lib/server/consensus-classification.ts";
 import { canonicalDestinationName, destinationCandidateFitsQuery, destinationCandidateProof, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "../lib/server/destination-rules.ts";
+
+const root = process.cwd();
+const originalResolveFilename = Module._resolveFilename;
+
+Module._resolveFilename = function resolveAlias(request, parent, isMain, options) {
+  if (request.startsWith("@/")) {
+    return originalResolveFilename.call(this, path.join(root, request.slice(2)), parent, isMain, options);
+  }
+
+  return originalResolveFilename.call(this, request, parent, isMain, options);
+};
+
+const jiti = (await import("jiti")).default(process.cwd() + "/");
+const { resolveEntityNamesForRegression } = jiti("./lib/server/analyze.ts");
 
 const minimumSourceCount = 3;
 const minimumTopPositiveMentions = 3;
@@ -217,6 +233,62 @@ const acceptedCaribbeanCandidates = caribbeanCandidates.filter((candidate) => de
 
 for (const expected of ["St. Lucia", "Jamaica", "Antigua", "Anguilla", "Aruba", "Grand Cayman", "Bahamas"]) {
   assert.ok(caribbeanCandidates.includes(expected), `Expected destination extraction to include ${expected}`);
+}
+
+const entityResolutionCases = [
+  {
+    query: "Best laptop brand",
+    evidenceType: "provider_or_brand_recommendation",
+    names: ["Apple", "Apple Inc.", "Apple MacBook Air", "MacBooks"],
+    expectedNames: ["Apple"],
+    expectedActions: ["merged", "downgraded"]
+  },
+  {
+    query: "Best productivity suite",
+    evidenceType: "product_recommendation",
+    names: ["Microsoft", "Microsoft 365", "Microsoft 365 Family"],
+    expectedNames: ["Microsoft 365"],
+    expectedActions: ["merged"]
+  },
+  {
+    query: "Best business email",
+    evidenceType: "product_recommendation",
+    names: ["Google", "Google Workspace", "G Suite"],
+    expectedNames: ["Google Workspace"],
+    expectedActions: ["merged"]
+  },
+  {
+    query: "Best CRM software",
+    evidenceType: "software_tool",
+    names: ["Salesforce", "Salesforce CRM"],
+    expectedNames: ["Salesforce CRM"],
+    expectedActions: ["merged"]
+  },
+  {
+    query: "Best internet provider",
+    evidenceType: "product_recommendation",
+    names: ["Verizon", "Verizon Fios"],
+    expectedNames: ["Verizon Fios"],
+    expectedActions: ["merged"]
+  },
+  {
+    query: "Best laptop",
+    evidenceType: "product_recommendation",
+    names: ["Apple", "Apple MacBook Air", "MacBook Pro"],
+    expectedNames: ["Apple MacBook Air", "MacBook Pro"],
+    expectedActions: ["rejected"]
+  }
+];
+
+for (const item of entityResolutionCases) {
+  const resolved = resolveEntityNamesForRegression(item.query, item.evidenceType, item.names);
+  assert.deepEqual(resolved.resolvedNames.sort(), item.expectedNames.sort(), `${item.query} should resolve to requested entity-level contenders`);
+
+  for (const action of item.expectedActions) {
+    assert.ok(resolved.diagnostics.some((diagnostic) => diagnostic.action === action), `${item.query} should include ${action} resolution diagnostic`);
+  }
+
+  console.log(JSON.stringify({ entityResolution: { query: item.query, resolvedNames: resolved.resolvedNames, diagnostics: resolved.diagnostics } }, null, 2));
 }
 
 for (const invalid of [

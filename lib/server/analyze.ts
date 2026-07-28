@@ -27,6 +27,8 @@ import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 import { diagnoseMultiContenderSplitEvidence } from "@/lib/server/consensus-classification";
 import { canonicalDestinationName, destinationCandidateFitsQuery, destinationCandidateProof, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "@/lib/server/destination-rules";
 import { getCachedPlacesValidationSnapshot, validateLocalSignalsWithPlaces } from "@/lib/server/places";
+import type { PlacesValidationDiagnostics } from "@/lib/server/places";
+import type { ClassificationDecisionTrace, EntityResolutionDiagnostic, EntityValidationDiagnostic, FinalCleanupDiagnostic } from "@/lib/server/consensus-engine";
 import type { QueryEvidenceType } from "@/lib/utils";
 
 const sourceTypes = [
@@ -128,8 +130,24 @@ const classificationThresholds = {
 
 const categoryMismatchPenalty = 12;
 
-export async function analyzeConsensus(query: string, sources: VeraSource[], callCounts?: ExternalCallCounts): Promise<ConsensusResponse> {
-  const debug = await analyzeConsensusWithDebug(query, sources, callCounts);
+export type AnalyzeDiagnostics = {
+  entityValidationDiagnostics: EntityValidationDiagnostic[];
+  entityResolutionDiagnostics: EntityResolutionDiagnostic[];
+  cleanupDiagnostics: FinalCleanupDiagnostic[];
+  classificationDecision?: ClassificationDecisionTrace;
+  placesValidationDiagnostics?: PlacesValidationDiagnostics;
+};
+
+export function createAnalyzeDiagnostics(): AnalyzeDiagnostics {
+  return {
+    entityValidationDiagnostics: [],
+    entityResolutionDiagnostics: [],
+    cleanupDiagnostics: []
+  };
+}
+
+export async function analyzeConsensus(query: string, sources: VeraSource[], callCounts?: ExternalCallCounts, diagnostics?: AnalyzeDiagnostics): Promise<ConsensusResponse> {
+  const debug = await analyzeConsensusWithDebug(query, sources, callCounts, diagnostics);
   return debug.consensus;
 }
 
@@ -526,7 +544,7 @@ function localDebugSignal({ source, contenderName, reason, themes }: { source: V
   };
 }
 
-export async function analyzeConsensusWithDebug(query: string, sources: VeraSource[], callCounts?: ExternalCallCounts) {
+export async function analyzeConsensusWithDebug(query: string, sources: VeraSource[], callCounts?: ExternalCallCounts, diagnostics?: AnalyzeDiagnostics) {
   const key = process.env.OPENAI_API_KEY;
 
   if (!key) {
@@ -555,7 +573,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
         intent: intentFromQuery(query),
         signals: deterministicLocalSignals
       }
-    : await extractSourceSignals(query, modelSources, key, evidenceType, callCounts);
+    : await extractSourceSignals(query, modelSources, key, evidenceType, callCounts, diagnostics);
   if (skipLocalOpenAI) {
     console.log("LOCAL_OPENAI_SKIPPED", {
       query,
@@ -574,9 +592,23 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
         ? dedupeSignals([...sourceSignals.signals, ...recoveredDestinationSignals].map(canonicalizeDestinationSignal))
       : sourceSignals.signals;
   const consensusSources = evidenceType === "destination_recommendation" ? sources : modelSources;
-  const structuredConsensus = await aggregateSignals(allSignals, consensusSources, query, callCounts);
+  const structuredConsensus = await aggregateSignals(allSignals, consensusSources, query, callCounts, diagnostics);
 
   if (structuredConsensus.contenders.length === 0) {
+    if (diagnostics && !diagnostics.classificationDecision) {
+      diagnostics.classificationDecision = {
+        classifier: "fallback",
+        selectedPath: "no_contenders_after_aggregation",
+        finalReasonCode: "no_contenders",
+        finalClassification: "no_reliable_consensus",
+        contenderCount: 0,
+        sourceCount: consensusSources.length,
+        diagnostics: {
+          signalCount: allSignals.length,
+          evidenceType
+        }
+      };
+    }
     const consensus = notEnoughData(query, sources, NO_RELIABLE_CONSENSUS_BODY);
     consensus.intent = sourceSignals.intent;
     consensus.structuredConsensus = structuredConsensus;
@@ -587,7 +619,7 @@ export async function analyzeConsensusWithDebug(query: string, sources: VeraSour
     };
   }
 
-  const consensus = buildConsensus(query, consensusSources, sourceSignals.intent, structuredConsensus);
+  const consensus = buildConsensus(query, consensusSources, sourceSignals.intent, structuredConsensus, diagnostics);
 
   return {
     rawOpenAIContent: sourceSignals.rawOpenAIContent,
@@ -820,7 +852,14 @@ async function recoverSparseLocalBusinessNames(query: string, sources: VeraSourc
   }
 }
 
-async function extractSourceSignals(query: string, sources: VeraSource[], key: string, evidenceType: QueryEvidenceType, callCounts?: ExternalCallCounts) {
+async function extractSourceSignals(
+  query: string,
+  sources: VeraSource[],
+  key: string,
+  evidenceType: QueryEvidenceType,
+  callCounts?: ExternalCallCounts,
+  diagnostics?: AnalyzeDiagnostics
+) {
   const timeoutMs =
     evidenceType === "dominant_platform"
       ? dominantPlatformOpenAITimeoutMs
@@ -934,7 +973,7 @@ async function extractSourceSignals(query: string, sources: VeraSource[], key: s
     throw new Error("OpenAI returned invalid source signal JSON.");
   }
 
-  const signals = normalizeSignals(query, parsed.data, sources, evidenceType);
+  const signals = normalizeSignals(query, parsed.data, sources, evidenceType, diagnostics);
   const durationMs = Date.now() - startedAt;
 
   console.log("[vera:openai] output received", {
@@ -1063,7 +1102,18 @@ function inferMentionStrength(reason: string): SourceSignal["mentionStrength"] {
   return "weak";
 }
 
-function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSource[], evidenceType: QueryEvidenceType): SourceSignal[] {
+function localEntityValidationReasonCode(reason: string): EntityValidationDiagnostic["reasonCode"] {
+  if (/geograph|location|long_island|borough|nearby/i.test(reason)) return "wrong_geography";
+  if (/category|cuisine|type/i.test(reason)) return "category_mismatch";
+  if (/generic|fragment|location_as_contender/i.test(reason)) return "generic_entity";
+  if (/business|place|invalid/i.test(reason)) return "invalid_business";
+  if (/duplicate/i.test(reason)) return "duplicate_entity";
+  if (/confidence|evidence|weak|low/i.test(reason)) return "insufficient_evidence";
+
+  return "unknown";
+}
+
+function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSource[], evidenceType: QueryEvidenceType, diagnostics?: AnalyzeDiagnostics): SourceSignal[] {
   const sourceByUrl = new Map(sources.map((source) => [source.url, source]));
 
   const rawSignals = payload.extractions.flatMap((extraction) => {
@@ -1084,6 +1134,18 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
       const localRejectedReason = localUniversalEntityRejectionReason(query, contenderName, { source, reason });
 
       if (localRejectedReason) {
+        diagnostics?.entityValidationDiagnostics.push({
+          status: "rejected",
+          reasonCode: localEntityValidationReasonCode(localRejectedReason),
+          originalName: contenderName,
+          validator: "local_universal_entity_validator",
+          sourceUrl: source.url,
+          metadata: {
+            reason: localRejectedReason,
+            path: "openai_extraction",
+            sourceTitle: source.title
+          }
+        });
         console.log("LOCAL_UNIVERSAL_VALIDATOR_REJECTED", {
           contender: contenderName,
           reason: localRejectedReason,
@@ -1095,6 +1157,18 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
     }
 
     if (isRejectableContenderName(contenderName, evidenceType, source, reason)) {
+      diagnostics?.entityValidationDiagnostics.push({
+        status: "rejected",
+        reasonCode: "wrong_entity_type",
+        originalName: contenderName,
+        validator: "generic_entity_name_validator",
+        sourceUrl: source.url,
+        metadata: {
+          evidenceType,
+          sourceTitle: source.title,
+          reason: "non_entity_or_page_title"
+        }
+      });
       console.log("CONTENDER_REJECTED", {
         contender: contenderName,
         evidenceType,
@@ -1291,7 +1365,516 @@ function signalPower(signal: SourceSignal) {
   return sentimentWeight(signal.sentiment) + mentionStrengthWeight(signal.mentionStrength) + signal.sourceQualityWeight + signal.sourceWeight;
 }
 
-async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], query: string, callCounts?: ExternalCallCounts): Promise<StructuredConsensus> {
+function recordQualityCleanupDiagnostics(
+  diagnostics: AnalyzeDiagnostics | undefined,
+  query: string,
+  evidenceType: QueryEvidenceType,
+  before: ContenderMetrics[],
+  after: ContenderMetrics[],
+  signalsByName: Map<string, SourceSignal[]>
+) {
+  if (!diagnostics) return;
+
+  const afterNames = new Set(after.map((contender) => contender.name));
+  for (const contender of before) {
+    if (afterNames.has(contender.name)) continue;
+    const signals = signalsByName.get(contender.name) ?? [];
+    diagnostics.cleanupDiagnostics.push({
+      contenderName: contender.name,
+      stage: cleanupStageForEvidenceType(evidenceType, query, contender, signals),
+      reasonCode: cleanupReasonCodeForEvidenceType(evidenceType, query, contender, signals),
+      message: "Contender removed by existing pre-aggregation quality filter.",
+      metadata: {
+        evidenceType,
+        sourceCount: contender.sourceCount,
+        positiveMentionCount: contender.positiveMentionCount,
+        netWeightedScore: contender.netWeightedScore
+      }
+    });
+  }
+}
+
+function recordCategoryCleanupDiagnostics(
+  diagnostics: AnalyzeDiagnostics | undefined,
+  removed: Array<{
+    name: string;
+    contenderCategory: VeraEntityCategory;
+    categoryConfidence: ContenderMetrics["categoryConfidence"];
+    reason: string;
+  }>
+) {
+  if (!diagnostics) return;
+
+  for (const contender of removed) {
+    diagnostics.cleanupDiagnostics.push({
+      contenderName: contender.name,
+      stage: "category_mismatch_cleanup",
+      reasonCode: "category_mismatch",
+      message: "Contender removed by existing intended-category filter.",
+      metadata: {
+        contenderCategory: contender.contenderCategory,
+        categoryConfidence: contender.categoryConfidence,
+        reason: contender.reason
+      }
+    });
+  }
+}
+
+function cleanupStageForEvidenceType(
+  evidenceType: QueryEvidenceType,
+  query: string,
+  contender: ContenderMetrics,
+  signals: SourceSignal[]
+): FinalCleanupDiagnostic["stage"] {
+  if (evidenceType === "local_recommendation") {
+    const rejection = localCandidateDiscoveryRejectionReason(query, contender, signals) || localUniversalEntityRejectionReason(query, contender.name, { signals });
+    if (/location|geograph|long_island|borough/i.test(rejection ?? "")) return "geography_cleanup";
+    if (/category|cuisine|type/i.test(rejection ?? "")) return "category_mismatch_cleanup";
+    if (/generic|fragment|location_as_contender/i.test(rejection ?? "")) return "generic_contender_cleanup";
+    return "insufficient_evidence_cleanup";
+  }
+
+  if (evidenceType === "destination_recommendation") return "geography_cleanup";
+  if (evidenceType === "product_recommendation") return "insufficient_evidence_cleanup";
+
+  return "entity_type_cleanup";
+}
+
+function cleanupReasonCodeForEvidenceType(
+  evidenceType: QueryEvidenceType,
+  query: string,
+  contender: ContenderMetrics,
+  signals: SourceSignal[]
+): FinalCleanupDiagnostic["reasonCode"] {
+  if (evidenceType === "local_recommendation") {
+    return localEntityValidationReasonCode(localCandidateDiscoveryRejectionReason(query, contender, signals) || localUniversalEntityRejectionReason(query, contender.name, { signals }) || "");
+  }
+
+  if (evidenceType === "destination_recommendation") return "wrong_geography";
+  if (evidenceType === "product_recommendation") return "insufficient_evidence";
+
+  return "wrong_entity_type";
+}
+
+type RequestedEntityType =
+  | "brand"
+  | "product"
+  | "software"
+  | "provider_service"
+  | "platform"
+  | "local_business"
+  | "destination"
+  | "unknown";
+
+type EntityResolutionAction = {
+  originalName: string;
+  canonicalName: string;
+  relationshipType: EntityResolutionDiagnostic["relationshipType"];
+  action: EntityResolutionDiagnostic["action"];
+  reasonCode: EntityResolutionDiagnostic["reasonCode"];
+  requestedEntityType: RequestedEntityType;
+  evidenceTransferred: boolean;
+  metadata?: Record<string, unknown>;
+};
+
+export function resolveEntityNamesForRegression(query: string, evidenceType: QueryEvidenceType, names: string[]) {
+  const diagnostics = createAnalyzeDiagnostics();
+  const signals = names.map((name, index) => regressionSourceSignal(name, index, evidenceType));
+  const resolved = resolveSignalsForRequestedEntityLevel(query, evidenceType, signals, diagnostics);
+
+  return {
+    resolvedNames: Array.from(new Set(resolved.map((signal) => signal.contenderName))),
+    diagnostics: diagnostics.entityResolutionDiagnostics
+  };
+}
+
+function regressionSourceSignal(name: string, index: number, evidenceType: QueryEvidenceType): SourceSignal {
+  return {
+    sourceUrl: `regression://${index + 1}`,
+    sourceTitle: `Regression source ${index + 1}`,
+    domain: "regression.test",
+    sourceType: "editorial",
+    sourceWeight: sourceTypeWeight("editorial", evidenceType),
+    sourceQuality: "high",
+    sourceQualityWeight: sourceQualityWeightFor("high"),
+    contenderName: name,
+    sentiment: "positive",
+    mentionStrength: "moderate",
+    positiveMention: "Regression evidence",
+    extractedReason: "Regression evidence",
+    themes: ["regression"]
+  };
+}
+
+function resolveSignalsForRequestedEntityLevel(
+  query: string,
+  evidenceType: QueryEvidenceType,
+  signals: SourceSignal[],
+  diagnostics?: AnalyzeDiagnostics
+): SourceSignal[] {
+  const requestedEntityType = requestedEntityTypeForQuery(query, evidenceType);
+  const actions = new Map<string, EntityResolutionAction>();
+  const resolved: SourceSignal[] = [];
+
+  for (const signal of signals) {
+    const action = resolveEntityName(signal.contenderName, query, evidenceType, requestedEntityType);
+    const key = `${action.originalName}|${action.canonicalName}|${action.action}|${action.reasonCode}`;
+    const existing = actions.get(key);
+    actions.set(key, {
+      ...action,
+      metadata: {
+        ...action.metadata,
+        sourceUrls: Array.from(new Set([...(Array.isArray(existing?.metadata?.sourceUrls) ? existing.metadata.sourceUrls : []), signal.sourceUrl]))
+      }
+    });
+
+    if (action.action === "rejected") {
+      continue;
+    }
+
+    resolved.push({
+      ...signal,
+      contenderName: action.canonicalName,
+      extractedReason:
+        action.canonicalName === signal.contenderName
+          ? signal.extractedReason
+          : `${signal.extractedReason}; entity resolved from ${signal.contenderName} to ${action.canonicalName}`
+    });
+  }
+
+  for (const action of actions.values()) {
+    const sourceUrls = Array.isArray(action.metadata?.sourceUrls) ? action.metadata.sourceUrls.filter((url): url is string => typeof url === "string") : [];
+    diagnostics?.entityResolutionDiagnostics.push({
+      originalName: action.originalName,
+      canonicalName: action.canonicalName,
+      relationshipType: action.relationshipType,
+      action: action.action,
+      reasonCode: action.reasonCode,
+      requestedEntityType: action.requestedEntityType,
+      evidenceTransferred: action.evidenceTransferred,
+      sourceUrls,
+      metadata: action.metadata
+    });
+    if (action.action === "rejected") {
+      diagnostics?.entityValidationDiagnostics.push({
+        status: "rejected",
+        reasonCode: action.reasonCode,
+        originalName: action.originalName,
+        canonicalName: action.canonicalName,
+        validator: "requested_entity_level_resolver",
+        metadata: {
+          requestedEntityType: action.requestedEntityType,
+          relationshipType: action.relationshipType
+        }
+      });
+    }
+  }
+
+  return dedupeSignals(resolved);
+}
+
+function requestedEntityTypeForQuery(query: string, evidenceType: QueryEvidenceType): RequestedEntityType {
+  const normalized = normalizeQuery(query);
+
+  if (/\b(laptop brand|laptop brands|brand|brands|manufacturer|manufacturers)\b/.test(normalized)) return "brand";
+  if (/\b(internet provider|internet providers|isp|isps|broadband provider|fiber provider|wireless carrier|wireless carriers|cell carrier|cell carriers|mobile carrier|mobile carriers|phone carrier|phone carriers)\b/.test(normalized)) {
+    return "provider_service";
+  }
+  if (/\b(crm|productivity suite|office suite|business email|email provider|email service|workspace|software|saas)\b/.test(normalized)) return "software";
+
+  if (evidenceType === "local_recommendation") return "local_business";
+  if (evidenceType === "destination_recommendation") return "destination";
+  if (evidenceType === "dominant_platform") return "platform";
+  if (evidenceType === "software_tool") return "software";
+
+  if (evidenceType === "provider_or_brand_recommendation") {
+    if (/\b(internet provider|internet providers|isp|isps|wireless carrier|wireless carriers|cell carrier|cell carriers|mobile carrier|mobile carriers|phone carrier|phone carriers|airline|airlines|bank|banks|insurance provider|insurance providers|hotel chain|hotel chains)\b/.test(normalized)) {
+      return "provider_service";
+    }
+    return "brand";
+  }
+
+  if (evidenceType === "product_recommendation") return "product";
+
+  return "unknown";
+}
+
+function resolveEntityName(
+  name: string,
+  query: string,
+  evidenceType: QueryEvidenceType,
+  requestedEntityType: RequestedEntityType
+): EntityResolutionAction {
+  const originalName = cleanName(name);
+  const normalized = normalizedEntityName(originalName);
+  const canonicalAlias = canonicalAliasName(originalName, query, evidenceType);
+
+  if (!originalName || !normalized) {
+    return resolutionAction(originalName, originalName, "ambiguous", "rejected", "ambiguous_relationship", requestedEntityType, false);
+  }
+
+  const granularity = entityGranularity(originalName, query, evidenceType);
+
+  if (requestedEntityType === "brand") {
+    if (granularity.kind === "child_product" && granularity.parentName) {
+      return resolutionAction(
+        originalName,
+        granularity.parentName,
+        "parent_brand_child_product",
+        "downgraded",
+        "child_entity_mismatch",
+        requestedEntityType,
+        true,
+        { detectedEntityType: granularity.kind }
+      );
+    }
+    if (canonicalAlias !== originalName) {
+      return resolutionAction(originalName, canonicalAlias, aliasRelationship(originalName, canonicalAlias), "merged", aliasReasonCode(originalName, canonicalAlias), requestedEntityType, true);
+    }
+    return resolutionAction(originalName, originalName, "none", "accepted", "unknown", requestedEntityType, false);
+  }
+
+  if (requestedEntityType === "product") {
+    if (granularity.kind === "brand") {
+      return resolutionAction(
+        originalName,
+        originalName,
+        "parent_brand_child_product",
+        "rejected",
+        "parent_entity_mismatch",
+        requestedEntityType,
+        false,
+        { detectedEntityType: granularity.kind }
+      );
+    }
+    if (canonicalAlias !== originalName) {
+      return resolutionAction(originalName, canonicalAlias, aliasRelationship(originalName, canonicalAlias), "merged", aliasReasonCode(originalName, canonicalAlias), requestedEntityType, true);
+    }
+    return resolutionAction(originalName, originalName, "none", "accepted", "unknown", requestedEntityType, false);
+  }
+
+  if (requestedEntityType === "software") {
+    const canonicalSoftware = canonicalSoftwareEntityName(originalName, query);
+    if (canonicalSoftware !== originalName) {
+      return resolutionAction(originalName, canonicalSoftware, "company_service", "merged", "canonicalized_entity", requestedEntityType, true);
+    }
+    if (granularity.kind === "brand" && /\b(crm|software|platform|tool|saas|suite)\b/.test(normalizeQuery(query))) {
+      return resolutionAction(originalName, originalName, "company_service", "downgraded", "wrong_entity_granularity", requestedEntityType, false);
+    }
+    return resolutionAction(originalName, originalName, "none", "accepted", "unknown", requestedEntityType, false);
+  }
+
+  if (requestedEntityType === "provider_service" || requestedEntityType === "platform") {
+    const canonicalProvider = canonicalProviderOrPlatformName(originalName, query);
+    if (canonicalProvider !== originalName) {
+      return resolutionAction(originalName, canonicalProvider, "company_service", "merged", "canonicalized_entity", requestedEntityType, true);
+    }
+    return resolutionAction(originalName, originalName, "none", "accepted", "unknown", requestedEntityType, false);
+  }
+
+  if (canonicalAlias !== originalName) {
+    return resolutionAction(originalName, canonicalAlias, aliasRelationship(originalName, canonicalAlias), "merged", aliasReasonCode(originalName, canonicalAlias), requestedEntityType, true);
+  }
+
+  return resolutionAction(originalName, originalName, "none", "accepted", "unknown", requestedEntityType, false);
+}
+
+function resolutionAction(
+  originalName: string,
+  canonicalName: string,
+  relationshipType: EntityResolutionAction["relationshipType"],
+  action: EntityResolutionAction["action"],
+  reasonCode: EntityResolutionAction["reasonCode"],
+  requestedEntityType: RequestedEntityType,
+  evidenceTransferred: boolean,
+  metadata?: Record<string, unknown>
+): EntityResolutionAction {
+  return {
+    originalName,
+    canonicalName,
+    relationshipType,
+    action,
+    reasonCode,
+    requestedEntityType,
+    evidenceTransferred,
+    metadata
+  };
+}
+
+function normalizedEntityName(name: string) {
+  return normalizeQuery(name)
+    .replace(/\b(?:inc|incorporated|corp|corporation|company|co|llc|ltd)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function canonicalAliasName(name: string, query: string, evidenceType: QueryEvidenceType) {
+  const normalized = normalizedEntityName(name);
+
+  if (!normalized) return name;
+
+  if (evidenceType === "software_tool") {
+    return canonicalSoftwareEntityName(name, query);
+  }
+
+  if (evidenceType === "provider_or_brand_recommendation" || evidenceType === "dominant_platform") {
+    return canonicalProviderOrPlatformName(name, query);
+  }
+
+  if (hasCorporateSuffix(name)) {
+    return titleCaseEntity(normalized);
+  }
+
+  return name;
+}
+
+function canonicalSoftwareEntityName(name: string, query: string) {
+  const normalized = normalizedEntityName(name);
+  const queryNormalized = normalizeQuery(query);
+
+  if (/\bsalesforce\b/.test(normalized) && /\bcrm\b/.test(normalizeQuery(query))) return "Salesforce CRM";
+  if (/\bgoogle workspace\b|\bg suite\b/.test(normalized)) return "Google Workspace";
+  if (/\bgoogle\b/.test(normalized) && /\b(workspace|office suite|productivity suite|email provider|email service|business email)\b/.test(queryNormalized)) return "Google Workspace";
+  if (/\bmicrosoft 365\b|\boffice 365\b/.test(normalized)) return "Microsoft 365";
+  if (/\bmicrosoft\b/.test(normalized) && /\b(office suite|productivity suite|email provider|email service|business email|cloud storage|spreadsheet|calendar)\b/.test(queryNormalized)) return "Microsoft 365";
+
+  const known = softwareCategoryForQuery(query)?.leaders.find((leader) => contenderMatchesPlatform(normalized, leader.aliases));
+  if (known) return known.label;
+
+  if (hasCorporateSuffix(name)) return titleCaseEntity(normalized);
+
+  return name;
+}
+
+function canonicalProviderOrPlatformName(name: string, query: string) {
+  const normalized = normalizedEntityName(name);
+  const queryNormalized = normalizeQuery(query);
+
+  if (/\bverizon fios\b/.test(normalized)) return "Verizon Fios";
+  if (/\bverizon\b/.test(normalized) && /\b(internet|isp|broadband|fiber|fios)\b/.test(queryNormalized)) return "Verizon Fios";
+  if (/\bgoogle workspace\b|\bg suite\b/.test(normalized)) return "Google Workspace";
+  if (/\bgoogle\b/.test(normalized) && /\b(workspace|office suite|email provider|business email)\b/.test(queryNormalized)) return "Google Workspace";
+  if (/\bmicrosoft 365\b|\boffice 365\b/.test(normalized)) return "Microsoft 365";
+  if (/\bmicrosoft\b/.test(normalized) && /\b(office suite|productivity suite|email provider|business email|cloud storage|spreadsheet|calendar)\b/.test(queryNormalized)) return "Microsoft 365";
+
+  if (hasCorporateSuffix(name)) return titleCaseEntity(normalized);
+
+  return name;
+}
+
+function hasCorporateSuffix(name: string) {
+  return /\b(?:inc|incorporated|corp|corporation|company|co|llc|ltd)\.?\b/i.test(name);
+}
+
+function entityGranularity(name: string, query: string, evidenceType: QueryEvidenceType): { kind: "brand" | "child_product" | "service" | "unknown"; parentName?: string } {
+  const normalized = normalizedEntityName(name);
+  const queryNormalized = normalizeQuery(query);
+  const productCategory = productCategoryForQuery(query)?.key ?? "";
+
+  const parent = parentBrandForChildName(normalized);
+  if (parent) return { kind: "child_product", parentName: parent };
+
+  if (evidenceType === "product_recommendation") {
+    if (isBroadBrandName(normalized) && /\b(laptop|notebook|phone|smartphone|router|headphones|camera|monitor|tv|television|luggage|suitcase|shoes|running shoes)\b/.test(queryNormalized)) {
+      return { kind: "brand" };
+    }
+    if (productCategory && normalized.includes(productCategory)) return { kind: "child_product" };
+  }
+
+  if (isBroadBrandName(normalized)) return { kind: "brand" };
+  if (/\b(fios|fiber|wireless|airlines?|bank|insurance|workspace|365|crm|cloud|suite)\b/.test(normalized)) return { kind: "service" };
+
+  return { kind: "unknown" };
+}
+
+function parentBrandForChildName(normalized: string) {
+  const familyParent = parentBrandForProductFamily(normalized);
+  if (familyParent) return familyParent;
+
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2) return null;
+
+  const brand = tokens[0];
+  if (!isBroadBrandName(brand)) return null;
+
+  const childTerms = tokens.slice(1).join(" ");
+  if (/\b(macbook|macbooks|laptop|laptops|iphone|ipad|watch|galaxy|pixel|surface|thinkpad|yoga|inspiron|xps|latitude|spectre|envy|elitebook|zenbook|vivobook|rog|predator|aspire|swift|gram|air|pro|max|plus|ultra|fios|workspace|365|office|crm)\b/.test(childTerms)) {
+    return titleCaseEntity(brand);
+  }
+
+  return null;
+}
+
+function parentBrandForProductFamily(normalized: string) {
+  if (/^(?:macbook|macbooks|macbook air|macbook pro|imac|iphone|ipad|apple laptops?)$/.test(normalized)) return "Apple";
+  if (/^(?:surface|surface laptop|surface pro|microsoft 365|office 365)$/.test(normalized)) return "Microsoft";
+  if (/^(?:pixel|chromebook|google workspace|g suite)$/.test(normalized)) return "Google";
+  if (/^(?:thinkpad|thinkpads|yoga)$/.test(normalized)) return "Lenovo";
+  if (/^(?:xps|inspiron|latitude)$/.test(normalized)) return "Dell";
+  if (/^(?:spectre|envy|elitebook|pavilion)$/.test(normalized)) return "HP";
+  if (/^(?:zenbook|vivobook|rog)$/.test(normalized)) return "ASUS";
+  if (/^(?:fios|verizon fios)$/.test(normalized)) return "Verizon";
+
+  return null;
+}
+
+function isBroadBrandName(normalized: string) {
+  return /^(?:apple|microsoft|google|salesforce|verizon|dell|hp|hewlett packard|lenovo|asus|acer|samsung|sony|lg|toshiba|msi|razer|framework|huawei|xiaomi|motorola|oneplus|netgear|eero|tp link|tplink|away|rimowa|travelpro|monos|tumi|briggs riley|nike|brooks|asics|hoka|new balance|adidas|canon|nikon|sony|fujifilm|panasonic|om system|toyota|honda|kia|hyundai|mazda|subaru|ford|chevrolet|tesla|bmw|mercedes|audi)$/.test(
+    normalized
+  );
+}
+
+function aliasRelationship(originalName: string, canonicalName: string): EntityResolutionAction["relationshipType"] {
+  if (originalName === canonicalName) return "exact_duplicate";
+  if (normalizedEntityName(originalName) === normalizedEntityName(canonicalName)) return "normalized_duplicate";
+  if (isAbbreviationVariant(originalName, canonicalName)) return "abbreviation";
+  return "canonical_variant";
+}
+
+function aliasReasonCode(originalName: string, canonicalName: string): EntityResolutionAction["reasonCode"] {
+  if (originalName === canonicalName) return "exact_duplicate";
+  if (normalizedEntityName(originalName) === normalizedEntityName(canonicalName)) return "normalized_duplicate";
+  if (isAbbreviationVariant(originalName, canonicalName)) return "alias_merge";
+  return "canonicalized_entity";
+}
+
+function isAbbreviationVariant(a: string, b: string) {
+  const normalizedA = normalizedEntityName(a);
+  const normalizedB = normalizedEntityName(b);
+  const acronymA = normalizedA.split(/\s+/).map((token) => token[0]).join("");
+  const acronymB = normalizedB.split(/\s+/).map((token) => token[0]).join("");
+  return normalizedA === acronymB || normalizedB === acronymA;
+}
+
+function titleCaseEntity(value: string) {
+  const special: Record<string, string> = {
+    hp: "HP",
+    lg: "LG",
+    asus: "ASUS",
+    crm: "CRM",
+    fios: "Fios",
+    macbook: "MacBook",
+    iphone: "iPhone",
+    ipad: "iPad",
+    tp: "TP"
+  };
+
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => special[token] ?? token.charAt(0).toUpperCase() + token.slice(1))
+    .join(" ")
+    .replace(/\bTp Link\b/g, "TP-Link")
+    .replace(/\bBriggs Riley\b/g, "Briggs & Riley");
+}
+
+async function aggregateSignals(
+  signals: SourceSignal[],
+  sources: VeraSource[],
+  query: string,
+  callCounts?: ExternalCallCounts,
+  diagnostics?: AnalyzeDiagnostics
+): Promise<StructuredConsensus> {
   const intendedCategory = inferIntendedCategory(query);
   const queryEvidenceType = inferQueryEvidenceType(query);
   const evidenceStrategy = evidenceStrategyFor(queryEvidenceType);
@@ -1337,8 +1920,15 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
     console.log("LOCAL_CANDIDATES_EXTRACTED", new Set(preValidationScoringSignals.map((signal) => localBusinessKey(signal.contenderName)).filter(Boolean)).size);
     console.log("LOCAL_CANDIDATES_AFTER_FILTERS", rankedLocalCandidateNames.length);
   }
+  const placesDiagnostics: PlacesValidationDiagnostics | undefined = diagnostics ? { outcomes: [] } : undefined;
   const scoringSignals =
-    queryEvidenceType === "local_recommendation" ? await validateLocalSignalsWithPlaces(query, preValidationScoringSignals, rankedLocalCandidateNames, callCounts) : preValidationScoringSignals;
+    queryEvidenceType === "local_recommendation"
+      ? await validateLocalSignalsWithPlaces(query, preValidationScoringSignals, rankedLocalCandidateNames, callCounts, placesDiagnostics)
+      : preValidationScoringSignals;
+  if (diagnostics && placesDiagnostics) {
+    diagnostics.placesValidationDiagnostics = placesDiagnostics;
+    diagnostics.entityValidationDiagnostics.push(...placesDiagnostics.outcomes);
+  }
   if (queryEvidenceType === "local_recommendation") {
     console.log(
       "LOCAL_VERIFIED_SIGNAL_AFTER_PLACES",
@@ -1353,7 +1943,8 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
         }))
     );
   }
-  const aggregationSignals = queryEvidenceType === "local_recommendation" ? mergeLocalBusinessSignalNames(scoringSignals) : scoringSignals;
+  const entityResolvedSignals = resolveSignalsForRequestedEntityLevel(query, queryEvidenceType, scoringSignals, diagnostics);
+  const aggregationSignals = queryEvidenceType === "local_recommendation" ? mergeLocalBusinessSignalNames(entityResolvedSignals) : entityResolvedSignals;
   const byName = new Map<string, SourceSignal[]>();
 
   for (const signal of aggregationSignals) {
@@ -1399,10 +1990,12 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
       : queryEvidenceType === "product_recommendation" && isBroadExploratoryQuery(query)
         ? contendersBeforeFiltering.filter((contender) => !isWeakBroadProductContender(contender, query))
         : contendersBeforeFiltering;
+  recordQualityCleanupDiagnostics(diagnostics, query, queryEvidenceType, contendersBeforeFiltering, qualityFilteredContenders, byName);
   const { contenders, removed } =
     queryEvidenceType === "destination_recommendation" || queryEvidenceType === "provider_or_brand_recommendation"
       ? { contenders: qualityFilteredContenders, removed: [] }
       : filterContendersByCategory(qualityFilteredContenders, intendedCategory);
+  recordCategoryCleanupDiagnostics(diagnostics, removed);
   const contenderNames = new Set(contenders.map((contender) => contender.name));
   const filteredSignals = aggregationSignals.filter((signal) => contenderNames.has(signal.contenderName));
   if (queryEvidenceType === "local_recommendation") {
@@ -1488,6 +2081,9 @@ async function aggregateSignals(signals: SourceSignal[], sources: VeraSource[], 
     (verifiedLocalContenders.length > 0 || hasValidCuisineSpecificLocalContenders)
       ? "split_consensus"
       : initialConsensusClassification;
+  if (diagnostics) {
+    diagnostics.classificationDecision = buildClassificationDecisionTrace(contenders, sources.length, queryEvidenceType, query, consensusClassification);
+  }
   if (queryEvidenceType === "local_recommendation") {
     console.log(
       "LOCAL_FINAL_VERIFIED_CONTENDERS",
@@ -5608,7 +6204,8 @@ function buildConsensus(
   query: string,
   sources: VeraSource[],
   intent: ConsensusResponse["intent"],
-  structuredConsensus: StructuredConsensus
+  structuredConsensus: StructuredConsensus,
+  diagnostics?: AnalyzeDiagnostics
 ): ConsensusResponse {
   const id = crypto.randomUUID();
   const normalizedQuery = normalizeQuery(query);
@@ -5617,8 +6214,8 @@ function buildConsensus(
     responseStructuredConsensus = sanitizeLiveDestinationStructuredConsensus(query, responseStructuredConsensus);
   }
   if (responseStructuredConsensus.queryEvidenceType === "local_recommendation") {
-    responseStructuredConsensus = sanitizeLiveLocalGeographyStructuredConsensus(query, responseStructuredConsensus);
-    responseStructuredConsensus = sanitizeLiveLocalCuisineStructuredConsensus(query, sources, responseStructuredConsensus);
+    responseStructuredConsensus = sanitizeLiveLocalGeographyStructuredConsensus(query, responseStructuredConsensus, diagnostics);
+    responseStructuredConsensus = sanitizeLiveLocalCuisineStructuredConsensus(query, sources, responseStructuredConsensus, diagnostics);
   }
   const mode = responseStructuredConsensus.consensusClassification;
   const contenders = mode === "no_reliable_consensus" ? [] : responseStructuredConsensus.contenders.slice(0, 5);
@@ -5680,13 +6277,25 @@ function firstVerifiedAddress(signals: SourceSignal[]) {
   return signals.map((signal) => signal.verifiedAddress?.trim()).find((address): address is string => Boolean(address));
 }
 
-function sanitizeLiveLocalGeographyStructuredConsensus(query: string, structuredConsensus: StructuredConsensus): StructuredConsensus {
+function sanitizeLiveLocalGeographyStructuredConsensus(query: string, structuredConsensus: StructuredConsensus, diagnostics?: AnalyzeDiagnostics): StructuredConsensus {
   const validContenders = structuredConsensus.contenders.filter((contender) => {
     const contenderSignals = structuredConsensus.signals.filter((signal) => signal.contenderName === contender.name);
     const incompatible = localContenderHasLongIslandIncompatibleEvidence(query, contender.name, contenderSignals);
     const locationNameRejection = localLocationAsContenderRejectionReason(query, contender.name, contenderSignals);
 
     if (incompatible) {
+      diagnostics?.cleanupDiagnostics.push({
+        contenderName: contender.name,
+        stage: "geography_cleanup",
+        reasonCode: "wrong_geography",
+        message: "Removed by existing final local geography cleanup.",
+        metadata: {
+          requestedLocation: "Long Island",
+          reason: "long_island_city_or_nyc_borough",
+          verifiedAddresses: contenderSignals.map((signal) => signal.verifiedAddress).filter(Boolean),
+          sourceTitles: contenderSignals.map((signal) => signal.sourceTitle).slice(0, 5)
+        }
+      });
       console.log("LOCAL_FINAL_UI_LOCATION_REJECTED", {
         candidate: contender.name,
         requestedLocation: "Long Island",
@@ -5697,6 +6306,17 @@ function sanitizeLiveLocalGeographyStructuredConsensus(query: string, structured
     }
 
     if (locationNameRejection) {
+      diagnostics?.cleanupDiagnostics.push({
+        contenderName: contender.name,
+        stage: "geography_cleanup",
+        reasonCode: "generic_entity",
+        message: "Removed by existing location-as-contender cleanup.",
+        metadata: {
+          reason: locationNameRejection,
+          verifiedAddresses: contenderSignals.map((signal) => signal.verifiedAddress).filter(Boolean),
+          sourceTitles: contenderSignals.map((signal) => signal.sourceTitle).slice(0, 5)
+        }
+      });
       console.log("LOCAL_LOCATION_AS_CONTENDER_REJECTED", {
         candidate: contender.name,
         reason: locationNameRejection,
@@ -5720,7 +6340,7 @@ function sanitizeLiveLocalGeographyStructuredConsensus(query: string, structured
   };
 }
 
-function sanitizeLiveLocalCuisineStructuredConsensus(query: string, sources: VeraSource[], structuredConsensus: StructuredConsensus): StructuredConsensus {
+function sanitizeLiveLocalCuisineStructuredConsensus(query: string, sources: VeraSource[], structuredConsensus: StructuredConsensus, diagnostics?: AnalyzeDiagnostics): StructuredConsensus {
   const intent = localSpecificIntentForQuery(query);
 
   if (!intent || !localSpecificIntentRequiresBusinessSpecificEvidence(intent)) {
@@ -5732,6 +6352,19 @@ function sanitizeLiveLocalCuisineStructuredConsensus(query: string, sources: Ver
     const valid = localCuisineContenderHasBusinessSpecificProof(query, contender.name, contenderSignals, sources);
 
     if (!valid) {
+      diagnostics?.cleanupDiagnostics.push({
+        contenderName: contender.name,
+        stage: "category_mismatch_cleanup",
+        reasonCode: "category_mismatch",
+        message: "Removed by existing final cuisine-specific cleanup.",
+        metadata: {
+          intent: intent.key,
+          reason: "missing_business_specific_cuisine_proof",
+          sourceTitles: contenderSignals.map((signal) => signal.sourceTitle).slice(0, 5),
+          placesTypes: contenderSignals.flatMap((signal) => signal.placesTypes ?? []),
+          verifiedAddresses: contenderSignals.map((signal) => signal.verifiedAddress).filter(Boolean)
+        }
+      });
       console.log("LOCAL_FINAL_UI_CUISINE_REJECTED", {
         candidate: contender.name,
         intent: intent.key,
@@ -6429,6 +7062,181 @@ function classifyLocalConsensus(contenders: ContenderMetrics[]): ConsensusMode {
     weightedGap >= 14;
 
   return overwhelming || significantlyStronger ? "strong_consensus" : "split_consensus";
+}
+
+function buildClassificationDecisionTrace(
+  contenders: ContenderMetrics[],
+  sourceCount: number,
+  evidenceType: QueryEvidenceType,
+  query: string,
+  finalClassification: ConsensusMode
+): ClassificationDecisionTrace {
+  const top = contenders[0];
+  const second = contenders[1];
+  const totalPositiveMentions = contenders.reduce((total, contender) => total + contender.positiveMentionCount, 0);
+  const positiveSourceCount = new Set(contenders.flatMap((contender) => (contender.positiveMentionCount > 0 ? contender.sourceUrls : []))).size;
+  const topScore = top ? consensusScore(top) : 0;
+  const secondScore = second ? consensusScore(second) : 0;
+  const gap = top && second ? topScore - secondScore : null;
+  const weightedGap = top && second ? round1(top.netWeightedScore - second.netWeightedScore) : null;
+  const local = evidenceType === "local_recommendation" ? localClassificationDecisionTrace(contenders, sourceCount, finalClassification) : null;
+
+  if (local) {
+    return local;
+  }
+
+  return {
+    classifier: "classifyFromMetrics",
+    selectedPath: classificationSelectedPath(finalClassification, {
+      sourceCount,
+      contenderCount: contenders.length,
+      totalPositiveMentions,
+      positiveSourceCount,
+      gap,
+      weightedGap,
+      topScore,
+      topSourceCount: top?.sourceCount ?? 0,
+      topSourceDiversityScore: top?.sourceDiversityScore ?? 0
+    }),
+    finalReasonCode: classificationReasonCode(finalClassification, {
+      sourceCount,
+      contenderCount: contenders.length,
+      totalPositiveMentions,
+      positiveSourceCount,
+      gap,
+      weightedGap
+    }),
+    finalClassification,
+    contenderCount: contenders.length,
+    sourceCount,
+    totalPositiveMentions,
+    positiveSourceCount,
+    sourceDiversity: top?.sourceDiversityScore,
+    leaderMargin: {
+      scoreGap: gap,
+      weightedGap
+    },
+    thresholds: { ...classificationThresholds },
+    evidenceCounts: {
+      evidenceType,
+      top: top?.name ?? null,
+      second: second?.name ?? null,
+      topScore,
+      secondScore,
+      topSourceCount: top?.sourceCount ?? 0,
+      topPositiveMentionCount: top?.positiveMentionCount ?? 0,
+      broadExploratoryProduct: evidenceType === "product_recommendation" && isBroadExploratoryQuery(query),
+      automotiveAvoidance: evidenceType === "product_recommendation" && isAutomotiveAvoidanceQuery(query)
+    }
+  };
+}
+
+function localClassificationDecisionTrace(contenders: ContenderMetrics[], sourceCount: number, finalClassification: ConsensusMode): ClassificationDecisionTrace {
+  const top = contenders[0];
+  const second = contenders[1];
+  const topScore = top ? consensusScore(top) : 0;
+  const secondScore = second ? consensusScore(second) : 0;
+  const scoreGap = top && second ? topScore - secondScore : null;
+  const weightedGap = top && second ? round1(top.netWeightedScore - second.netWeightedScore) : null;
+
+  return {
+    classifier: "classifyLocalConsensus",
+    selectedPath: finalClassification === "strong_consensus" ? "local_overwhelming_or_significantly_stronger" : finalClassification,
+    finalReasonCode:
+      contenders.length < 3
+        ? "local_contender_count_below_floor"
+        : !top || top.positiveMentionCount === 0
+          ? "local_top_positive_mentions_missing"
+          : finalClassification === "strong_consensus"
+            ? "local_leader_stronger"
+            : "local_split_or_thin_leader",
+    finalClassification,
+    contenderCount: contenders.length,
+    sourceCount,
+    totalPositiveMentions: contenders.reduce((total, contender) => total + contender.positiveMentionCount, 0),
+    positiveSourceCount: new Set(contenders.flatMap((contender) => (contender.positiveMentionCount > 0 ? contender.sourceUrls : []))).size,
+    sourceDiversity: top?.sourceDiversityScore,
+    leaderMargin: {
+      scoreGap,
+      weightedGap
+    },
+    thresholds: {
+      localMinimumContenders: 3,
+      overwhelmingSourceCount: 5,
+      overwhelmingSourceDiversity: 3,
+      overwhelmingPositiveMentionGap: 3,
+      overwhelmingScoreGap: 24,
+      overwhelmingWeightedGap: 10,
+      significantlyStrongerSourceCount: 3,
+      significantlyStrongerSourceDiversity: 2.4,
+      significantlyStrongerPositiveMentionGap: 2,
+      significantlyStrongerScoreGap: 18,
+      significantlyStrongerWeightedGap: 14
+    },
+    evidenceCounts: {
+      top: top?.name ?? null,
+      second: second?.name ?? null,
+      topScore,
+      secondScore,
+      topSourceCount: top?.sourceCount ?? 0,
+      topPositiveMentionCount: top?.positiveMentionCount ?? 0,
+      secondPositiveMentionCount: second?.positiveMentionCount ?? 0
+    }
+  };
+}
+
+function classificationSelectedPath(
+  finalClassification: ConsensusMode,
+  values: {
+    sourceCount: number;
+    contenderCount: number;
+    totalPositiveMentions: number;
+    positiveSourceCount: number;
+    gap: number | null;
+    weightedGap: number | null;
+    topScore: number;
+    topSourceCount: number;
+    topSourceDiversityScore: number;
+  }
+) {
+  if (finalClassification === "no_reliable_consensus") return "insufficient_reliable_evidence";
+  if (finalClassification === "split_consensus" && (values.gap === null || values.weightedGap === null)) return "split_or_single_thin_leader";
+  if (
+    finalClassification === "split_consensus" &&
+    (values.gap !== null && values.gap < classificationThresholds.splitGapPoints || values.weightedGap !== null && values.weightedGap < classificationThresholds.splitWeightedGap)
+  ) {
+    return "split_close_leader_margin";
+  }
+  if (finalClassification === "clear_consensus") return "clear_consensus_thresholds_met";
+  if (finalClassification === "strong_consensus") return "strong_consensus_thresholds_met";
+  if (finalClassification === "moderate_consensus") return "moderate_consensus_thresholds_met";
+
+  return "fallback_split_consensus";
+}
+
+function classificationReasonCode(
+  finalClassification: ConsensusMode,
+  values: {
+    sourceCount: number;
+    contenderCount: number;
+    totalPositiveMentions: number;
+    positiveSourceCount: number;
+    gap: number | null;
+    weightedGap: number | null;
+  }
+) {
+  if (finalClassification === "clear_consensus" || finalClassification === "strong_consensus" || finalClassification === "moderate_consensus") {
+    return finalClassification;
+  }
+
+  if (values.sourceCount < classificationThresholds.minimumSourceCount) return "source_count_below_floor";
+  if (values.contenderCount === 0) return "no_contenders";
+  if (values.totalPositiveMentions < classificationThresholds.minimumTotalPositiveMentions) return "positive_mentions_below_floor";
+  if (values.positiveSourceCount < classificationThresholds.minimumPositiveSourceCount) return "positive_sources_below_floor";
+  if (finalClassification === "split_consensus" && values.gap !== null && values.gap < classificationThresholds.splitGapPoints) return "score_gap_too_close";
+  if (finalClassification === "split_consensus" && values.weightedGap !== null && values.weightedGap < classificationThresholds.splitWeightedGap) return "weighted_gap_too_close";
+
+  return finalClassification;
 }
 
 function logConsensusDiagnostics(contenders: ContenderMetrics[], sourceCount: number, classification: ConsensusMode) {
