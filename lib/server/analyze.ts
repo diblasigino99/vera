@@ -6218,7 +6218,10 @@ function buildConsensus(
     responseStructuredConsensus = sanitizeLiveLocalCuisineStructuredConsensus(query, sources, responseStructuredConsensus, diagnostics);
   }
   const mode = responseStructuredConsensus.consensusClassification;
-  const contenders = mode === "no_reliable_consensus" ? [] : responseStructuredConsensus.contenders.slice(0, 5);
+  const contenders =
+    mode === "no_reliable_consensus"
+      ? noClearConsensusDisplayContenders(responseStructuredConsensus.contenders)
+      : responseStructuredConsensus.contenders.slice(0, 5);
   const createdAt = new Date().toISOString();
 
   return {
@@ -7396,7 +7399,7 @@ function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[
   const criteria = intent.optimizeFor.slice(0, 4);
 
   if (evidenceType === "local_recommendation" && mode === "no_reliable_consensus") {
-    return NO_RELIABLE_CONSENSUS_BODY;
+    return contenders.length ? noClearConsensusWithContendersExplanation(contenders) : NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (evidenceType === "local_recommendation" && mode === "split_consensus") {
@@ -7404,7 +7407,7 @@ function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[
   }
 
   if (evidenceType === "product_recommendation" && mode === "no_reliable_consensus" && isAutomotiveAvoidanceQuery(query)) {
-    return NO_RELIABLE_CONSENSUS_BODY;
+    return contenders.length ? noClearConsensusWithContendersExplanation(contenders) : NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (mode === "clear_consensus") {
@@ -7424,7 +7427,34 @@ function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[
     return `Several options are strongly recommended.${comparison} The best choice depends on ${criteriaPhrase(criteria)}.`;
   }
 
-  return NO_RELIABLE_CONSENSUS_BODY;
+  return contenders.length ? noClearConsensusWithContendersExplanation(contenders) : NO_RELIABLE_CONSENSUS_BODY;
+}
+
+function noClearConsensusWithContendersExplanation(contenders: ContenderMetrics[]) {
+  const names = naturalList(contenders.slice(0, 5).map((contender) => contender.name));
+  return `The available evidence does not support a single winner. Vera found recurring support for ${names}, but the evidence is not strong or consistent enough to confidently declare one best choice.`;
+}
+
+function noClearConsensusDisplayContenders(contenders: ContenderMetrics[]) {
+  const recurringContenders = contenders
+    .filter((contender) => {
+      const recurringSupport = contender.sourceCount >= 2 || contender.positiveMentionCount >= 2;
+      return (
+        recurringSupport &&
+        contender.positiveMentionCount > 0 &&
+        contender.netWeightedScore > 0 &&
+        contender.negativeMentionCount <= contender.positiveMentionCount
+      );
+    })
+    .slice(0, 5);
+
+  return recurringContenders.length >= 2 ? recurringContenders : [];
+}
+
+function naturalList(items: string[]) {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
 
 function confidenceReasoning(contenders: ContenderMetrics[], mode: ConsensusMode) {

@@ -76,7 +76,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
         <header>
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Backstage of the verdict</p>
           <h1 className="mt-5 text-5xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-6xl">
-            Why Vera trusts {result.name}
+            {consensus.mode === "no_reliable_consensus" ? `Why Vera surfaced ${result.name}` : `Why Vera trusts ${result.name}`}
           </h1>
           <p className="mt-6 max-w-3xl text-xl leading-9 text-[#3B3B42]">
             {buildContextParagraph(consensus, result)}
@@ -84,7 +84,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
           <div className="mt-7 flex flex-wrap items-center gap-3 text-sm text-[#73737C]">
             <span className="rounded-full border border-[#E8E8EC] bg-white px-3.5 py-2 font-medium text-[#111114] shadow-[0_6px_20px_rgba(17,17,20,0.035)]">
               {modeLabel[consensus.mode]}
-              {result.consensusPercentage ? ` · ${result.consensusPercentage}%` : ""}
+              {consensus.mode !== "no_reliable_consensus" && result.consensusPercentage ? ` · ${result.consensusPercentage}%` : ""}
             </span>
             <span>{sourceTypes.length ? `Based on ${sourceTypes.join(", ").toLowerCase()}.` : "Based on the stored source set."}</span>
             {consensus.mode !== "no_reliable_consensus" ? <span>{confidenceExplanationForMode(consensus.mode)}</span> : null}
@@ -125,7 +125,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
             )}
           </DetailSection>
 
-          <DetailSection eyebrow="Fit" title="Best for">
+          <DetailSection eyebrow="Fit" title={consensus.mode === "no_reliable_consensus" ? "When it might fit" : "Best for"}>
             <p className="max-w-3xl text-2xl font-medium leading-10 tracking-normal text-ink">
               {buildBestFor(consensus, result)}
             </p>
@@ -137,13 +137,16 @@ export default async function ResultPage({ params }: ResultPageProps) {
             intro="The useful part is the tradeoff: what each option is known for, and who it fits."
           >
             <div className="border-t border-[#ECECF0]">
-              {buildComparisons(result, contenders).map((comparison) => (
+              {buildComparisons(consensus, result, contenders).map((comparison) => (
                 <ComparisonRow comparison={comparison} key={comparison.name} />
               ))}
             </div>
           </DetailSection>
 
-          <DetailSection eyebrow="Why Vera trusts this" title="How strong the evidence is">
+          <DetailSection
+            eyebrow={consensus.mode === "no_reliable_consensus" ? "Why this appeared" : "Why Vera trusts this"}
+            title="How strong the evidence is"
+          >
             <div className="grid gap-8 border-t border-[#ECECF0] pt-5 sm:grid-cols-[0.8fr_1.2fr]">
               {trustFacts.length ? (
                 <div className="grid gap-4">
@@ -300,12 +303,13 @@ function buildTrustFacts(
 function buildContextParagraph(consensus: ConsensusResponse, result: ConsensusResult) {
   const query = consensus.query.replace(/\?+$/g, "");
   const reasons = naturalList(result.reasons.slice(0, 3).map((reason) => reason.toLowerCase()));
+  const action = consensus.mode === "no_reliable_consensus" ? "surfaced" : "trusts";
 
   if (reasons) {
-    return `For "${query}," Vera is looking one layer deeper at ${result.name}: where the support came from, what kept repeating, and why ${reasons} shaped the verdict.`;
+    return `For "${query}," Vera is looking one layer deeper at ${result.name}: where the support came from, what kept repeating, and why ${reasons} shaped the ${action === "surfaced" ? "evidence pattern" : "verdict"}.`;
   }
 
-  return `For "${query}," Vera is looking one layer deeper at ${result.name}: where the support came from, what repeated, and why it mattered.`;
+  return `For "${query}," Vera is looking one layer deeper at ${result.name}: where the support came from, what repeated, and why Vera ${action} it.`;
 }
 
 function SourceGroup({ title, sources }: { title: string; sources: VeraSource[] }) {
@@ -354,6 +358,10 @@ function buildConsensusStory(
     ? `People consistently point to ${themes}.`
     : "The same strengths appear repeatedly enough to make it worth considering.";
 
+  if (consensus.mode === "no_reliable_consensus") {
+    return `${recommendation} ${agreement} Vera surfaced it because it recurred in the available evidence, but the broader source pattern was not strong or consistent enough to declare a single winner.`;
+  }
+
   if (consensus.mode === "split_consensus" && contender) {
     return `${recommendation} ${agreement} However, ${contender.name} appears in the same conversation, which creates a split consensus rather than a clear winner.`;
   }
@@ -368,6 +376,18 @@ function buildConsensusStory(
 function buildBestFor(consensus: ConsensusResponse, result: ConsensusResult) {
   const strongestReason = result.reasons[0]?.toLowerCase();
   const priority = consensus.intent.optimizeFor[0]?.toLowerCase();
+
+  if (consensus.mode === "no_reliable_consensus") {
+    if (strongestReason) {
+      return `Worth comparing when ${strongestReason} matters, while remembering Vera did not find enough evidence to call it the winner.`;
+    }
+
+    if (priority) {
+      return `Worth comparing when ${priority} matters, while remembering Vera did not find enough evidence to call it the winner.`;
+    }
+
+    return "Useful to consider when you want to compare the recurring options without treating any one contender as the winner.";
+  }
 
   if (strongestReason && priority && !strongestReason.includes(priority)) {
     return `Best for someone who values ${strongestReason}, especially when ${priority} matters.`;
@@ -384,7 +404,7 @@ function buildBestFor(consensus: ConsensusResponse, result: ConsensusResult) {
   return "Best for users who want the option most consistently supported by the available sources.";
 }
 
-function buildComparisons(result: ConsensusResult, contenders: ConsensusResult[]) {
+function buildComparisons(consensus: ConsensusResponse, result: ConsensusResult, contenders: ConsensusResult[]) {
   const comparisons = [result, ...contenders.slice(0, 2)];
 
   return comparisons.map((item) => {
@@ -395,7 +415,7 @@ function buildComparisons(result: ConsensusResult, contenders: ConsensusResult[]
 
     return {
       name: item.name,
-      score: item.consensusPercentage,
+      score: consensus.mode === "no_reliable_consensus" ? undefined : item.consensusPercentage,
       knownFor: secondaryReason ? `Known for ${primaryReason} and ${secondaryReason}.` : `Known for ${primaryReason}.`,
       tradeoff: isSelected
         ? `Choose ${item.name} when ${primaryReason} is the deciding factor${metricComparison(item)}${downside ? `, while accepting that ${downside}` : ""}.`
@@ -523,6 +543,10 @@ function buildConfidenceExplanation(consensus: ConsensusResponse, result: Consen
 
   if (consensus.mode === "split_consensus") {
     return `${confidenceExplanationForMode(consensus.mode)} This is a tradeoff decision, not a runaway winner.`;
+  }
+
+  if (consensus.mode === "no_reliable_consensus") {
+    return `${result.name} appeared in the available evidence, but Vera did not find enough consistent support to treat it as the winner.`;
   }
 
   return NO_RELIABLE_CONSENSUS_BODY;

@@ -628,10 +628,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
           tavilyMs: tavilyElapsedMs,
           openAiMs: openAIElapsedMs
         });
-        return NextResponse.json({
-          ...stale,
-          explanation: stale.mode === "no_reliable_consensus" ? NO_RELIABLE_CONSENSUS_BODY : stale.explanation
-        });
+        return NextResponse.json(withHelpfulNoConsensusCopy(stale, body.data.query, evidenceType, queryIntent));
       }
     }
 
@@ -770,10 +767,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
           cacheMs: cacheElapsedMs,
           error: error instanceof Error ? error.message : String(error)
         });
-        return NextResponse.json({
-          ...stale,
-          explanation: stale.explanation || "Vera found prior local evidence while the latest search was temporarily unavailable."
-        });
+        return NextResponse.json(withHelpfulNoConsensusCopy(stale, body.data.query, evidenceType, queryIntent));
       }
     }
 
@@ -1123,8 +1117,21 @@ function withHelpfulNoConsensusCopy(
 
   return {
     ...consensus,
-    explanation: noConsensusExplanationForQuery(query, evidenceType, queryIntent)
+    explanation: consensus.results.length
+      ? noClearConsensusWithContendersExplanation(consensus)
+      : noConsensusExplanationForQuery(query, evidenceType, queryIntent)
   };
+}
+
+function noClearConsensusWithContendersExplanation(consensus: ConsensusResponse) {
+  const names = naturalList(consensus.results.slice(0, 5).map((result) => result.name));
+  return `The available evidence does not support a single winner. Vera found recurring support for ${names}, but the evidence is not strong or consistent enough to confidently declare one best choice.`;
+}
+
+function naturalList(items: string[]) {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 }
 
 function noConsensusExplanationForQuery(query: string, evidenceType: ReturnType<typeof inferQueryEvidenceType>, queryIntent: ReturnType<typeof inferQueryIntent>) {

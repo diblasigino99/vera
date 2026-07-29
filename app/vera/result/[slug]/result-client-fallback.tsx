@@ -84,13 +84,13 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
         <header>
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Backstage of the verdict</p>
           <h1 className="mt-5 text-5xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-6xl">
-            Why Vera trusts {result.name}
+            {consensus.mode === "no_reliable_consensus" ? `Why Vera surfaced ${result.name}` : `Why Vera trusts ${result.name}`}
           </h1>
           <p className="mt-6 max-w-3xl text-xl leading-9 text-[#3B3B42]">{buildContextParagraph(consensus, result)}</p>
           <div className="mt-7 flex flex-wrap items-center gap-3 text-sm text-[#73737C]">
             <span className="rounded-full border border-[#E8E8EC] bg-white px-3.5 py-2 font-medium text-[#111114] shadow-[0_6px_20px_rgba(17,17,20,0.035)]">
               {modeLabel[consensus.mode]}
-              {result.consensusPercentage ? ` · ${result.consensusPercentage}%` : ""}
+              {consensus.mode !== "no_reliable_consensus" && result.consensusPercentage ? ` · ${result.consensusPercentage}%` : ""}
             </span>
             <span>{sourceTypes.length ? `Based on ${sourceTypes.join(", ").toLowerCase()}.` : "Based on the stored source set."}</span>
             {consensus.mode !== "no_reliable_consensus" ? <span>{confidenceExplanationForMode(consensus.mode)}</span> : null}
@@ -99,7 +99,10 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
         </header>
 
         <div className="mt-14 grid gap-14">
-          <DetailBlock eyebrow="Why Vera believes this" title="The evidence behind the verdict">
+          <DetailBlock
+            eyebrow={consensus.mode === "no_reliable_consensus" ? "Why this appeared" : "Why Vera believes this"}
+            title="The evidence behind the verdict"
+          >
             <p className="max-w-3xl text-xl leading-9 text-[#3B3B42]">
               {buildFallbackStory(consensus, result, contenders, sourceTypes)}
             </p>
@@ -127,7 +130,7 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
             )}
           </DetailBlock>
 
-          <DetailBlock eyebrow="Best for" title="Best for">
+          <DetailBlock eyebrow="Best for" title={consensus.mode === "no_reliable_consensus" ? "When it might fit" : "Best for"}>
             <p className="max-w-3xl text-2xl font-medium leading-10 tracking-normal text-ink">{buildBestFor(consensus, result)}</p>
           </DetailBlock>
 
@@ -135,13 +138,21 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
             <DetailBlock eyebrow="How it compares" title="Compared with other contenders">
               <div className="border-t border-[#ECECF0]">
                 {[result, ...contenders.slice(0, 2)].map((item) => (
-                  <ComparisonRow item={item} selected={item.id === result.id} key={item.id} />
+                  <ComparisonRow
+                    item={item}
+                    selected={item.id === result.id}
+                    showConsensusScore={consensus.mode !== "no_reliable_consensus"}
+                    key={item.id}
+                  />
                 ))}
               </div>
             </DetailBlock>
           ) : null}
 
-          <DetailBlock eyebrow="Why Vera trusts this" title="How strong the evidence is">
+          <DetailBlock
+            eyebrow={consensus.mode === "no_reliable_consensus" ? "Why this appeared" : "Why Vera trusts this"}
+            title="How strong the evidence is"
+          >
             <div className="grid gap-8 border-t border-[#ECECF0] pt-5 sm:grid-cols-[0.8fr_1.2fr]">
               <div className="grid gap-4">
                 {buildTrustFacts(result, sources, sourceTypes).map((fact) => (
@@ -190,7 +201,7 @@ function EvidenceRow({ reason, result }: { reason: string; result: ConsensusResu
   );
 }
 
-function ComparisonRow({ item, selected }: { item: ConsensusResult; selected: boolean }) {
+function ComparisonRow({ item, selected, showConsensusScore }: { item: ConsensusResult; selected: boolean; showConsensusScore: boolean }) {
   const primaryReason = item.reasons[0]?.toLowerCase() ?? "its recurring strengths";
 
   return (
@@ -198,7 +209,7 @@ function ComparisonRow({ item, selected }: { item: ConsensusResult; selected: bo
       <div className="grid gap-3 sm:grid-cols-[0.38fr_0.62fr]">
         <div>
           <h3 className="text-xl font-semibold tracking-normal text-ink">{item.name}</h3>
-          {item.consensusPercentage ? <p className="mt-2 text-sm font-medium text-muted">{item.consensusPercentage}% consensus</p> : null}
+          {showConsensusScore && item.consensusPercentage ? <p className="mt-2 text-sm font-medium text-muted">{item.consensusPercentage}% consensus</p> : null}
         </div>
         <div>
           <p className="leading-7 text-graphite">
@@ -239,12 +250,13 @@ function SourceGroup({ title, sources }: { title: string; sources: VeraSource[] 
 function buildContextParagraph(consensus: ConsensusResponse, result: ConsensusResult) {
   const query = consensus.query.replace(/\?+$/g, "");
   const reasons = naturalList(result.reasons.slice(0, 3).map((reason) => reason.toLowerCase()));
+  const action = consensus.mode === "no_reliable_consensus" ? "surfaced" : "trusts";
 
   if (reasons) {
-    return `For "${query}," Vera is looking one layer deeper at ${result.name}: where the support came from, what kept repeating, and why ${reasons} shaped the verdict.`;
+    return `For "${query}," Vera is looking one layer deeper at ${result.name}: where the support came from, what kept repeating, and why ${reasons} shaped the ${action === "surfaced" ? "evidence pattern" : "verdict"}.`;
   }
 
-  return `For "${query}," Vera is looking one layer deeper at ${result.name}: where the support came from, what repeated, and why it mattered.`;
+  return `For "${query}," Vera is looking one layer deeper at ${result.name}: where the support came from, what repeated, and why Vera ${action} it.`;
 }
 
 function buildFallbackStory(
@@ -257,6 +269,10 @@ function buildFallbackStory(
   const sourceIntro = sourceTypes.length ? `Across ${sourceTypes.join(", ").toLowerCase()}` : "Across the available sources";
   const contender = contenders[0];
 
+  if (consensus.mode === "no_reliable_consensus") {
+    return `${sourceIntro}, ${result.name} appeared as a recurring recommendation. People point to ${themes || "the same recurring strengths"}, but the broader source pattern was not strong or consistent enough for Vera to declare one winner.`;
+  }
+
   if (consensus.mode === "split_consensus" && contender) {
     return `${sourceIntro}, ${result.name} appears as a serious recommendation. People point to ${themes || "the same recurring strengths"}, but ${contender.name} appears in the same conversation, so Vera treats this as divided rather than settled.`;
   }
@@ -267,6 +283,18 @@ function buildFallbackStory(
 function buildBestFor(consensus: ConsensusResponse, result: ConsensusResult) {
   const strongestReason = result.reasons[0]?.toLowerCase();
   const priority = consensus.intent.optimizeFor[0]?.toLowerCase();
+
+  if (consensus.mode === "no_reliable_consensus") {
+    if (strongestReason) {
+      return `Worth comparing when ${strongestReason} matters, while remembering Vera did not find enough evidence to call it the winner.`;
+    }
+
+    if (priority) {
+      return `Worth comparing when ${priority} matters, while remembering Vera did not find enough evidence to call it the winner.`;
+    }
+
+    return "Useful to consider when you want to compare the recurring options without treating any one contender as the winner.";
+  }
 
   if (strongestReason && priority && !strongestReason.includes(priority)) {
     return `Best for someone who values ${strongestReason}, especially when ${priority} matters.`;
@@ -301,6 +329,10 @@ function buildTrustFacts(result: ConsensusResult, sources: VeraSource[], sourceT
 }
 
 function buildConfidenceExplanation(consensus: ConsensusResponse, result: ConsensusResult, sourceCount: number) {
+  if (consensus.mode === "no_reliable_consensus") {
+    return `${result.name} appeared in the available evidence, but Vera did not find enough consistent support to treat it as the winner.`;
+  }
+
   if (result.metrics) {
     return editorializeTrustCopy(
       `${result.name} appeared in ${result.metrics.positiveMentionCount} supporting recommendation${result.metrics.positiveMentionCount === 1 ? "" : "s"} across ${result.metrics.sourceCount} source${result.metrics.sourceCount === 1 ? "" : "s"}. ${confidenceExplanationForMode(consensus.mode)}`

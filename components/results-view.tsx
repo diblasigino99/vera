@@ -282,7 +282,7 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
               {alternatives.length ? (
                 <section>
                   <p className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">
-                    {hasWinner ? "Other Strong Contenders" : "Strongest Contenders"}
+                    {contenderSectionLabel(result.mode, hasWinner)}
                   </p>
                   <div className={cn("grid gap-4", !hasWinner ? "sm:grid-cols-2" : "")}>
                     {alternatives.map((item) => (
@@ -360,7 +360,7 @@ function buildEditorialVerdict(result: ConsensusResponse, winner?: ConsensusResp
   }
 
   if (result.mode === "no_reliable_consensus") {
-    return "The internet doesn't agree.";
+    return NO_RELIABLE_CONSENSUS_TITLE;
   }
 
   if (!winner) {
@@ -382,7 +382,9 @@ function buildEditorialExplanation(result: ConsensusResponse, winner?: Consensus
   const explanation = result.explanation || winner?.summary || "";
 
   if (result.mode === "no_reliable_consensus") {
-    return NO_RELIABLE_CONSENSUS_BODY;
+    return result.results.length
+      ? "The available evidence does not support a single winner. Vera is showing the recurring contenders it found without declaring one best choice."
+      : NO_RELIABLE_CONSENSUS_BODY;
   }
 
   if (result.mode === "split_consensus") {
@@ -464,6 +466,10 @@ function SourceList({ quiet = false, sources, title }: { quiet?: boolean; source
 
 function buildRankingExplanation(result: ConsensusResponse) {
   if (result.mode === "no_reliable_consensus") {
+    if (result.results.length) {
+      return "Vera found recurring contenders, but not enough consistent evidence to call one option the clear winner.";
+    }
+
     return NO_RELIABLE_CONSENSUS_BODY;
   }
 
@@ -522,7 +528,22 @@ function buildDecisionBullets(result: ConsensusResponse) {
     ];
   }
 
+  if (result.results.length) {
+    return [
+      analyzed,
+      "Recurring contenders appeared in the available evidence.",
+      "The evidence was not strong or consistent enough to declare a single winner."
+    ];
+  }
+
   return NO_RELIABLE_CONSENSUS_BODY.split("\n\n");
+}
+
+function contenderSectionLabel(mode: ConsensusResponse["mode"], hasWinner: boolean) {
+  if (hasWinner) return "Other Strong Contenders";
+  if (mode === "split_consensus") return "Leading Contenders";
+  if (mode === "no_reliable_consensus") return "Most Frequently Recommended";
+  return "Strongest Contenders";
 }
 
 function buildEvidenceSummary(result: ConsensusResponse) {
