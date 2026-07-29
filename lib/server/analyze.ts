@@ -1739,22 +1739,24 @@ export function localSubtypeProofForRegression(
   query: string,
   contenderName: string,
   placesTypes: string[],
-  options: {
-    positiveEvidence?: boolean;
-    verifiedAddress?: string;
-    sourceTitle?: string;
-    sourceSnippet?: string;
-  } = {}
-) {
+	  options: {
+	    positiveEvidence?: boolean;
+	    verifiedAddress?: string;
+	    sourceTitle?: string;
+	    sourceSnippet?: string;
+	    businessStatus?: string;
+	  } = {}
+	) {
   const positiveEvidence = options.positiveEvidence ?? true;
   const signal = {
     ...regressionSourceSignal(contenderName, 0, "local_recommendation"),
     verifiedAddress: options.verifiedAddress ?? "284 Grand St, Brooklyn, NY 11211, USA",
     placesTypes,
-    placesCategoryConfidence: 1,
-    placesLocationConfidence: 1,
-    placesVerified: true
-  };
+	    placesCategoryConfidence: 1,
+	    placesLocationConfidence: 1,
+	    placesVerified: true,
+	    ...(options.businessStatus ? { placesBusinessStatus: options.businessStatus } : {})
+	  };
   const signals = positiveEvidence ? [signal] : [];
   const sources = positiveEvidence
     ? [
@@ -2538,14 +2540,14 @@ async function aggregateSignals(
       ? contenders.filter((contender) => localCandidateHasVerifiedPlacesEvidence(query, byName.get(contender.name) ?? []))
       : [];
   const specificLocalIntent = queryEvidenceType === "local_recommendation" ? localSpecificIntentForQuery(query) : null;
-  const hasValidCuisineSpecificLocalContenders =
-    Boolean(specificLocalIntent && localSpecificIntentRequiresBusinessSpecificEvidence(specificLocalIntent)) && contenders.length > 0;
-  const consensusClassification =
-    queryEvidenceType === "local_recommendation" &&
-    initialConsensusClassification === "no_reliable_consensus" &&
-    (verifiedLocalContenders.length > 0 || hasValidCuisineSpecificLocalContenders)
-      ? "split_consensus"
-      : initialConsensusClassification;
+	  const hasValidCuisineSpecificLocalContenders =
+	    Boolean(specificLocalIntent && localSpecificIntentRequiresBusinessSpecificEvidence(specificLocalIntent)) && contenders.length >= 2;
+	  const consensusClassification =
+	    queryEvidenceType === "local_recommendation" &&
+	    initialConsensusClassification === "no_reliable_consensus" &&
+	    (verifiedLocalContenders.length >= 2 || hasValidCuisineSpecificLocalContenders)
+	      ? "split_consensus"
+	      : initialConsensusClassification;
   if (diagnostics) {
     diagnostics.classificationDecision = buildClassificationDecisionTrace(contenders, sources.length, queryEvidenceType, query, consensusClassification);
   }
@@ -3580,9 +3582,10 @@ function localCandidateDiscoveryRejectionReason(query: string, contender: Conten
   const verifiedByPlaces = localCandidateHasVerifiedPlacesEvidence(query, signals);
   const universalRejection = localUniversalEntityRejectionReason(query, contender.name, { signals });
 
-  if (!signals.length) return "no_source_evidence";
-  if (verifiedByPlaces && !specificIntentEvidence.intent) return null;
-  if (universalRejection) return universalRejection;
+	  if (!signals.length) return "no_source_evidence";
+	  if (signals.some((signal) => localPlacesBusinessStatusRejectsActiveRecommendation(signal.placesBusinessStatus))) return "business_not_operational";
+	  if (verifiedByPlaces && !specificIntentEvidence.intent) return null;
+	  if (universalRejection) return universalRejection;
   if (!name || !looksLikeNamedPlace(name)) return "not_business_name";
   if (isGenericLocalContender(query, name) || isGenericLocalContender(query, contender.name)) return "generic_or_non_business";
   if (isLocalCandidateControlText(normalizedName)) return "page_control_or_generic_text";
@@ -3613,11 +3616,16 @@ function localCandidateHasVerifiedPlacesEvidence(query: string, signals: SourceS
   return signals.some(
     (signal) =>
       signal.placesVerified &&
+      !localPlacesBusinessStatusRejectsActiveRecommendation(signal.placesBusinessStatus) &&
       Boolean(signal.verifiedAddress) &&
       (signal.placesLocationConfidence ?? 0) >= 0.25 &&
       (signal.placesCategoryConfidence ?? 0) >= 0.2 &&
       localCandidateHasLocationEvidence(query, signal.contenderName, [signal])
   );
+}
+
+function localPlacesBusinessStatusRejectsActiveRecommendation(status?: string) {
+  return status === "CLOSED_PERMANENTLY" || status === "CLOSED_TEMPORARILY";
 }
 
 type LocalUniversalEntityValidationContext = {
@@ -6694,7 +6702,7 @@ function buildConsensus(
       : responseStructuredConsensus.contenders.slice(0, 5);
   const createdAt = new Date().toISOString();
 
-  return {
+  return enforceDisplayableSplitConsensusInvariant({
     id,
     query,
     normalizedQuery,
@@ -6710,6 +6718,30 @@ function buildConsensus(
     structuredConsensus: responseStructuredConsensus,
     createdAt,
     cached: false
+  });
+}
+
+export function enforceDisplayableSplitConsensusInvariant(consensus: ConsensusResponse): ConsensusResponse {
+  if (consensus.mode !== "split_consensus" || consensus.results.length >= 2) {
+    return consensus;
+  }
+
+  const structuredConsensus = consensus.structuredConsensus
+    ? {
+        ...consensus.structuredConsensus,
+        consensusClassification: "no_reliable_consensus" as const,
+        winner: undefined
+      }
+    : consensus.structuredConsensus;
+
+  return {
+    ...consensus,
+    mode: "no_reliable_consensus",
+    headline: NO_RELIABLE_CONSENSUS_TITLE,
+    explanation: consensus.results.length
+      ? "The available evidence does not support a split or single winning consensus. Vera is showing the valid contender it found with positive evidence, without treating it as a consensus pick."
+      : NO_RELIABLE_CONSENSUS_BODY,
+    structuredConsensus
   };
 }
 
@@ -6802,7 +6834,12 @@ function sanitizeLiveLocalGeographyStructuredConsensus(query: string, structured
   });
   const validNames = new Set(validContenders.map((contender) => contender.name));
   const signals = structuredConsensus.signals.filter((signal) => validNames.has(signal.contenderName));
-  const consensusClassification = validContenders.length > 0 ? (structuredConsensus.consensusClassification === "no_reliable_consensus" ? "split_consensus" : structuredConsensus.consensusClassification) : "no_reliable_consensus";
+  const consensusClassification =
+    validContenders.length === 0
+      ? "no_reliable_consensus"
+      : structuredConsensus.consensusClassification === "no_reliable_consensus" && validContenders.length >= 2
+        ? "split_consensus"
+        : structuredConsensus.consensusClassification;
 
   return {
     ...structuredConsensus,
@@ -6852,7 +6889,12 @@ function sanitizeLiveLocalCuisineStructuredConsensus(query: string, sources: Ver
   });
   const validNames = new Set(validContenders.map((contender) => contender.name));
   const signals = structuredConsensus.signals.filter((signal) => validNames.has(signal.contenderName));
-  const consensusClassification = validContenders.length > 0 ? (structuredConsensus.consensusClassification === "no_reliable_consensus" ? "split_consensus" : structuredConsensus.consensusClassification) : "no_reliable_consensus";
+  const consensusClassification =
+    validContenders.length === 0
+      ? "no_reliable_consensus"
+      : structuredConsensus.consensusClassification === "no_reliable_consensus" && validContenders.length >= 2
+        ? "split_consensus"
+        : structuredConsensus.consensusClassification;
 
   console.log(
     "LOCAL_FINAL_CUISINE_CONTENDERS",
@@ -6937,6 +6979,7 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
     .filter((result) => !localUniversalEntityRejectionReason(consensus.query, result.name))
     .filter((result) => cachedLocalResultPassesLocationIntent(consensus.query, result))
     .filter((result) => cachedLocalResultPassesSpecificIntent(consensus.query, result))
+    .filter((result) => cachedLocalResultPassesOperationalStatus(consensus, result))
     .map((result, index) => ({
       ...result,
       rank: index + 1,
@@ -6946,7 +6989,7 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
 
   const specificLocalIntent = localSpecificIntentForQuery(consensus.query);
   const hasValidCuisineSpecificLocalResults =
-    Boolean(specificLocalIntent && localSpecificIntentRequiresBusinessSpecificEvidence(specificLocalIntent)) && cleanResults.length > 0;
+    Boolean(specificLocalIntent && localSpecificIntentRequiresBusinessSpecificEvidence(specificLocalIntent)) && cleanResults.length >= 2;
 
   if (cleanResults.length < 3 && !cleanResults.some((result) => Boolean(result.verifiedAddress)) && !hasValidCuisineSpecificLocalResults) {
     return {
@@ -6968,7 +7011,7 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
 
   const sanitizedMode = consensus.mode === "no_reliable_consensus" && hasValidCuisineSpecificLocalResults ? "split_consensus" : consensus.mode;
 
-  return {
+  return enforceDisplayableSplitConsensusInvariant({
     ...consensus,
     mode: sanitizedMode,
     headline: sanitizedMode !== consensus.mode ? "The internet is divided." : consensus.headline,
@@ -6984,7 +7027,24 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
           winner: cleanResults[0]?.name ?? consensus.structuredConsensus.winner
         }
       : consensus.structuredConsensus
-  };
+  });
+}
+
+function cachedLocalResultPassesOperationalStatus(consensus: ConsensusResponse, result: ConsensusResponse["results"][number]) {
+  const signals = consensus.structuredConsensus?.signals.filter((signal) => signal.contenderName === result.name) ?? [];
+  const statuses = signals.map((signal) => signal.placesBusinessStatus).filter((status): status is string => Boolean(status));
+  const closedStatus = statuses.find(localPlacesBusinessStatusRejectsActiveRecommendation);
+
+  if (!closedStatus) {
+    return true;
+  }
+
+  console.log("LOCAL_CLOSED_BUSINESS_REJECTED", {
+    candidate: result.name,
+    businessStatus: closedStatus,
+    stage: "cached_local_result_cleanup"
+  });
+  return false;
 }
 
 function cachedLocalResultPassesLocationIntent(query: string, result: ConsensusResponse["results"][number]) {

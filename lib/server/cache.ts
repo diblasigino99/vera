@@ -1,7 +1,7 @@
 import type { ConsensusResponse, ProfileSnapshot } from "@/lib/types";
 import { canonicalizeQuery, inferQueryEvidenceType, inferQueryIntent, normalizeQuery } from "@/lib/utils";
 import { getSupabaseAdmin, getSupabaseConfigSnapshot } from "@/lib/server/supabase";
-import { sanitizeCachedLocalConsensus } from "@/lib/server/analyze";
+import { enforceDisplayableSplitConsensusInvariant, sanitizeCachedLocalConsensus } from "@/lib/server/analyze";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
@@ -10,7 +10,7 @@ const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
 const localCacheVersion = 76;
-const localRecommendationCacheVersion = 93;
+const localRecommendationCacheVersion = 94;
 const destinationRecommendationCacheVersion = 89;
 const negativeIntentCacheVersion = 78;
 const providerOrBrandCacheVersion = 81;
@@ -112,7 +112,7 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
     const supabaseHit = await getSupabaseCachedConsensus(canonicalQuery, normalizedQuery, cacheVersion, callCounts);
 
     if (supabaseHit) {
-      const sanitizedHit = sanitizeCachedLocalConsensus(supabaseHit);
+      const sanitizedHit = enforceDisplayableSplitConsensusInvariant(sanitizeCachedLocalConsensus(supabaseHit));
       memorySearches.set(normalizedQuery, sanitizedHit);
       memorySearches.set(canonicalQuery, sanitizedHit);
       console.log("[vera:cache] cache hit", {
@@ -155,14 +155,14 @@ export async function getCachedConsensus(query: string, callCounts?: ExternalCal
       store: "memory",
       searchId: local.id
     });
-    return { ...sanitizeCachedLocalConsensus(local), cached: true };
+    return { ...enforceDisplayableSplitConsensusInvariant(sanitizeCachedLocalConsensus(local)), cached: true };
   }
 
   const localFileCache = await readLocalCache();
   const localFileHit = localFileCache[canonicalQuery] ?? localFileCache[normalizedQuery];
 
   if (localFileHit?.result && localFileHit.cache_version === cacheVersion) {
-    const sanitizedHit = sanitizeCachedLocalConsensus(localFileHit.result);
+    const sanitizedHit = enforceDisplayableSplitConsensusInvariant(sanitizeCachedLocalConsensus(localFileHit.result));
     memorySearches.set(normalizedQuery, sanitizedHit);
     memorySearches.set(canonicalQuery, sanitizedHit);
     console.log("CACHE_HIT_TYPE", localFileCache[canonicalQuery] ? "canonical" : "normalized");
@@ -211,7 +211,7 @@ export async function getStaleCachedConsensus(query: string, callCounts?: Extern
       searchId: local.id,
       cacheVersion: local.cacheVersion ?? null
     });
-    return { ...sanitizeCachedLocalConsensus(local), cached: true };
+    return { ...enforceDisplayableSplitConsensusInvariant(sanitizeCachedLocalConsensus(local)), cached: true };
   }
 
   const localFileCache = await readLocalCache();
@@ -230,7 +230,7 @@ export async function getStaleCachedConsensus(query: string, callCounts?: Extern
       return null;
     }
 
-    const sanitizedHit = sanitizeCachedLocalConsensus(localFileHit.result);
+    const sanitizedHit = enforceDisplayableSplitConsensusInvariant(sanitizeCachedLocalConsensus(localFileHit.result));
     memorySearches.set(normalizedQuery, sanitizedHit);
     memorySearches.set(canonicalQuery, sanitizedHit);
     console.log("[vera:cache] stale cache hit", {
@@ -310,7 +310,7 @@ export async function getStaleCachedConsensus(query: string, callCounts?: Extern
     searchId: hit.id,
     cacheVersion: row?.cache_version ?? hit.cacheVersion ?? null
   });
-  return { ...sanitizeCachedLocalConsensus(hit), cached: true };
+  return { ...enforceDisplayableSplitConsensusInvariant(sanitizeCachedLocalConsensus(hit)), cached: true };
 }
 
 export async function getConsensusById(searchId: string) {
@@ -325,7 +325,7 @@ export async function getConsensusById(searchId: string) {
 
   if (localFileHit?.result) {
     memorySearches.set(localFileHit.result.normalizedQuery, localFileHit.result);
-    return sanitizeCachedLocalConsensus(localFileHit.result);
+    return enforceDisplayableSplitConsensusInvariant(sanitizeCachedLocalConsensus(localFileHit.result));
   }
 
   const supabase = getSupabaseAdmin();
@@ -344,7 +344,7 @@ export async function getConsensusById(searchId: string) {
     const legacyResult = legacy.data?.result as ConsensusResponse | undefined;
 
     if (!legacy.error && legacyResult) {
-      return sanitizeCachedLocalConsensus(legacyResult);
+      return enforceDisplayableSplitConsensusInvariant(sanitizeCachedLocalConsensus(legacyResult));
     }
 
     return null;
@@ -356,18 +356,18 @@ export async function getConsensusById(searchId: string) {
     return null;
   }
 
-  return sanitizeCachedLocalConsensus(result);
+  return enforceDisplayableSplitConsensusInvariant(sanitizeCachedLocalConsensus(result));
 }
 
 export async function cacheConsensus(consensus: ConsensusResponse, callCounts?: ExternalCallCounts) {
   const canonicalQuery = consensus.canonicalQuery ?? canonicalizeQuery(consensus.query);
   const cacheVersion = cacheVersionForQuery(consensus.query);
-  let versionedConsensus: ConsensusResponse = {
+  let versionedConsensus: ConsensusResponse = enforceDisplayableSplitConsensusInvariant({
     ...consensus,
     canonicalQuery,
     cacheVersion,
     sources: annotateSources(consensus)
-  };
+  });
 
   const supabase = getSupabaseAdmin();
   if (supabase) {
@@ -679,12 +679,12 @@ function consensusFromSupabaseRow(row?: SupabaseSearchCacheRow | null): Consensu
     return null;
   }
 
-  return sanitizeCachedLocalConsensus({
+  return enforceDisplayableSplitConsensusInvariant(sanitizeCachedLocalConsensus({
     ...result,
     canonicalQuery: row.canonical_query ?? result.canonicalQuery,
     cacheVersion: row.cache_version ?? result.cacheVersion,
     sources: row.sources_json ?? result.sources
-  } satisfies ConsensusResponse);
+  } satisfies ConsensusResponse));
 }
 
 export async function getSavedState(actorId: string, searchId: string, resultId?: string) {

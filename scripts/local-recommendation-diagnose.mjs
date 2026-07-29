@@ -145,6 +145,7 @@ async function runQuery(query) {
         rejectionReason: item.rejectionReason,
         verifiedAddress: item.verifiedAddress,
         types: item.types,
+        businessStatus: item.businessStatus,
         categoryConfidence: item.categoryConfidence,
         locationConfidence: item.locationConfidence,
         overallConfidence: item.overallConfidence

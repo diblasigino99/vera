@@ -73,6 +73,7 @@ export type SourceSignal = {
   placesCategoryConfidence?: number;
   placesLocationConfidence?: number;
   placesVerified?: boolean;
+  placesBusinessStatus?: string;
 };
 
 export type ThemeMetric = {

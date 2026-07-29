@@ -242,6 +242,19 @@ export async function validateLocalSignalsWithPlaces(
       return [];
     }
 
+    if (placesBusinessStatusRejectsActiveRecommendation(validation.businessStatus)) {
+      rejectedSignals += 1;
+      recordPlacesClosedBusinessDiagnostic(diagnostics, signal, validation);
+      console.log("PLACES_REJECTED", {
+        candidate: signal.contenderName,
+        reason: "business_not_operational",
+        businessStatus: validation.businessStatus,
+        canonicalName: validation.canonicalName ?? null,
+        verifiedAddress: validation.formattedAddress ?? null
+      });
+      return [];
+    }
+
     const canonicalName = validation.canonicalName;
     const shouldCanonicalize =
       canonicalName && canonicalName !== signal.contenderName && (validation.status === "verified" || validation.nameConfidence >= 0.65);
@@ -252,7 +265,8 @@ export async function validateLocalSignalsWithPlaces(
       placesTypes: validation.types ?? [],
       placesCategoryConfidence: validation.categoryConfidence,
       placesLocationConfidence: validation.locationConfidence,
-      placesVerified: true
+      placesVerified: true,
+      ...(validation.businessStatus ? { placesBusinessStatus: validation.businessStatus } : {})
     };
 
     if (!shouldCanonicalize) {
@@ -441,6 +455,26 @@ function recordPlacesValidationFailureDiagnostic(diagnostics: PlacesValidationDi
   });
 }
 
+function recordPlacesClosedBusinessDiagnostic(diagnostics: PlacesValidationDiagnostics | undefined, signal: SourceSignal, validation: PlacesValidation) {
+  if (!diagnostics) return;
+
+  diagnostics.outcomes.push({
+    status: "rejected",
+    reasonCode: "stale_or_unavailable",
+    canonicalName: validation.canonicalName,
+    originalName: signal.contenderName,
+    validator: "google_places_business_status",
+    sourceUrl: signal.sourceUrl,
+    metadata: {
+      businessStatus: validation.businessStatus,
+      formattedAddress: validation.formattedAddress,
+      types: validation.types,
+      sourceTitle: signal.sourceTitle,
+      domain: signal.domain
+    }
+  });
+}
+
 function recordPlacesUnattemptedDiagnostic(diagnostics: PlacesValidationDiagnostics | undefined, signal: SourceSignal) {
   if (!diagnostics) return;
 
@@ -459,6 +493,7 @@ function recordPlacesUnattemptedDiagnostic(diagnostics: PlacesValidationDiagnost
 }
 
 function placesReasonCode(validation: PlacesValidation): DiscardReasonCode {
+  if (placesBusinessStatusRejectsActiveRecommendation(validation.businessStatus)) return "stale_or_unavailable";
   if (validation.status === "verified") return "unknown";
 
   const reason = validation.rejectionReason ?? "";
@@ -469,6 +504,10 @@ function placesReasonCode(validation: PlacesValidation): DiscardReasonCode {
   if (/confidence/i.test(reason)) return "insufficient_evidence";
 
   return validation.status === "downgraded" ? "insufficient_evidence" : "unknown";
+}
+
+function placesBusinessStatusRejectsActiveRecommendation(status?: string) {
+  return status === "CLOSED_PERMANENTLY" || status === "CLOSED_TEMPORARILY";
 }
 
 function localPlacesSignalEvidenceText(signal: SourceSignal) {
@@ -655,11 +694,12 @@ async function validateCandidateWithPlaces(query: string, inputName: string, api
       rejectionReason: memoryHit.rejectionReason ?? null,
       verifiedAddress: memoryHit.formattedAddress ?? null,
       types: memoryHit.types ?? [],
-      categoryConfidence: memoryHit.categoryConfidence,
-      locationConfidence: memoryHit.locationConfidence,
-      overallConfidence: memoryHit.overallConfidence,
-      cache: "memory"
-    });
+	      categoryConfidence: memoryHit.categoryConfidence,
+	      locationConfidence: memoryHit.locationConfidence,
+	      overallConfidence: memoryHit.overallConfidence,
+	      businessStatus: memoryHit.businessStatus ?? null,
+	      cache: "memory"
+	    });
     if (callCounts) callCounts.placesCacheHits += 1;
     return memoryHit;
   }
@@ -681,11 +721,12 @@ async function validateCandidateWithPlaces(query: string, inputName: string, api
       rejectionReason: cached.rejectionReason ?? null,
       verifiedAddress: cached.formattedAddress ?? null,
       types: cached.types ?? [],
-      categoryConfidence: cached.categoryConfidence,
-      locationConfidence: cached.locationConfidence,
-      overallConfidence: cached.overallConfidence,
-      cache: "persistent"
-    });
+	      categoryConfidence: cached.categoryConfidence,
+	      locationConfidence: cached.locationConfidence,
+	      overallConfidence: cached.overallConfidence,
+	      businessStatus: cached.businessStatus ?? null,
+	      cache: "persistent"
+	    });
     if (callCounts) callCounts.placesCacheHits += 1;
     return cached;
   }
@@ -765,6 +806,7 @@ async function fetchPlacesValidation(query: string, inputName: string, apiKey: s
       categoryConfidence: validation.categoryConfidence,
       locationConfidence: validation.locationConfidence,
       overallConfidence: validation.overallConfidence,
+      businessStatus: validation.businessStatus ?? null,
       durationMs: Date.now() - startedAt
     });
     console.log("PLACES_VALIDATION_RESULT", {
@@ -778,7 +820,8 @@ async function fetchPlacesValidation(query: string, inputName: string, apiKey: s
       types: validation.types ?? [],
       categoryConfidence: validation.categoryConfidence,
       locationConfidence: validation.locationConfidence,
-      overallConfidence: validation.overallConfidence
+      overallConfidence: validation.overallConfidence,
+      businessStatus: validation.businessStatus ?? null
     });
 
     return validation;

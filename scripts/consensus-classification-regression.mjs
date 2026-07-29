@@ -18,10 +18,12 @@ Module._resolveFilename = function resolveAlias(request, parent, isMain, options
 const jiti = (await import("jiti")).default(process.cwd() + "/");
 const {
   buildProductFallbackConsensus,
+  enforceDisplayableSplitConsensusInvariant,
   filterCompatibleEntityNamesForRegression,
   localSubtypeProofForRegression,
   preserveEvidenceBackedProductContendersForRegression,
   resolveEntityNamesForRegression,
+  sanitizeCachedLocalConsensus,
   selectNoReliableConsensusDisplayContendersForRegression
 } = jiti("./lib/server/analyze.ts");
 const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
@@ -51,6 +53,79 @@ function contender(name, { positives = 1, negatives = 0, sourceUrls = [], qualit
     sourceTypes: ["editorial"],
     themeCounts: [],
     sourceUrls
+  };
+}
+
+function consensusFixture({ mode = "split_consensus", results = [], contenders = null, signals = [], query = "best local option" } = {}) {
+  const structuredContenders = contenders ?? results.map((result) => result.metrics);
+
+  return {
+    id: "regression-consensus",
+    query,
+    normalizedQuery: query.toLowerCase(),
+    canonicalQuery: query.toLowerCase(),
+    mode,
+    headline: mode === "split_consensus" ? "The internet is divided." : "No Clear Consensus",
+    explanation: "Regression fixture",
+    intent: {
+      category: "Decision",
+      constraints: [],
+      optimizeFor: [],
+      avoid: []
+    },
+    results,
+    sources: [
+      {
+        title: "Regression source",
+        url: "regression://source",
+        domain: "regression"
+      }
+    ],
+    structuredConsensus: {
+      intendedCategory: "restaurant",
+      queryEvidenceType: "local_recommendation",
+      evidenceStrategy: "regression",
+      contenders: structuredContenders,
+      mentionCounts: {},
+      themeCounts: {},
+      sourceBreakdown: {
+        reddit: 0,
+        forum: 0,
+        review_site: 0,
+        editorial: 1,
+        local_guide: 0,
+        professional_review: 0,
+        official: 0,
+        other: 0
+      },
+      confidenceReasoning: "regression",
+      consensusClassification: mode,
+      signals
+    },
+    createdAt: "2026-01-01T00:00:00.000Z",
+    cached: false
+  };
+}
+
+function resultFromContender(item, index = 0) {
+  return {
+    id: `${item.name.toLowerCase().replace(/\s+/g, "-")}-${index + 1}`,
+    rank: index + 1,
+    name: item.name,
+    consensusPercentage: 10,
+    summary: "Regression contender with positive evidence.",
+    reasons: ["Recurring recommendation"],
+    downsides: [],
+    evidence: ["Positive attributed evidence."],
+    sources: [
+      {
+        title: "Regression source",
+        url: item.sourceUrls[0] ?? "regression://source",
+        domain: "regression"
+      }
+    ],
+    metrics: item,
+    verifiedAddress: "284 Grand St, Brooklyn, NY 11211, USA"
   };
 }
 
@@ -342,6 +417,83 @@ assert.deepEqual(noteTakingCompatibility.compatibleNames.sort(), ["GoodNotes", "
 
 console.log(JSON.stringify({ requestedEntityTypeCompatibility: { aiCodingCompatibility, noteTakingCompatibility } }, null, 2));
 
+const splitTwoContenders = [contender("Antica Pesa", { sourceUrls: ["regression://1"] }), contender("I Cavallini", { sourceUrls: ["regression://2"] })];
+const splitTwoResults = enforceDisplayableSplitConsensusInvariant(
+  consensusFixture({
+    results: splitTwoContenders.map(resultFromContender),
+    contenders: splitTwoContenders
+  })
+);
+assert.equal(splitTwoResults.mode, "split_consensus", "Split consensus with 2+ displayable contenders should remain split consensus");
+assert.equal(splitTwoResults.results.length, 2, "Split consensus with 2+ displayable contenders should preserve both contenders");
+
+const singleSplitContender = contender("Antica Pesa", { sourceUrls: ["regression://1"] });
+const splitOneResult = enforceDisplayableSplitConsensusInvariant(
+  consensusFixture({
+    results: [resultFromContender(singleSplitContender)],
+    contenders: [singleSplitContender]
+  })
+);
+assert.equal(splitOneResult.mode, "no_reliable_consensus", "Split consensus with exactly 1 displayable contender should become no reliable consensus");
+assert.deepEqual(splitOneResult.results.map((result) => result.name), ["Antica Pesa"], "One valid surviving contender should remain displayable");
+assert.equal(
+  selectNoReliableConsensusDisplayContendersForRegression([singleSplitContender]).contenders.length,
+  1,
+  "No reliable consensus fallback can display the surviving evidence-backed contender"
+);
+
+const splitZeroResult = enforceDisplayableSplitConsensusInvariant(consensusFixture({ results: [], contenders: [] }));
+assert.equal(splitZeroResult.mode, "no_reliable_consensus", "Split consensus with 0 displayable contenders should become no reliable consensus");
+assert.equal(splitZeroResult.results.length, 0, "Zero-result split invariant should not invent contenders");
+
+const cachedSingleSplit = sanitizeCachedLocalConsensus(
+  consensusFixture({
+    query: "best restaurant in williamsburg",
+    results: [resultFromContender(singleSplitContender)],
+    contenders: [singleSplitContender],
+    signals: [
+      {
+        sourceUrl: "regression://1",
+        sourceTitle: "Regression source",
+        domain: "regression",
+        sourceType: "editorial",
+        sourceWeight: 1,
+        sourceQuality: "high",
+        sourceQualityWeight: 1,
+        contenderName: "Antica Pesa",
+        sentiment: "positive",
+        mentionStrength: "moderate",
+        positiveMention: "Positive attributed evidence.",
+        extractedReason: "Regression",
+        themes: ["verified business"],
+        verifiedAddress: "115 Berry St, Brooklyn, NY 11249, USA",
+        placesTypes: ["italian_restaurant"],
+        placesCategoryConfidence: 1,
+        placesLocationConfidence: 1,
+        placesVerified: true
+      }
+    ]
+  })
+);
+assert.equal(cachedSingleSplit.mode, "no_reliable_consensus", "Cached/sanitized split consensus with 1 result should obey the invariant");
+assert.equal(cachedSingleSplit.results.length, 1, "Cached invariant should preserve the valid surviving result");
+
+console.log(
+  JSON.stringify(
+    {
+      splitConsensusDisplayInvariant: {
+        twoResultMode: splitTwoResults.mode,
+        oneResultMode: splitOneResult.mode,
+        oneResultNames: splitOneResult.results.map((result) => result.name),
+        zeroResultMode: splitZeroResult.mode,
+        cachedOneResultMode: cachedSingleSplit.mode
+      }
+    },
+    null,
+    2
+  )
+);
+
 const italianSubtypeProof = localSubtypeProofForRegression(
   "best italian restaurant in williamsburg",
   "Oregano",
@@ -426,6 +578,91 @@ const wrongCuisineSubtypeProof = localSubtypeProofForRegression(
 assert.equal(wrongCuisineSubtypeProof.subtypeProof, false, "Wrong cuisine subtype should not satisfy Italian subtype proof");
 assert.equal(wrongCuisineSubtypeProof.discoveryPasses, false, "Wrong cuisine subtype should still be rejected for cuisine-specific local queries");
 
+const operationalBusinessStatus = localSubtypeProofForRegression(
+  "best italian restaurant in williamsburg",
+  "Oregano",
+  ["italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    businessStatus: "OPERATIONAL",
+    verifiedAddress: "102 Berry St, Williamsburg, Brooklyn, NY 11211, USA",
+    sourceTitle: "Williamsburg restaurant recommendations",
+    sourceSnippet: "Oregano is a frequent local pick."
+  }
+);
+assert.equal(operationalBusinessStatus.discoveryPasses, true, "OPERATIONAL businesses should remain eligible when evidence and validation pass");
+
+const missingBusinessStatus = localSubtypeProofForRegression(
+  "best italian restaurant in williamsburg",
+  "Oregano",
+  ["italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    verifiedAddress: "102 Berry St, Williamsburg, Brooklyn, NY 11211, USA",
+    sourceTitle: "Williamsburg restaurant recommendations",
+    sourceSnippet: "Oregano is a frequent local pick."
+  }
+);
+assert.equal(missingBusinessStatus.discoveryPasses, true, "Missing Places business status should preserve existing behavior");
+
+const temporarilyClosedBusinessStatus = localSubtypeProofForRegression(
+  "best italian restaurant in williamsburg",
+  "Oregano",
+  ["italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    businessStatus: "CLOSED_TEMPORARILY",
+    verifiedAddress: "102 Berry St, Williamsburg, Brooklyn, NY 11211, USA",
+    sourceTitle: "Williamsburg restaurant recommendations",
+    sourceSnippet: "Oregano is a frequent local pick."
+  }
+);
+assert.equal(temporarilyClosedBusinessStatus.discoveryPasses, false, "CLOSED_TEMPORARILY businesses should be rejected from active recommendations");
+
+const permanentlyClosedBusinessStatus = localSubtypeProofForRegression(
+  "best italian restaurant in williamsburg",
+  "Oregano",
+  ["italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    businessStatus: "CLOSED_PERMANENTLY",
+    verifiedAddress: "102 Berry St, Williamsburg, Brooklyn, NY 11211, USA",
+    sourceTitle: "Williamsburg restaurant recommendations",
+    sourceSnippet: "Oregano is a frequent local pick."
+  }
+);
+assert.equal(permanentlyClosedBusinessStatus.discoveryPasses, false, "CLOSED_PERMANENTLY businesses should be rejected from active recommendations");
+
+const closedContender = contender("Antica Pesa", { sourceUrls: ["regression://closed"] });
+const closedRemovedSplit = sanitizeCachedLocalConsensus(
+  consensusFixture({
+    query: "best restaurant in williamsburg",
+    results: [resultFromContender(closedContender)],
+    contenders: [closedContender],
+    signals: [
+      {
+        sourceUrl: "regression://closed",
+        sourceTitle: "Regression source",
+        domain: "regression",
+        sourceType: "editorial",
+        sourceWeight: 1,
+        sourceQuality: "high",
+        sourceQualityWeight: 1,
+        contenderName: "Antica Pesa",
+        sentiment: "positive",
+        mentionStrength: "moderate",
+        positiveMention: "Positive attributed evidence.",
+        extractedReason: "Regression",
+        themes: ["verified business"],
+        verifiedAddress: "115 Berry St, Brooklyn, NY 11249, USA",
+        placesTypes: ["italian_restaurant"],
+        placesCategoryConfidence: 1,
+        placesLocationConfidence: 1,
+        placesVerified: true,
+        placesBusinessStatus: "CLOSED_TEMPORARILY"
+      }
+    ]
+  })
+);
+assert.equal(closedRemovedSplit.mode, "no_reliable_consensus", "Closed-status cleanup should not leave a one-result split consensus");
+assert.equal(closedRemovedSplit.results.length, 0, "Closed local businesses should be removed from active recommendation results");
+
 console.log(
   JSON.stringify(
     {
@@ -436,7 +673,15 @@ console.log(
         dentistSubtypeProtection,
         longIslandLeakageProtection,
         noPositiveEvidenceSubtypeProof,
-        wrongCuisineSubtypeProof
+        wrongCuisineSubtypeProof,
+        operationalBusinessStatus,
+        missingBusinessStatus,
+        temporarilyClosedBusinessStatus,
+        permanentlyClosedBusinessStatus,
+        closedRemovedSplit: {
+          mode: closedRemovedSplit.mode,
+          resultCount: closedRemovedSplit.results.length
+        }
       }
     },
     null,
