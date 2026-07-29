@@ -25,6 +25,7 @@ const {
   localSubtypeProofForRegression,
   productOpinionAggregationScopeForRegression,
   preserveEvidenceBackedProductContendersForRegression,
+  recoverDestinationSignalsForRegression,
   resolveEntityNamesForRegression,
   resolveProductEntitySignalsForRegression,
   sanitizeCachedLocalConsensus,
@@ -1588,6 +1589,91 @@ for (const validSpanishCityCandidate of ["Barcelona", "Madrid", "Seville", "Gran
   assert.equal(proof.accepted, true, `${validSpanishCityCandidate} should remain eligible as a contextual Spanish city candidate`);
   assert.equal(proof.requiresMultipleSources, true, `${validSpanishCityCandidate} should still require repeated contextual evidence`);
 }
+
+function destinationSignalFixture(source, contenderName, reason = `${contenderName} is recommended in a Spain city guide.`) {
+  return {
+    sourceUrl: source.url,
+    sourceTitle: source.title,
+    domain: source.domain,
+    sourceType: "editorial",
+    sourceWeight: 1.8,
+    sourceQuality: "high",
+    sourceQualityWeight: 1,
+    queryVariant: source.queryVariant,
+    contenderName,
+    sentiment: "positive",
+    mentionStrength: "moderate",
+    positiveMention: reason,
+    extractedReason: reason,
+    themes: ["destination recommendation"]
+  };
+}
+
+const bonTravelerValencia = sourceFixture(
+  "bontraveler.com",
+  "best-cities-spain",
+  "15 Best Beautiful Cities in Spain to Visit",
+  "A visit to Valencia is a chance to try famous paella in a thriving food city."
+);
+const rickStevesValencia = sourceFixture(
+  "community.ricksteves.com",
+  "travel-forum/spain-reviews/spain-what-cities-are-a-must",
+  "Spain what cities are a must",
+  "Recommended cities to visit in Spain include Valencia for food, culture, and a different pace from Madrid."
+);
+const openAIValenciaSignal = destinationSignalFixture(
+  bonTravelerValencia,
+  "Valencia",
+  "Valencia is a thriving food city in a best cities in Spain guide."
+);
+const crossPathValenciaRecovery = recoverDestinationSignalsForRegression(
+  "best city to visit in spain",
+  [bonTravelerValencia, rickStevesValencia],
+  [openAIValenciaSignal]
+);
+assert.deepEqual(
+  crossPathValenciaRecovery.map((signal) => signal.contenderName),
+  ["Valencia"],
+  "One OpenAI Valencia source plus one independent deterministic Valencia source should satisfy repeated-contextual recovery"
+);
+assert.deepEqual(
+  new Set([openAIValenciaSignal.sourceUrl, ...crossPathValenciaRecovery.map((signal) => signal.sourceUrl)]).size,
+  2,
+  "Cross-path destination support should come from two independent source URLs"
+);
+
+const duplicateUrlValenciaRecovery = recoverDestinationSignalsForRegression(
+  "best city to visit in spain",
+  [bonTravelerValencia],
+  [openAIValenciaSignal]
+);
+assert.equal(duplicateUrlValenciaRecovery.length, 0, "The same URL detected by both OpenAI and recovery must not count twice");
+assert.equal(
+  recoverDestinationSignalsForRegression("best city to visit in spain", [rickStevesValencia], []).length,
+  0,
+  "One deterministic recovery source alone should remain insufficient for repeated-contextual city proof"
+);
+assert.equal(
+  recoverDestinationSignalsForRegression("best city to visit in spain", [bonTravelerValencia], [openAIValenciaSignal]).length,
+  0,
+  "One OpenAI source alone should remain insufficient when no independent recovery source supports the city"
+);
+assert.equal(
+  recoverDestinationSignalsForRegression(
+    "best city to visit in spain",
+    [
+      sourceFixture(
+        "example.com",
+        "spain-page",
+        "Spain travel notes",
+        "Valencia appears in a navigation footer with no city recommendation context."
+      )
+    ],
+    [openAIValenciaSignal]
+  ).length,
+  0,
+  "Weak/plain destination name presence should not combine into repeated-contextual proof"
+);
 
 const spanishCityRecoveryContenders = destinationContendersFromSources("best city to visit in spain", [
   {

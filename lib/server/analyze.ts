@@ -1570,9 +1570,36 @@ function normalizeSignals(query: string, payload: SignalPayload, sources: VeraSo
 }
 
 function recoverDestinationSignalsFromSources(query: string, sources: VeraSource[], existingSignals: SourceSignal[]) {
-  const existingBySource = new Set(existingSignals.map((signal) => `${signal.sourceUrl}::${normalizeQuery(canonicalDestinationName(signal.contenderName))}`));
+  const sourceByUrl = new Map(sources.map((source) => [source.url, source]));
+  const existingBySource = new Set(existingSignals.map((signal) => `${destinationEvidenceSourceKey(signal.sourceUrl)}::${normalizeQuery(canonicalDestinationName(signal.contenderName))}`));
   const recovered: SourceSignal[] = [];
-  const repeatedContextualCandidates = new Map<string, Array<{ source: VeraSource; contenderName: string; proofPath: string }>>();
+  const repeatedContextualCandidates = new Map<
+    string,
+    Array<{ source: VeraSource; contenderName: string; proofPath: string; existingSignal: boolean }>
+  >();
+
+  for (const signal of existingSignals) {
+    const source = sourceByUrl.get(signal.sourceUrl);
+    const proof = destinationCandidateProof(query, signal.contenderName, [
+      signal.sourceTitle,
+      signal.positiveMention ?? "",
+      signal.negativeMention ?? "",
+      signal.extractedReason
+    ]);
+    const contenderName = proof.canonicalName;
+
+    if (!source || !proof.accepted || !proof.requiresMultipleSources || isGenericDestinationContender(query, contenderName)) {
+      continue;
+    }
+
+    const existing = repeatedContextualCandidates.get(normalizeQuery(contenderName)) ?? [];
+    const sourceKey = destinationEvidenceSourceKey(source.url);
+
+    if (!existing.some((item) => destinationEvidenceSourceKey(item.source.url) === sourceKey)) {
+      existing.push({ source, contenderName, proofPath: proof.proofPath ?? "repeated_contextual", existingSignal: true });
+      repeatedContextualCandidates.set(normalizeQuery(contenderName), existing);
+    }
+  }
 
   for (const source of sources) {
     const text = `${source.title}. ${source.snippet ?? ""}`;
@@ -1584,7 +1611,7 @@ function recoverDestinationSignalsFromSources(query: string, sources: VeraSource
     for (const candidate of extractDestinationCandidatesFromText(text)) {
       const proof = destinationCandidateProof(query, candidate, [source.title, source.snippet ?? ""]);
       const contenderName = proof.canonicalName;
-      const key = `${source.url}::${normalizeQuery(contenderName)}`;
+      const key = `${destinationEvidenceSourceKey(source.url)}::${normalizeQuery(contenderName)}`;
 
       if (!proof.accepted || existingBySource.has(key) || isGenericDestinationContender(query, contenderName) || isRejectableContenderName(contenderName, "destination_recommendation", source, text)) {
         continue;
@@ -1593,8 +1620,8 @@ function recoverDestinationSignalsFromSources(query: string, sources: VeraSource
       if (proof.requiresMultipleSources) {
         const existing = repeatedContextualCandidates.get(normalizeQuery(contenderName)) ?? [];
 
-        if (!existing.some((item) => item.source.url === source.url)) {
-          existing.push({ source, contenderName, proofPath: proof.proofPath ?? "repeated_contextual" });
+        if (!existing.some((item) => destinationEvidenceSourceKey(item.source.url) === destinationEvidenceSourceKey(source.url))) {
+          existing.push({ source, contenderName, proofPath: proof.proofPath ?? "repeated_contextual", existingSignal: false });
           repeatedContextualCandidates.set(normalizeQuery(contenderName), existing);
         }
         continue;
@@ -1606,14 +1633,14 @@ function recoverDestinationSignalsFromSources(query: string, sources: VeraSource
   }
 
   for (const occurrences of repeatedContextualCandidates.values()) {
-    if (new Set(occurrences.map((item) => item.source.url)).size < 2) {
+    if (new Set(occurrences.map((item) => destinationEvidenceSourceKey(item.source.url))).size < 2) {
       continue;
     }
 
     for (const occurrence of occurrences) {
-      const key = `${occurrence.source.url}::${normalizeQuery(occurrence.contenderName)}`;
+      const key = `${destinationEvidenceSourceKey(occurrence.source.url)}::${normalizeQuery(occurrence.contenderName)}`;
 
-      if (existingBySource.has(key)) {
+      if (occurrence.existingSignal || existingBySource.has(key)) {
         continue;
       }
 
@@ -1634,6 +1661,19 @@ function recoverDestinationSignalsFromSources(query: string, sources: VeraSource
   }
 
   return recovered;
+}
+
+function destinationEvidenceSourceKey(url: string) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.origin}${parsed.pathname.replace(/\/+$/, "")}`.toLowerCase();
+  } catch {
+    return normalizeQuery(url);
+  }
+}
+
+export function recoverDestinationSignalsForRegression(query: string, sources: VeraSource[], existingSignals: SourceSignal[]) {
+  return recoverDestinationSignalsFromSources(query, sources, existingSignals);
 }
 
 function destinationRecoverySignal(source: VeraSource, contenderName: string, proofPath: string): SourceSignal {
