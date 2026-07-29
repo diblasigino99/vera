@@ -19,6 +19,7 @@ const jiti = (await import("jiti")).default(process.cwd() + "/");
 const {
   buildProductFallbackConsensus,
   filterCompatibleEntityNamesForRegression,
+  localSubtypeProofForRegression,
   preserveEvidenceBackedProductContendersForRegression,
   resolveEntityNamesForRegression,
   selectNoReliableConsensusDisplayContendersForRegression
@@ -340,6 +341,108 @@ const noteTakingCompatibility = filterCompatibleEntityNamesForRegression("best n
 assert.deepEqual(noteTakingCompatibility.compatibleNames.sort(), ["GoodNotes", "Notion", "Obsidian"].sort(), "Working software app contenders should remain compatible");
 
 console.log(JSON.stringify({ requestedEntityTypeCompatibility: { aiCodingCompatibility, noteTakingCompatibility } }, null, 2));
+
+const italianSubtypeProof = localSubtypeProofForRegression(
+  "best italian restaurant in williamsburg",
+  "Oregano",
+  ["italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    verifiedAddress: "102 Berry St, Williamsburg, Brooklyn, NY 11211, USA",
+    sourceTitle: "Williamsburg restaurant recommendations",
+    sourceSnippet: "Oregano is a frequent local pick."
+  }
+);
+assert.equal(
+  italianSubtypeProof.subtypeProof,
+  true,
+  "Places italian_restaurant type should satisfy Italian subtype proof when positive attributed evidence exists"
+);
+assert.equal(italianSubtypeProof.discoveryPasses, true, "Italian subtype proof should keep a verified evidence-backed local contender discoverable");
+
+const sushiSubtypeProof = localSubtypeProofForRegression(
+  "best sushi in brooklyn",
+  "Sushi Katsuei",
+  ["sushi_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Brooklyn sushi recommendations",
+    sourceSnippet: "Sushi Katsuei appears in local recommendations."
+  }
+);
+assert.equal(sushiSubtypeProof.subtypeProof, true, "Places sushi_restaurant type should satisfy sushi subtype proof");
+assert.equal(sushiSubtypeProof.discoveryPasses, true, "Sushi subtype proof should keep a verified evidence-backed local contender discoverable");
+
+const coffeeSubtypeProtection = localSubtypeProofForRegression(
+  "best coffee shop in brooklyn",
+  "Coffee Check",
+  ["coffee_shop", "cafe", "food_store", "store", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Brooklyn coffee shop recommendations",
+    sourceSnippet: "Coffee Check appears in local recommendations."
+  }
+);
+assert.equal(coffeeSubtypeProtection.discoveryPasses, true, "Existing coffee shop subtype behavior should remain protected");
+
+const dentistSubtypeProtection = localSubtypeProofForRegression(
+  "best dentist in austin",
+  "High Point Dentistry",
+  ["dentist", "dental_clinic", "health", "point_of_interest", "establishment"],
+  {
+    verifiedAddress: "2719 E 7th St, Austin, TX 78702, USA",
+    sourceTitle: "Austin dentist recommendations",
+    sourceSnippet: "High Point Dentistry appears in local recommendations."
+  }
+);
+assert.equal(dentistSubtypeProtection.discoveryPasses, true, "Existing dentist behavior should remain protected");
+
+const longIslandLeakageProtection = localSubtypeProofForRegression(
+  "best cocktail bar on long island",
+  "The Long Island Bar",
+  ["cocktail_bar", "bar", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    verifiedAddress: "110 Atlantic Ave, Brooklyn, NY 11201, USA",
+    sourceTitle: "NYC cocktail bar recommendations",
+    sourceSnippet: "The Long Island Bar appears in Brooklyn cocktail recommendations."
+  }
+);
+assert.equal(longIslandLeakageProtection.discoveryPasses, false, "Long Island local queries should still reject Brooklyn/Long Island City leakage");
+
+const noPositiveEvidenceSubtypeProof = localSubtypeProofForRegression(
+  "best italian restaurant in williamsburg",
+  "Oregano",
+  ["italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  { positiveEvidence: false }
+);
+assert.equal(noPositiveEvidenceSubtypeProof.discoveryPasses, false, "Places subtype verification without positive recommendation evidence should not reach aggregation");
+
+const wrongCuisineSubtypeProof = localSubtypeProofForRegression(
+  "best italian restaurant in williamsburg",
+  "Sushi Katsuei",
+  ["sushi_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Williamsburg restaurant recommendations",
+    sourceSnippet: "Sushi Katsuei appears in local recommendations."
+  }
+);
+assert.equal(wrongCuisineSubtypeProof.subtypeProof, false, "Wrong cuisine subtype should not satisfy Italian subtype proof");
+assert.equal(wrongCuisineSubtypeProof.discoveryPasses, false, "Wrong cuisine subtype should still be rejected for cuisine-specific local queries");
+
+console.log(
+  JSON.stringify(
+    {
+      localSubtypeProofRegression: {
+        italianSubtypeProof,
+        sushiSubtypeProof,
+        coffeeSubtypeProtection,
+        dentistSubtypeProtection,
+        longIslandLeakageProtection,
+        noPositiveEvidenceSubtypeProof,
+        wrongCuisineSubtypeProof
+      }
+    },
+    null,
+    2
+  )
+);
 
 function sourceFixture(domain, path, title, snippet, queryVariant = "primary") {
   return {

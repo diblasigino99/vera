@@ -1735,6 +1735,45 @@ export function preserveEvidenceBackedProductContendersForRegression(query: stri
   return preserveEvidenceBackedContendersWhenCleanupWouldEmpty(query, contenders, byName).map((contender) => contender.name);
 }
 
+export function localSubtypeProofForRegression(
+  query: string,
+  contenderName: string,
+  placesTypes: string[],
+  options: {
+    positiveEvidence?: boolean;
+    verifiedAddress?: string;
+    sourceTitle?: string;
+    sourceSnippet?: string;
+  } = {}
+) {
+  const positiveEvidence = options.positiveEvidence ?? true;
+  const signal = {
+    ...regressionSourceSignal(contenderName, 0, "local_recommendation"),
+    verifiedAddress: options.verifiedAddress ?? "284 Grand St, Brooklyn, NY 11211, USA",
+    placesTypes,
+    placesCategoryConfidence: 1,
+    placesLocationConfidence: 1,
+    placesVerified: true
+  };
+  const signals = positiveEvidence ? [signal] : [];
+  const sources = positiveEvidence
+    ? [
+        {
+          title: options.sourceTitle ?? "Local recommendation source",
+          url: signal.sourceUrl,
+          domain: signal.domain,
+          snippet: options.sourceSnippet ?? ""
+        }
+      ]
+    : [];
+  const metrics = buildContenderMetrics(contenderName, signals, "local_recommendation");
+
+  return {
+    subtypeProof: localCuisineContenderHasBusinessSpecificProof(query, contenderName, signals, sources),
+    discoveryPasses: localCandidatePassesDiscovery(query, metrics, signals)
+  };
+}
+
 function regressionSourceSignal(name: string, index: number, evidenceType: QueryEvidenceType): SourceSignal {
   return {
     sourceUrl: `regression://${index + 1}`,
@@ -3408,7 +3447,7 @@ function localSignalSpecificIntentEvidenceText(contenderName: string, signal: So
       includeReasonText ? (signal.negativeMention ?? "") : "",
       includeReasonText ? signal.themes.join(" ") : "",
       signal.verifiedAddress ?? "",
-      placesTypesSupportSpecificIntent(intent, signal.placesTypes ?? []) ? signal.placesTypes?.join(" ") : ""
+      placesTypesSupportSpecificIntent(intent, signal.placesTypes ?? []) ? signal.placesTypes?.join(" ").replace(/_/g, " ") : ""
     ].join(" ")
   );
 }
@@ -3421,6 +3460,11 @@ function placesTypesSupportSpecificIntent(intent: LocalSpecificIntent, placesTyp
   const normalizedTypes = normalizeQuery(placesTypes.join(" "));
 
   if (!normalizedTypes) return false;
+  if (intent.key === "italian") return /\bitalian[_\s]restaurant\b/.test(normalizedTypes);
+  if (intent.key === "sushi") return /\bsushi[_\s]restaurant\b/.test(normalizedTypes);
+  if (intent.key === "mexican") return /\bmexican[_\s]restaurant\b/.test(normalizedTypes);
+  if (intent.key === "seafood") return /\bseafood[_\s]restaurant\b/.test(normalizedTypes);
+  if (intent.key === "steakhouse") return /\bsteak[_\s]house\b/.test(normalizedTypes);
   if (intent.key === "coffee") return /\b(coffee shop|cafe|bakery)\b/.test(normalizedTypes);
   if (intent.key === "bar" || intent.key === "cocktail" || intent.key === "live_music") return /\b(bar|night club)\b/.test(normalizedTypes);
   if (intent.key === "pizza") return /\bpizza restaurant\b/.test(normalizedTypes);
