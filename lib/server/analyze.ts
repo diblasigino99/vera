@@ -1539,6 +1539,41 @@ export function resolveEntityNamesForRegression(query: string, evidenceType: Que
   };
 }
 
+export function filterCompatibleEntityNamesForRegression(query: string, evidenceType: QueryEvidenceType, names: string[]) {
+  const diagnostics = createAnalyzeDiagnostics();
+  const signals = names.map((name, index) => regressionSourceSignal(name, index, evidenceType));
+  const resolved = resolveSignalsForRequestedEntityLevel(query, evidenceType, signals, diagnostics);
+  const compatible = filterSignalsByRequestedEntityCompatibility(query, evidenceType, resolved, diagnostics);
+
+  return {
+    compatibleNames: Array.from(new Set(compatible.map((signal) => signal.contenderName))),
+    diagnostics: diagnostics.entityValidationDiagnostics
+  };
+}
+
+export function preserveEvidenceBackedProductContendersForRegression(query: string, names: string[]) {
+  const diagnostics = createAnalyzeDiagnostics();
+  const signals = resolveSignalsForRequestedEntityLevel(
+    query,
+    "product_recommendation",
+    names.map((name, index) => regressionSourceSignal(name, index, "product_recommendation")),
+    diagnostics
+  );
+  const byName = new Map<string, SourceSignal[]>();
+
+  for (const signal of signals) {
+    const existing = byName.get(signal.contenderName) ?? [];
+    existing.push(signal);
+    byName.set(signal.contenderName, existing);
+  }
+
+  const contenders = Array.from(byName.entries())
+    .map(([name, contenderSignals]) => buildContenderMetrics(name, contenderSignals, "product_recommendation"))
+    .sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount);
+
+  return preserveEvidenceBackedContendersWhenCleanupWouldEmpty(query, contenders, byName).map((contender) => contender.name);
+}
+
 function regressionSourceSignal(name: string, index: number, evidenceType: QueryEvidenceType): SourceSignal {
   return {
     sourceUrl: `regression://${index + 1}`,
@@ -1919,6 +1954,173 @@ function titleCaseEntity(value: string) {
     .replace(/\bBriggs Riley\b/g, "Briggs & Riley");
 }
 
+function filterSignalsByRequestedEntityCompatibility(
+  query: string,
+  evidenceType: QueryEvidenceType,
+  signals: SourceSignal[],
+  diagnostics?: AnalyzeDiagnostics
+) {
+  if (evidenceType === "local_recommendation" || evidenceType === "dominant_platform" || evidenceType === "provider_or_brand_recommendation") {
+    return signals;
+  }
+
+  const retained: SourceSignal[] = [];
+
+  for (const signal of signals) {
+    const rejection = requestedEntityCompatibilityRejectionReason(query, evidenceType, signal.contenderName, [signal]);
+
+    if (!rejection) {
+      retained.push(signal);
+      continue;
+    }
+
+    diagnostics?.entityValidationDiagnostics.push({
+      status: "rejected",
+      reasonCode: rejection.reasonCode,
+      originalName: signal.contenderName,
+      canonicalName: signal.contenderName,
+      validator: "requested_entity_type_compatibility",
+      sourceUrl: signal.sourceUrl,
+      metadata: {
+        queryCategory: evidenceType,
+        subtype: requestedEntityTypeForQuery(query, evidenceType),
+        inferredCandidateType: rejection.inferredCandidateType,
+        reason: rejection.reason
+      }
+    });
+  }
+
+  return retained;
+}
+
+function requestedEntityCompatibilityRejectionReason(
+  query: string,
+  evidenceType: QueryEvidenceType,
+  name: string,
+  signals: SourceSignal[]
+): { reasonCode: EntityValidationDiagnostic["reasonCode"]; inferredCandidateType: string; reason: string } | null {
+  const normalizedName = normalizeQuery(name.replace(/([a-z])([A-Z])/g, "$1 $2"));
+  const queryNormalized = normalizeQuery(query);
+  const combined = normalizeQuery(
+    [name, ...signals.flatMap((signal) => [signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention, signal.negativeMention, signal.themes.join(" ")])]
+      .filter(Boolean)
+      .join(" ")
+  );
+  const detectedCategory = inferContenderCategory(name, signals);
+
+  if (isRejectableContenderName(name, evidenceType, signals[0], signals[0]?.extractedReason)) {
+    return { reasonCode: "generic_entity", inferredCandidateType: "fragment", reason: "Candidate is a generic article, UI, or page fragment." };
+  }
+
+  if (evidenceType === "software_tool") {
+    if (looksLikeVehicleEntity(normalizedName, combined)) {
+      return { reasonCode: "wrong_entity_type", inferredCandidateType: "vehicle", reason: "Software/tool query cannot aggregate vehicle entities." };
+    }
+    if (detectedCategory.contenderCategory === "retail" || detectedCategory.contenderCategory === "restaurant" || detectedCategory.contenderCategory === "hotel" || detectedCategory.contenderCategory === "attraction") {
+      return {
+        reasonCode: "wrong_entity_type",
+        inferredCandidateType: detectedCategory.contenderCategory,
+        reason: `Software/tool query cannot aggregate ${detectedCategory.contenderCategory} entities.`
+      };
+    }
+    if (detectedCategory.contenderCategory === "product" && !/\b(app|software|saas|platform|tool|assistant|crm|workspace|suite|notes?|email marketing|project management)\b/.test(combined)) {
+      return { reasonCode: "wrong_entity_type", inferredCandidateType: "physical_product", reason: "Software/tool query cannot aggregate unrelated physical products." };
+    }
+  }
+
+  if (evidenceType === "product_recommendation") {
+    if (detectedCategory.contenderCategory === "software" && !/\b(app|software|platform|tool|saas)\b/.test(queryNormalized)) {
+      return { reasonCode: "wrong_entity_type", inferredCandidateType: "software", reason: "Product query cannot aggregate software entities unless software is requested." };
+    }
+    if (looksLikeDestinationOrPlaceEntity(normalizedName, combined)) {
+      return { reasonCode: "wrong_entity_type", inferredCandidateType: "place_or_destination", reason: "Product query cannot aggregate places or destinations." };
+    }
+    if (looksLikeRetailerEntity(normalizedName, combined) && !/\b(retailer|retailers|store|stores|shop|shops|where to buy)\b/.test(queryNormalized)) {
+      return { reasonCode: "wrong_entity_type", inferredCandidateType: "retailer", reason: "Product query cannot aggregate retailers unless retailers are requested." };
+    }
+  }
+
+  if (evidenceType === "destination_recommendation") {
+    if (/^(?:visit|visiting|explore|exploring|discover|discovering|stay|book|go|see)\b/.test(normalizedName)) {
+      return { reasonCode: "generic_entity", inferredCandidateType: "action_phrase", reason: "Destination query cannot aggregate imperative or action phrases." };
+    }
+    if (looksLikeDestinationTitleFragment(normalizedName)) {
+      return { reasonCode: "generic_entity", inferredCandidateType: "title_fragment", reason: "Destination query cannot aggregate article-title or prose fragments." };
+    }
+    if (detectedCategory.contenderCategory === "software" || detectedCategory.contenderCategory === "product" || detectedCategory.contenderCategory === "restaurant" || detectedCategory.contenderCategory === "retail") {
+      return {
+        reasonCode: "wrong_entity_type",
+        inferredCandidateType: detectedCategory.contenderCategory,
+        reason: `Destination query cannot aggregate ${detectedCategory.contenderCategory} entities.`
+      };
+    }
+  }
+
+  return null;
+}
+
+function looksLikeDestinationTitleFragment(normalizedName: string) {
+  return /\b(?:are some of|is one of|things to do|what to do|where to stay|guide to|travel guide|eternal city|best places|top places|must see|must visit)\b/.test(normalizedName);
+}
+
+function looksLikeVehicleEntity(normalizedName: string, combined: string) {
+  const hasVehicleContext = /\b(car|cars|vehicle|vehicles|sedan|suv|crossover|minivan|truck|hybrid|ev|automotive|motortrend|car and driver|edmunds|kelley blue book|consumer reports)\b/.test(combined);
+  const hasVehicleBrand = /\b(honda|toyota|ford|chevrolet|chevy|kia|hyundai|mazda|subaru|tesla|bmw|mercedes|audi|volkswagen|vw|lexus|acura|nissan|jeep|dodge|volvo)\b/.test(
+    normalizedName
+  );
+  const hasVehicleModelWord = /\b(pilot|accord|civic|crv|cr-v|rav4|camry|corolla|sienna|odyssey|telluride|palisade|highlander|forester|outback|model y|model 3|f-150|silverado|tahoe|explorer|escape|cx-5|cx 5)\b/.test(
+    normalizedName
+  );
+
+  return (hasVehicleContext && hasVehicleBrand) || hasVehicleModelWord;
+}
+
+function looksLikeDestinationOrPlaceEntity(normalizedName: string, combined: string) {
+  const normalizedCombined = normalizeQuery(combined);
+  if (/\b(city|cities|town|towns|destination|destinations|island|islands|beach|beaches|neighborhood|neighbourhood|hotel|restaurant|bar|museum|park|tourism|travel guide)\b/.test(normalizedCombined)) {
+    return /\b(rome|florence|venice|milan|naples|paris|barcelona|madrid|london|tokyo|kyoto|city|island|beach|hotel|restaurant|museum|park)\b/.test(normalizedName);
+  }
+
+  return false;
+}
+
+function looksLikeRetailerEntity(normalizedName: string, combined: string) {
+  const normalizedCombined = normalizeQuery(combined);
+  if (/^(?:amazon|walmart|target|costco|best buy|rei|zappos|nordstrom|macys|macy s|wayfair|home depot|lowes|lowe s)$/.test(normalizedName)) return true;
+  return /\b(retailer|online store|shopping|add to cart|buy at|shop at)\b/.test(normalizedCombined) && /\b(amazon|walmart|target|costco|best buy|rei|zappos|nordstrom|wayfair)\b/.test(normalizedName);
+}
+
+function preserveEvidenceBackedContendersWhenCleanupWouldEmpty(
+  query: string,
+  contendersBeforeFiltering: ContenderMetrics[],
+  signalsByName: Map<string, SourceSignal[]>
+) {
+  const preserved = contendersBeforeFiltering.filter((contender) => isPreservableEvidenceBackedContender(query, contender, signalsByName.get(contender.name) ?? []));
+
+  return preserved.length ? preserved : [];
+}
+
+function isPreservableEvidenceBackedContender(query: string, contender: ContenderMetrics, signals: SourceSignal[]) {
+  if (contender.positiveMentionCount <= 0) return false;
+  if (contender.netWeightedScore < 0) return false;
+  if (!signals.some((signal) => signal.sentiment === "positive" && isValidAttributableSourceUrl(signal.sourceUrl))) return false;
+  if (isGenericProductContender(query, contender.name)) return false;
+  if (isRejectableContenderName(contender.name, "product_recommendation", signals[0], signals[0]?.extractedReason)) return false;
+  if (looksLikeRetailerEntity(normalizeQuery(contender.name), signals.map((signal) => `${signal.sourceTitle} ${signal.domain} ${signal.extractedReason}`).join(" "))) return false;
+  if (looksLikeDestinationOrPlaceEntity(normalizeQuery(contender.name), signals.map((signal) => `${signal.sourceTitle} ${signal.domain} ${signal.extractedReason}`).join(" "))) return false;
+
+  return true;
+}
+
+function isValidAttributableSourceUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" || url.protocol === "regression:";
+  } catch {
+    return false;
+  }
+}
+
 async function aggregateSignals(
   signals: SourceSignal[],
   sources: VeraSource[],
@@ -1998,7 +2200,8 @@ async function aggregateSignals(
     );
   }
   const entityResolvedSignals = resolveSignalsForRequestedEntityLevel(query, queryEvidenceType, scoringSignals, diagnostics);
-  const aggregationSignals = queryEvidenceType === "local_recommendation" ? mergeLocalBusinessSignalNames(entityResolvedSignals) : entityResolvedSignals;
+  const compatibleSignals = filterSignalsByRequestedEntityCompatibility(query, queryEvidenceType, entityResolvedSignals, diagnostics);
+  const aggregationSignals = queryEvidenceType === "local_recommendation" ? mergeLocalBusinessSignalNames(compatibleSignals) : compatibleSignals;
   const byName = new Map<string, SourceSignal[]>();
 
   for (const signal of aggregationSignals) {
@@ -2024,7 +2227,7 @@ async function aggregateSignals(
     )
     .sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount);
 
-  const qualityFilteredContenders =
+  const initiallyQualityFilteredContenders =
     queryEvidenceType === "local_recommendation"
       ? contendersBeforeFiltering.filter((contender) => localCandidatePassesDiscovery(query, contender, byName.get(contender.name) ?? []))
       : queryEvidenceType === "destination_recommendation"
@@ -2046,6 +2249,12 @@ async function aggregateSignals(
       : queryEvidenceType === "product_recommendation" && isBroadExploratoryQuery(query)
         ? contendersBeforeFiltering.filter((contender) => !isWeakBroadProductContender(contender, query))
         : contendersBeforeFiltering;
+  const preservedFallbackContenders =
+    queryEvidenceType === "product_recommendation" && initiallyQualityFilteredContenders.length === 0
+      ? preserveEvidenceBackedContendersWhenCleanupWouldEmpty(query, contendersBeforeFiltering, byName)
+      : [];
+  const preservationFallbackApplied = queryEvidenceType === "product_recommendation" && initiallyQualityFilteredContenders.length === 0 && preservedFallbackContenders.length > 0;
+  const qualityFilteredContenders = preservationFallbackApplied ? preservedFallbackContenders : initiallyQualityFilteredContenders;
   recordQualityCleanupDiagnostics(diagnostics, query, queryEvidenceType, contendersBeforeFiltering, qualityFilteredContenders, byName);
   const { contenders, removed } =
     queryEvidenceType === "destination_recommendation" || queryEvidenceType === "provider_or_brand_recommendation"
@@ -2123,7 +2332,7 @@ async function aggregateSignals(
 
   const themeCounts = aggregateThemeCounts(filteredSignals);
   const sourceBreakdown = aggregateSourceBreakdown(sources, filteredSignals);
-  const initialConsensusClassification = classifyFromMetrics(contenders, sources.length, queryEvidenceType, query);
+  const initialConsensusClassification = preservationFallbackApplied ? "no_reliable_consensus" : classifyFromMetrics(contenders, sources.length, queryEvidenceType, query);
   const verifiedLocalContenders =
     queryEvidenceType === "local_recommendation"
       ? contenders.filter((contender) => localCandidateHasVerifiedPlacesEvidence(query, byName.get(contender.name) ?? []))

@@ -16,8 +16,14 @@ Module._resolveFilename = function resolveAlias(request, parent, isMain, options
 };
 
 const jiti = (await import("jiti")).default(process.cwd() + "/");
-const { resolveEntityNamesForRegression, selectNoReliableConsensusDisplayContendersForRegression } = jiti("./lib/server/analyze.ts");
+const {
+  filterCompatibleEntityNamesForRegression,
+  preserveEvidenceBackedProductContendersForRegression,
+  resolveEntityNamesForRegression,
+  selectNoReliableConsensusDisplayContendersForRegression
+} = jiti("./lib/server/analyze.ts");
 const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
+const { inferQueryEvidenceType } = jiti("./lib/utils.ts");
 
 const minimumSourceCount = 3;
 const minimumTopPositiveMentions = 3;
@@ -292,6 +298,48 @@ for (const item of entityResolutionCases) {
   console.log(JSON.stringify({ entityResolution: { query: item.query, resolvedNames: resolved.resolvedNames, diagnostics: resolved.diagnostics } }, null, 2));
 }
 
+const routingRegressionCases = [
+  { query: "best coffee machine", expectedEvidenceType: "product_recommendation" },
+  { query: "best coffee shop in brooklyn", expectedEvidenceType: "local_recommendation" },
+  { query: "is rome overrated", expectedEvidenceType: "destination_recommendation" },
+  { query: "best running shoes", expectedEvidenceType: "product_recommendation" },
+  { query: "best note taking app", expectedEvidenceType: "software_tool" },
+  { query: "is away luggage worth it", expectedEvidenceType: "product_recommendation" },
+  { query: "is salesforce still the best crm", expectedEvidenceType: "software_tool" },
+  { query: "best dentist in austin", expectedEvidenceType: "local_recommendation" }
+];
+
+for (const item of routingRegressionCases) {
+  const evidenceType = inferQueryEvidenceType(item.query);
+  assert.equal(evidenceType, item.expectedEvidenceType, `${item.query} should route as ${item.expectedEvidenceType}`);
+}
+
+console.log(JSON.stringify({ routingRegression: routingRegressionCases }, null, 2));
+
+const waterBottlePreserved = preserveEvidenceBackedProductContendersForRegression("best water bottle brand", ["Takeya", "Yeti", "Hydro Flask", "Stanley", "Owala"]);
+for (const expected of ["Takeya", "Yeti", "Hydro Flask", "Stanley", "Owala"]) {
+  assert.ok(waterBottlePreserved.includes(expected), `Broad-product preservation should retain ${expected} when cleanup would empty the set`);
+}
+
+const mattressPreserved = preserveEvidenceBackedProductContendersForRegression("best mattress", ["Helix Midnight Luxe"]);
+assert.deepEqual(mattressPreserved, ["Helix Midnight Luxe"], "Broad-product preservation should retain a valid mattress contender when cleanup would empty the set");
+
+console.log(JSON.stringify({ broadProductPreservation: { waterBottlePreserved, mattressPreserved } }, null, 2));
+
+const aiCodingCompatibility = filterCompatibleEntityNamesForRegression("best ai coding assistant", "software_tool", ["Honda Pilot", "Claude Code", "Cursor"]);
+assert.equal(aiCodingCompatibility.compatibleNames.includes("Honda Pilot"), false, "Software queries should reject clear vehicle entities");
+assert.ok(aiCodingCompatibility.compatibleNames.includes("Claude Code"), "Software queries should retain software/tool entities");
+assert.ok(aiCodingCompatibility.compatibleNames.includes("Cursor"), "Software queries should retain software/tool entities");
+assert.ok(
+  aiCodingCompatibility.diagnostics.some((diagnostic) => diagnostic.originalName === "Honda Pilot" && diagnostic.validator === "requested_entity_type_compatibility"),
+  "Software compatibility rejection should produce diagnostics"
+);
+
+const noteTakingCompatibility = filterCompatibleEntityNamesForRegression("best note taking app", "software_tool", ["GoodNotes", "Notion", "Obsidian"]);
+assert.deepEqual(noteTakingCompatibility.compatibleNames.sort(), ["GoodNotes", "Notion", "Obsidian"].sort(), "Working software app contenders should remain compatible");
+
+console.log(JSON.stringify({ requestedEntityTypeCompatibility: { aiCodingCompatibility, noteTakingCompatibility } }, null, 2));
+
 function sourceFixture(domain, path, title, snippet, queryVariant = "primary") {
   return {
     title,
@@ -509,7 +557,7 @@ assert.equal(
   "explicit_geography_mismatch",
   "Known destinations outside the explicit query geography should be rejected"
 );
-for (const invalidCityCandidate of ["Picasso Museum", "Luberon Island", "York Brooklyn Porto Dubai Bahrain Cape Town", "Restonica Valley", "Book Now Powered By"]) {
+for (const invalidCityCandidate of ["Picasso Museum", "Luberon Island", "York Brooklyn Porto Dubai Bahrain Cape Town", "Restonica Valley", "Book Now Powered By", "Rome Are Some of the Eternal City"]) {
   assert.equal(
     destinationCandidateProof("best city in france to visit", invalidCityCandidate, ["Best cities to visit in France travel guide recommendations."]).accepted,
     false,

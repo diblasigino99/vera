@@ -274,6 +274,14 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
     return "software_tool";
   }
 
+  if (hasDestinationOpinionSubject(normalized)) {
+    return "destination_recommendation";
+  }
+
+  if (hasExplicitProductSubject(normalized)) {
+    return "product_recommendation";
+  }
+
   if (
     /\b(search engine|browser|email provider|email service|mail provider|maps app|map app|navigation app|video platform|video site|messaging app|messenger|music streaming|streaming music|cloud storage|spreadsheet app|spreadsheet|calendar app|calendar)\b/.test(
       normalized
@@ -320,6 +328,30 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   }
 
   return "product_recommendation";
+}
+
+function hasExplicitProductSubject(normalized: string) {
+  if (/\b(coffee shop|coffee shops|cafe|cafes|café)\b/.test(normalized)) {
+    return false;
+  }
+
+  return /\b(water bottle|bottle brand|bottle brands|coffee machine|coffee maker|espresso machine|machine|maker|appliance|appliances|mattress|mattresses|carry-on|carry on|luggage|suitcase|suitcases|running shoes?|sneakers?|shoe brand|shoe brands|router|wi-fi|wifi|headphones|earbuds|laptop|notebook|phone|smartphone|keyboard|mouse|office chair|desk chair|robot vacuum|vacuum|camera|monitor|backpack|television|tv|external ssd|portable ssd|air purifier)\b/.test(
+    normalized
+  );
+}
+
+function hasDestinationOpinionSubject(normalized: string) {
+  if (!/\b(overrated|underrated|worth visiting|worth a visit|worth it|still good|still worth|worth going|worth the trip)\b/.test(normalized)) {
+    return false;
+  }
+
+  if (/\b(city|cities|town|towns|destination|destinations|island|islands|beach|beaches|neighborhood|neighbourhood|travel|visit|visiting|trip|vacation)\b/.test(normalized)) {
+    return true;
+  }
+
+  return /\b(rome|florence|venice|milan|naples|bologna|paris|lyon|nice|barcelona|madrid|seville|valencia|lisbon|porto|london|edinburgh|dublin|amsterdam|berlin|munich|vienna|prague|budapest|athens|santorini|crete|tokyo|kyoto|osaka|seoul|bangkok|bali|cancun|jamaica|aruba|bermuda|bahamas|puerto rico|italy|spain|france|greece|portugal|europe|caribbean)\b/.test(
+    normalized
+  );
 }
 
 export function evidenceStrategyFor(type: QueryEvidenceType) {
