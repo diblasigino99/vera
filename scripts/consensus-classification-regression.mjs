@@ -24,6 +24,7 @@ const {
   localSubtypeProofForRegression,
   preserveEvidenceBackedProductContendersForRegression,
   resolveEntityNamesForRegression,
+  resolveProductEntitySignalsForRegression,
   sanitizeCachedLocalConsensus,
   selectNoReliableConsensusDisplayContendersForRegression
 } = jiti("./lib/server/analyze.ts");
@@ -362,6 +363,55 @@ const entityResolutionCases = [
     names: ["Apple", "Apple MacBook Air", "MacBook Pro"],
     expectedNames: ["Apple MacBook Air", "MacBook Pro"],
     expectedActions: ["rejected"]
+  },
+  {
+    query: "best water bottle brand",
+    evidenceType: "product_recommendation",
+    names: ["Hydro Flask", "Hydro Flask Standard Flex", "Yeti Rambler Water Bottle", "YETI", "Takeya"],
+    expectedNames: ["Hydro Flask", "Yeti", "Takeya"],
+    expectedActions: ["downgraded"]
+  },
+  {
+    query: "is hydro flask worth it",
+    evidenceType: "product_recommendation",
+    names: ["Hydro Flask", "Hydro Flask Trail Series"],
+    expectedNames: ["Hydro Flask"],
+    expectedActions: ["downgraded"]
+  },
+  {
+    query: "is away luggage worth it",
+    evidenceType: "product_recommendation",
+    names: ["Away luggage", "Away Carry-On", "Away The Carry-On"],
+    expectedNames: ["Away"],
+    expectedActions: ["downgraded"]
+  },
+  {
+    query: "best Hydro Flask water bottle",
+    evidenceType: "product_recommendation",
+    names: ["Hydro Flask Standard Flex", "Hydro Flask Trail Series"],
+    expectedNames: ["Hydro Flask Standard Flex", "Hydro Flask Trail Series"],
+    expectedActions: ["accepted"]
+  },
+  {
+    query: "best carry on luggage",
+    evidenceType: "product_recommendation",
+    names: ["Away Carry-On", "Travelpro Platinum Elite", "Monos Carry-On"],
+    expectedNames: ["Away Carry-On", "Travelpro Platinum Elite", "Monos Carry-On"],
+    expectedActions: ["accepted"]
+  },
+  {
+    query: "best coffee machine",
+    evidenceType: "product_recommendation",
+    names: ["Breville Bambino Plus", "Breville Barista Express", "Gaggia Classic Pro"],
+    expectedNames: ["Breville Bambino Plus", "Breville Barista Express", "Gaggia Classic Pro"],
+    expectedActions: ["accepted"]
+  },
+  {
+    query: "best running shoes",
+    evidenceType: "product_recommendation",
+    names: ["Brooks Ghost", "Nike Pegasus", "Asics Gel-Nimbus", "Hoka Clifton"],
+    expectedNames: ["Brooks Ghost", "Nike Pegasus", "Asics Gel-Nimbus", "Hoka Clifton"],
+    expectedActions: ["accepted"]
   }
 ];
 
@@ -375,6 +425,21 @@ for (const item of entityResolutionCases) {
 
   console.log(JSON.stringify({ entityResolution: { query: item.query, resolvedNames: resolved.resolvedNames, diagnostics: resolved.diagnostics } }, null, 2));
 }
+
+const waterBottleSameSourceRollup = resolveProductEntitySignalsForRegression("best water bottle brand", [
+  { name: "Hydro Flask", sourceUrl: "regression://same-review" },
+  { name: "Hydro Flask Standard Flex", sourceUrl: "regression://same-review" },
+  { name: "Yeti Rambler Water Bottle", sourceUrl: "regression://yeti-review" }
+]);
+assert.deepEqual(
+  waterBottleSameSourceRollup.resolvedSignals.filter((signal) => signal.name === "Hydro Flask"),
+  [{ name: "Hydro Flask", sourceUrl: "regression://same-review" }],
+  "Brand rollup should not double-count parent and child evidence from the same source"
+);
+assert.equal(waterBottleSameSourceRollup.sourceCounts["Hydro Flask"], 1, "Hydro Flask same-source rollup should count one independent source");
+assert.equal(waterBottleSameSourceRollup.sourceCounts.Yeti, 1, "Yeti child rollup should retain its independent source");
+
+console.log(JSON.stringify({ productEntitySourceDeduplication: waterBottleSameSourceRollup }, null, 2));
 
 const routingRegressionCases = [
   { query: "best coffee machine", expectedEvidenceType: "product_recommendation" },

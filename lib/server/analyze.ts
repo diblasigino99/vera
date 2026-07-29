@@ -1707,6 +1707,31 @@ export function resolveEntityNamesForRegression(query: string, evidenceType: Que
   };
 }
 
+export function resolveProductEntitySignalsForRegression(
+  query: string,
+  items: Array<{ name: string; sourceUrl: string }>
+) {
+  const diagnostics = createAnalyzeDiagnostics();
+  const signals = items.map((item, index) => ({
+    ...regressionSourceSignal(item.name, index, "product_recommendation"),
+    sourceUrl: item.sourceUrl
+  }));
+  const resolved = resolveSignalsForRequestedEntityLevel(query, "product_recommendation", signals, diagnostics);
+  const sourceCountsByName = new Map<string, Set<string>>();
+
+  for (const signal of resolved) {
+    const sourceUrls = sourceCountsByName.get(signal.contenderName) ?? new Set<string>();
+    sourceUrls.add(signal.sourceUrl);
+    sourceCountsByName.set(signal.contenderName, sourceUrls);
+  }
+
+  return {
+    resolvedSignals: resolved.map((signal) => ({ name: signal.contenderName, sourceUrl: signal.sourceUrl })),
+    sourceCounts: Object.fromEntries(Array.from(sourceCountsByName.entries()).map(([name, sourceUrls]) => [name, sourceUrls.size])),
+    diagnostics: diagnostics.entityResolutionDiagnostics
+  };
+}
+
 export function filterCompatibleEntityNamesForRegression(query: string, evidenceType: QueryEvidenceType, names: string[]) {
   const diagnostics = createAnalyzeDiagnostics();
   const signals = names.map((name, index) => regressionSourceSignal(name, index, evidenceType));
@@ -1926,7 +1951,10 @@ function requestedEntityTypeForQuery(query: string, evidenceType: QueryEvidenceT
     return "brand";
   }
 
-  if (evidenceType === "product_recommendation") return "product";
+  if (evidenceType === "product_recommendation") {
+    if (productBrandOpinionTarget(query)) return "brand";
+    return "product";
+  }
 
   return "unknown";
 }
@@ -1959,6 +1987,10 @@ function resolveEntityName(
         true,
         { detectedEntityType: granularity.kind }
       );
+    }
+    const canonicalBrand = productParentBrandCanonicalNames.get(normalized);
+    if (granularity.kind === "brand" && canonicalBrand && canonicalBrand !== originalName) {
+      return resolutionAction(originalName, canonicalBrand, "canonical_variant", "merged", "canonicalized_entity", requestedEntityType, true);
     }
     if (canonicalAlias !== originalName) {
       return resolutionAction(originalName, canonicalAlias, aliasRelationship(originalName, canonicalAlias), "merged", aliasReasonCode(originalName, canonicalAlias), requestedEntityType, true);
@@ -2119,9 +2151,105 @@ function entityGranularity(name: string, query: string, evidenceType: QueryEvide
   return { kind: "unknown" };
 }
 
+const productParentBrandCanonicalNames = new Map<string, string>(
+  [
+    "apple",
+    "microsoft",
+    "google",
+    "salesforce",
+    "verizon",
+    "dell",
+    "hp",
+    "hewlett packard",
+    "lenovo",
+    "asus",
+    "acer",
+    "samsung",
+    "sony",
+    "lg",
+    "toshiba",
+    "msi",
+    "razer",
+    "framework",
+    "huawei",
+    "xiaomi",
+    "motorola",
+    "oneplus",
+    "netgear",
+    "eero",
+    "tp link",
+    "tplink",
+    "away",
+    "rimowa",
+    "travelpro",
+    "monos",
+    "tumi",
+    "briggs riley",
+    "nike",
+    "brooks",
+    "asics",
+    "hoka",
+    "new balance",
+    "adidas",
+    "canon",
+    "nikon",
+    "fujifilm",
+    "panasonic",
+    "om system",
+    "toyota",
+    "honda",
+    "kia",
+    "hyundai",
+    "mazda",
+    "subaru",
+    "ford",
+    "chevrolet",
+    "tesla",
+    "bmw",
+    "mercedes",
+    "audi",
+    "hydro flask",
+    "yeti",
+    "stanley",
+    "owala",
+    "takeya",
+    "zojirushi",
+    "camelbak",
+    "nalgene",
+    "klean kanteen",
+    "s well",
+    "thermoflask",
+    "breville",
+    "delonghi",
+    "de longhi",
+    "gaggia",
+    "technivorm",
+    "moccamaster",
+    "oxo",
+    "ninja",
+    "keurig",
+    "helix",
+    "saatva",
+    "casper",
+    "purple",
+    "nectar",
+    "sealy",
+    "tempur pedic",
+    "dreamcloud",
+    "brooklyn bedding",
+    "saucony",
+    "on",
+    "altra",
+    "mizuno"
+  ].map((name) => [name, canonicalProductBrandName(name)])
+);
+
 function parentBrandForChildName(normalized: string) {
   const familyParent = parentBrandForProductFamily(normalized);
   if (familyParent) return familyParent;
+
+  const prefixParent = parentBrandPrefixForProductChild(normalized);
+  if (prefixParent) return prefixParent;
 
   const tokens = normalized.split(/\s+/).filter(Boolean);
   if (tokens.length < 2) return null;
@@ -2135,6 +2263,23 @@ function parentBrandForChildName(normalized: string) {
   }
 
   return null;
+}
+
+function parentBrandPrefixForProductChild(normalized: string) {
+  const brand = Array.from(productParentBrandCanonicalNames.keys())
+    .sort((a, b) => b.length - a.length)
+    .find((candidate) => normalized.startsWith(`${candidate} `));
+
+  if (!brand) return null;
+
+  const childTerms = normalized.slice(brand.length).trim();
+  if (!productChildDescriptorPattern().test(childTerms)) return null;
+
+  return productParentBrandCanonicalNames.get(brand) ?? titleCaseEntity(brand);
+}
+
+function productChildDescriptorPattern() {
+  return /\b(?:macbook|macbooks|laptop|laptops|iphone|ipad|watch|galaxy|pixel|surface|thinkpad|yoga|inspiron|xps|latitude|spectre|envy|elitebook|zenbook|vivobook|rog|predator|aspire|swift|gram|air|pro|max|plus|ultra|fios|workspace|365|office|crm|rambler|standard|flex|trail|series|straw|chug|tumbler|bottle|water bottle|insulated|stainless|classic|quik|quick|sip|kids|wide mouth|mouth|free sip|freesip|aerolite|roamer|roam|carry on|carry-on|bigger carry on|bigger carry-on|cabin|platinum|elite|baseline|spinner|suitcase|luggage|ghost|pegasus|gel nimbus|gel-nimbus|clifton|bondi|speedgoat|endorphin|adrenaline|novablast|bambino|barista|express|dedica|classic|moccamaster|k supreme|supreme|vertuo|midnight|luxe|hybrid|memory foam|foam|premier|original|snow|restore|adapt|cloud|cloudfoam)\b/;
 }
 
 function parentBrandForProductFamily(normalized: string) {
@@ -2151,9 +2296,36 @@ function parentBrandForProductFamily(normalized: string) {
 }
 
 function isBroadBrandName(normalized: string) {
-  return /^(?:apple|microsoft|google|salesforce|verizon|dell|hp|hewlett packard|lenovo|asus|acer|samsung|sony|lg|toshiba|msi|razer|framework|huawei|xiaomi|motorola|oneplus|netgear|eero|tp link|tplink|away|rimowa|travelpro|monos|tumi|briggs riley|nike|brooks|asics|hoka|new balance|adidas|canon|nikon|sony|fujifilm|panasonic|om system|toyota|honda|kia|hyundai|mazda|subaru|ford|chevrolet|tesla|bmw|mercedes|audi)$/.test(
-    normalized
-  );
+  return productParentBrandCanonicalNames.has(normalized);
+}
+
+function canonicalProductBrandName(normalized: string) {
+  const known: Record<string, string> = {
+    hp: "HP",
+    asus: "ASUS",
+    lg: "LG",
+    msi: "MSI",
+    bmw: "BMW",
+    yeti: "Yeti",
+    oxo: "OXO",
+    tplink: "TP-Link",
+    "tp link": "TP-Link",
+    delonghi: "De'Longhi",
+    "de longhi": "De'Longhi",
+    "s well": "S'well"
+  };
+
+  return known[normalized] ?? titleCaseEntity(normalized);
+}
+
+function productBrandOpinionTarget(query: string) {
+  const normalized = normalizeQuery(query);
+
+  if (!/\b(worth it|worth buying|overrated|still (?:the )?best|still good|any good|recommended|recommend)\b/.test(normalized)) {
+    return null;
+  }
+
+  return Array.from(productParentBrandCanonicalNames.entries()).find(([brand]) => new RegExp(`\\b${escapeRegExp(brand)}\\b`).test(normalized))?.[1] ?? null;
 }
 
 function aliasRelationship(originalName: string, canonicalName: string): EntityResolutionAction["relationshipType"] {
