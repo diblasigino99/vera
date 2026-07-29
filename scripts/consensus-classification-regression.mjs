@@ -16,7 +16,7 @@ Module._resolveFilename = function resolveAlias(request, parent, isMain, options
 };
 
 const jiti = (await import("jiti")).default(process.cwd() + "/");
-const { resolveEntityNamesForRegression } = jiti("./lib/server/analyze.ts");
+const { resolveEntityNamesForRegression, selectNoReliableConsensusDisplayContendersForRegression } = jiti("./lib/server/analyze.ts");
 const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
 
 const minimumSourceCount = 3;
@@ -461,6 +461,43 @@ for (const item of repeatedContextualCityCases) {
 }
 
 console.log(JSON.stringify({ repeatedContextualCityValidation: repeatedContextualCityCases.map((item) => ({ query: item.query, city: item.city })) }, null, 2));
+
+const noReliableRecurringDisplay = selectNoReliableConsensusDisplayContendersForRegression([
+  contender("Rome", { positives: 2, sourceUrls: ["regression://rome-1", "regression://rome-2"], score: 7 }),
+  contender("Florence", { positives: 2, sourceUrls: ["regression://florence-1", "regression://florence-2"], score: 6 }),
+  contender("Weak Negative", { positives: 1, negatives: 2, sourceUrls: ["regression://negative"], score: -1 })
+]);
+assert.equal(noReliableRecurringDisplay.kind, "recurring");
+assert.deepEqual(noReliableRecurringDisplay.contenders.map((item) => item.name), ["Rome", "Florence"]);
+
+const noReliableFallbackDisplay = selectNoReliableConsensusDisplayContendersForRegression([
+  contender("Bologna", { positives: 1, sourceUrls: ["regression://bologna"], score: 4 }),
+  contender("Milan", { positives: 1, sourceUrls: ["regression://milan"], score: 3 }),
+  contender("No Source", { positives: 1, sourceUrls: [], score: 3 })
+]);
+assert.equal(noReliableFallbackDisplay.kind, "fallback");
+assert.deepEqual(noReliableFallbackDisplay.contenders.map((item) => item.name), ["Bologna", "Milan"]);
+
+const noReliableEmptyDisplay = selectNoReliableConsensusDisplayContendersForRegression([
+  contender("Unsupported", { positives: 0, sourceUrls: ["regression://unsupported"], score: 0 }),
+  contender("Net Negative", { positives: 1, negatives: 2, sourceUrls: ["regression://negative"], score: -1 })
+]);
+assert.equal(noReliableEmptyDisplay.kind, "empty");
+assert.equal(noReliableEmptyDisplay.contenders.length, 0);
+
+console.log(
+  JSON.stringify(
+    {
+      noReliablePresentationFallback: {
+        recurring: noReliableRecurringDisplay.contenders.map((item) => item.name),
+        fallback: noReliableFallbackDisplay.contenders.map((item) => item.name),
+        emptyCount: noReliableEmptyDisplay.contenders.length
+      }
+    },
+    null,
+    2
+  )
+);
 
 const proseCityCandidates = extractDestinationCandidatesFromText(
   "The 20 Best Cities to Visit in Italy. Conde Nast Traveller magazine named Bologna as the best food city in the world. ## 1. Verona, one of the best places in Italy for romantics."

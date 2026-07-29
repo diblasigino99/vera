@@ -282,7 +282,7 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
               {alternatives.length ? (
                 <section>
                   <p className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">
-                    {contenderSectionLabel(result.mode, hasWinner)}
+                    {contenderSectionLabel(result, hasWinner)}
                   </p>
                   <div className={cn("grid gap-4", !hasWinner ? "sm:grid-cols-2" : "")}>
                     {alternatives.map((item) => (
@@ -382,9 +382,11 @@ function buildEditorialExplanation(result: ConsensusResponse, winner?: Consensus
   const explanation = result.explanation || winner?.summary || "";
 
   if (result.mode === "no_reliable_consensus") {
-    return result.results.length
+    if (!result.results.length) return NO_RELIABLE_CONSENSUS_BODY;
+
+    return hasRecurringNoReliableContenders(result)
       ? "The available evidence does not support a single winner. Vera is showing the recurring contenders it found without declaring one best choice."
-      : NO_RELIABLE_CONSENSUS_BODY;
+      : "The available evidence does not support a single winner. Vera is showing notable contenders that surfaced with positive evidence, without treating them as consensus picks.";
   }
 
   if (result.mode === "split_consensus") {
@@ -467,7 +469,9 @@ function SourceList({ quiet = false, sources, title }: { quiet?: boolean; source
 function buildRankingExplanation(result: ConsensusResponse) {
   if (result.mode === "no_reliable_consensus") {
     if (result.results.length) {
-      return "Vera found recurring contenders, but not enough consistent evidence to call one option the clear winner.";
+      return hasRecurringNoReliableContenders(result)
+        ? "Vera found recurring contenders, but not enough consistent evidence to call one option the clear winner."
+        : "Vera found positive evidence for these contenders, but not enough consistent support to establish consensus.";
     }
 
     return NO_RELIABLE_CONSENSUS_BODY;
@@ -529,21 +533,36 @@ function buildDecisionBullets(result: ConsensusResponse) {
   }
 
   if (result.results.length) {
-    return [
-      analyzed,
-      "Recurring contenders appeared in the available evidence.",
-      "The evidence was not strong or consistent enough to declare a single winner."
-    ];
+    return hasRecurringNoReliableContenders(result)
+      ? [
+          analyzed,
+          "Recurring contenders appeared in the available evidence.",
+          "The evidence was not strong or consistent enough to declare a single winner."
+        ]
+      : [
+          analyzed,
+          "At least one valid contender had positive, attributable evidence.",
+          "The evidence was not strong or consistent enough to establish consensus."
+        ];
   }
 
   return NO_RELIABLE_CONSENSUS_BODY.split("\n\n");
 }
 
-function contenderSectionLabel(mode: ConsensusResponse["mode"], hasWinner: boolean) {
+function contenderSectionLabel(result: ConsensusResponse, hasWinner: boolean) {
   if (hasWinner) return "Other Strong Contenders";
-  if (mode === "split_consensus") return "Leading Contenders";
-  if (mode === "no_reliable_consensus") return "Most Frequently Recommended";
+  if (result.mode === "split_consensus") return "Leading Contenders";
+  if (result.mode === "no_reliable_consensus") return hasRecurringNoReliableContenders(result) ? "Most Frequently Recommended" : "Notable Contenders";
   return "Strongest Contenders";
+}
+
+function hasRecurringNoReliableContenders(result: ConsensusResponse) {
+  if (result.mode !== "no_reliable_consensus" || result.results.length < 2) return false;
+
+  return result.results.every((item) => {
+    const metrics = item.metrics;
+    return Boolean(metrics && (metrics.sourceCount >= 2 || metrics.positiveMentionCount >= 2));
+  });
 }
 
 function buildEvidenceSummary(result: ConsensusResponse) {

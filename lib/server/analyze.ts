@@ -1348,8 +1348,7 @@ function repeatedContextualDestinationNamesForQuery(query: string, signals: Sour
       signal.sourceTitle,
       signal.positiveMention ?? "",
       signal.negativeMention ?? "",
-      signal.extractedReason,
-      signal.queryVariant ?? ""
+      signal.extractedReason
     ]);
 
     if (!proof.accepted || !proof.requiresMultipleSources) {
@@ -1956,8 +1955,7 @@ async function aggregateSignals(
                 signal.sourceTitle,
                 signal.positiveMention ?? "",
                 signal.negativeMention ?? "",
-                signal.extractedReason,
-                signal.queryVariant ?? ""
+                signal.extractedReason
               ], {
                 allowRepeatedContextual: repeatedContextualDestinationNames.has(normalizeQuery(canonicalDestinationName(signal.contenderName)))
               }) &&
@@ -2038,8 +2036,7 @@ async function aggregateSignals(
                 signal.sourceTitle,
                 signal.positiveMention ?? "",
                 signal.negativeMention ?? "",
-                signal.extractedReason,
-                signal.queryVariant ?? ""
+                signal.extractedReason
               ]),
               {
                 allowRepeatedContextual: repeatedContextualDestinationNames.has(normalizeQuery(canonicalDestinationName(contender.name)))
@@ -6279,7 +6276,7 @@ function buildConsensus(
   const mode = responseStructuredConsensus.consensusClassification;
   const contenders =
     mode === "no_reliable_consensus"
-      ? noClearConsensusDisplayContenders(responseStructuredConsensus.contenders)
+      ? noClearConsensusDisplayContenders(responseStructuredConsensus.contenders).contenders
       : responseStructuredConsensus.contenders.slice(0, 5);
   const createdAt = new Date().toISOString();
 
@@ -6655,7 +6652,7 @@ function sanitizeCachedDestinationConsensus(consensus: ConsensusResponse): Conse
     });
   }
 
-  const results = Array.from(resultByName.values()).map((result, index) => ({
+  let results = Array.from(resultByName.values()).map((result, index) => ({
     ...result,
     rank: index + 1,
     id: `${slugify(result.name)}-${index + 1}`
@@ -6663,6 +6660,12 @@ function sanitizeCachedDestinationConsensus(consensus: ConsensusResponse): Conse
   const structuredConsensus = consensus.structuredConsensus
     ? sanitizeCachedDestinationStructuredConsensus(consensus.structuredConsensus, results[0]?.name, consensus.query)
     : consensus.structuredConsensus;
+
+  if (consensus.mode === "no_reliable_consensus" && results.length === 0 && structuredConsensus) {
+    results = noClearConsensusDisplayContenders(structuredConsensus.contenders).contenders.map((contender, index) =>
+      buildResult(contender, structuredConsensus, consensus.sources, index, consensus.query)
+    );
+  }
 
   return {
     ...consensus,
@@ -6756,8 +6759,7 @@ function sanitizeCachedDestinationStructuredConsensus(structuredConsensus: Struc
           signal.sourceTitle,
           signal.positiveMention ?? "",
           signal.negativeMention ?? "",
-          signal.extractedReason,
-          signal.queryVariant ?? ""
+          signal.extractedReason
         ]),
         {
           allowRepeatedContextual: repeatedContextualDestinationNames.has(normalizeQuery(name))
@@ -7495,23 +7497,40 @@ function consensusExplanation(mode: ConsensusMode, contenders: ContenderMetrics[
 
 function noClearConsensusWithContendersExplanation(contenders: ContenderMetrics[]) {
   const names = naturalList(contenders.slice(0, 5).map((contender) => contender.name));
-  return `The available evidence does not support a single winner. Vera found recurring support for ${names}, but the evidence is not strong or consistent enough to confidently declare one best choice.`;
+  const recurring = noClearConsensusDisplayContenders(contenders).kind === "recurring";
+
+  return recurring
+    ? `The available evidence does not support a single winner. Vera found recurring support for ${names}, but the evidence is not strong or consistent enough to confidently declare one best choice.`
+    : `The available evidence does not support a single winner. Vera found positive, attributable evidence for ${names}, but it was not strong or consistent enough to establish consensus.`;
+}
+
+export function selectNoReliableConsensusDisplayContendersForRegression(contenders: ContenderMetrics[]) {
+  return noClearConsensusDisplayContenders(contenders);
 }
 
 function noClearConsensusDisplayContenders(contenders: ContenderMetrics[]) {
-  const recurringContenders = contenders
-    .filter((contender) => {
-      const recurringSupport = contender.sourceCount >= 2 || contender.positiveMentionCount >= 2;
-      return (
-        recurringSupport &&
-        contender.positiveMentionCount > 0 &&
-        contender.netWeightedScore > 0 &&
-        contender.negativeMentionCount <= contender.positiveMentionCount
-      );
-    })
-    .slice(0, 5);
+  const evidenceBackedContenders = contenders.filter(isEvidenceBackedPresentationContender);
+  const recurringContenders = evidenceBackedContenders.filter(hasRecurringPresentationSupport).slice(0, 5);
 
-  return recurringContenders.length >= 2 ? recurringContenders : [];
+  if (recurringContenders.length >= 2) {
+    return { kind: "recurring" as const, contenders: recurringContenders };
+  }
+
+  return { kind: evidenceBackedContenders.length ? ("fallback" as const) : ("empty" as const), contenders: evidenceBackedContenders.slice(0, 5) };
+}
+
+function isEvidenceBackedPresentationContender(contender: ContenderMetrics) {
+  return (
+    contender.positiveMentionCount > 0 &&
+    contender.sourceCount > 0 &&
+    contender.sourceUrls.length > 0 &&
+    contender.netWeightedScore > 0 &&
+    contender.negativeMentionCount <= contender.positiveMentionCount
+  );
+}
+
+function hasRecurringPresentationSupport(contender: ContenderMetrics) {
+  return contender.sourceCount >= 2 || contender.positiveMentionCount >= 2;
 }
 
 function naturalList(items: string[]) {
