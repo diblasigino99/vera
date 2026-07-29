@@ -204,7 +204,7 @@ export function destinationCandidateShapeRejectionReason(query: string, name: st
   if (looksLikeConcatenatedDestinationDirectoryFragment(normalized)) {
     return "directory_fragment";
   }
-  if (queryKind === "city" && candidateNameIsClearlyNonCityDestination(normalized)) {
+  if (queryKind === "city" && (candidateNameIsClearlyNonCityDestination(normalized) || candidateNameIsSubCityDestinationFragment(normalized))) {
     return "wrong_destination_subtype";
   }
 
@@ -430,7 +430,9 @@ function looksLikeConcatenatedDestinationDirectoryFragment(normalizedName: strin
 }
 
 function candidateNameHasCityCompatibleForm(name: string) {
-  return /\b(?:city|town|village|neighborhood|neighbourhood|district|quarter)\b/.test(normalizeDestinationText(name));
+  const normalizedName = normalizeDestinationText(name);
+  if (candidateNameIsSubCityDestinationFragment(normalizedName)) return false;
+  return /\b(?:city|town|village)\b/.test(normalizedName);
 }
 
 function candidateNameIsClearlyNonCityDestination(normalizedName: string) {
@@ -439,6 +441,14 @@ function candidateNameIsClearlyNonCityDestination(normalizedName: string) {
   }
 
   return /^(?:tuscany|sicily|lake como|amalfi coast|cinque terre|vatican|the vatican)$/.test(normalizedName);
+}
+
+function candidateNameIsSubCityDestinationFragment(normalizedName: string) {
+  if (/^(?:old town|historic center|historic centre|city center|city centre|downtown|old city|old quarter|historic quarter)$/.test(normalizedName)) {
+    return true;
+  }
+
+  return /\b(?:neighborhood|neighbourhood|district|quarter)\b/.test(normalizedName);
 }
 
 function explicitDestinationQueryGeography(query: string) {

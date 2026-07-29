@@ -1560,6 +1560,27 @@ assert.equal(
   "A Golden City should be rejected at destination shape validation"
 );
 
+assert.equal(
+  destinationCandidateProof("best city to visit in spain", "Old Town", ["Best cities to visit in Spain include Valencia, Madrid, and a scenic Old Town."]).accepted,
+  false,
+  "Destination city validation should reject sub-city place fragments like Old Town"
+);
+assert.equal(
+  destinationCandidateProof("best city to visit in spain", "Old Town", ["Best cities to visit in Spain include Valencia, Madrid, and a scenic Old Town."]).reason,
+  "wrong_destination_subtype",
+  "Old Town should be rejected as the wrong destination subtype for city queries"
+);
+
+for (const subCityCandidate of ["Historic Center", "City Centre", "Gothic Quarter", "Museum District"]) {
+  assert.equal(
+    destinationCandidateProof("best city to visit in spain", subCityCandidate, [
+      `${subCityCandidate} is mentioned in a Spain travel guide alongside city recommendations.`
+    ]).accepted,
+    false,
+    `${subCityCandidate} should not satisfy a city-level destination query`
+  );
+}
+
 for (const validSpanishCityCandidate of ["Barcelona", "Madrid", "Seville", "Granada", "Valencia"]) {
   const proof = destinationCandidateProof("best city to visit in spain", validSpanishCityCandidate, [
     `The best cities to visit in Spain include ${validSpanishCityCandidate} for food, culture, and history.`
@@ -1573,7 +1594,7 @@ const spanishCityRecoveryContenders = destinationContendersFromSources("best cit
     title: "Best Cities to Visit in Spain",
     url: "regression://spain-cities-1",
     sourceQuality: 1.4,
-    snippet: "Spain favorites include Barcelona, Madrid, and Seville. A golden city awaits travelers in every region."
+    snippet: "Spain favorites include Barcelona, Madrid, Seville, and Old Town. A golden city awaits travelers in every region."
   },
   {
     title: "Spain city guide",
@@ -1584,8 +1605,15 @@ const spanishCityRecoveryContenders = destinationContendersFromSources("best cit
 ]);
 const spanishCityRecoveryNames = spanishCityRecoveryContenders.map((item) => item.name);
 assert.equal(spanishCityRecoveryNames.includes("A Golden City"), false, "Destination recovery should not retain A Golden City as a city contender");
+assert.equal(spanishCityRecoveryNames.includes("Old Town"), false, "Destination recovery should not retain Old Town as a city contender");
 assert.ok(spanishCityRecoveryNames.includes("Barcelona"), "Destination recovery should preserve Barcelona for Spain city queries");
 assert.ok(spanishCityRecoveryNames.includes("Madrid"), "Destination recovery should preserve Madrid for Spain city queries");
+
+assert.equal(
+  destinationCandidateProof("best neighborhood to stay in rome", "Trastevere", ["Trastevere is recommended as a Rome neighborhood for visitors."]).accepted,
+  true,
+  "Legitimate non-city destination queries should still accept neighborhood contenders"
+);
 
 for (const invalidCityCandidate of ["Amalfi Coast", "Tuscany", "Lake Como", "Sicily"]) {
   assert.equal(
