@@ -441,6 +441,45 @@ for (const item of broadDestinationExtractionCases) {
   console.log(JSON.stringify({ broadDestinationExtraction: { query: item.query, candidates } }, null, 2));
 }
 
+const repeatedContextualCityCases = [
+  { query: "best city in italy to visit", city: "Bologna", evidence: "The best cities to visit in Italy include Bologna for food and culture." },
+  { query: "best city in spain to visit", city: "Seville", evidence: "The best cities to visit in Spain include Seville for food, history, and atmosphere." },
+  { query: "best city in france to visit", city: "Lyon", evidence: "Recommended cities to visit in France include Lyon for food and culture." },
+  { query: "best european city to visit", city: "Prague", evidence: "Top European cities to visit include Prague for architecture and value." }
+];
+
+for (const item of repeatedContextualCityCases) {
+  const proof = destinationCandidateProof(item.query, item.city, [item.evidence]);
+  assert.equal(proof.accepted, true, `${item.city} should be accepted as a contextual destination candidate`);
+  assert.equal(proof.requiresMultipleSources, true, `${item.city} should still require repeated independent destination evidence`);
+  assert.equal(destinationCandidateFitsQuery(item.query, item.city, [item.evidence]), false, `${item.city} should not pass from one contextual source`);
+  assert.equal(
+    destinationCandidateFitsQuery(item.query, item.city, [item.evidence], { allowRepeatedContextual: true }),
+    true,
+    `${item.city} should pass after repeated independent contextual evidence is established`
+  );
+}
+
+console.log(JSON.stringify({ repeatedContextualCityValidation: repeatedContextualCityCases.map((item) => ({ query: item.query, city: item.city })) }, null, 2));
+
+const proseCityCandidates = extractDestinationCandidatesFromText(
+  "The 20 Best Cities to Visit in Italy. Conde Nast Traveller magazine named Bologna as the best food city in the world. ## 1. Verona, one of the best places in Italy for romantics."
+).map(canonicalDestinationName);
+assert.ok(proseCityCandidates.includes("Bologna"), "Destination prose extraction should include Bologna from named-city recommendation context");
+assert.ok(proseCityCandidates.includes("Verona"), "Destination prose extraction should include Verona from numbered city heading context");
+assert.equal(
+  destinationCandidateProof("best city in italy to visit", "Anguilla", ["Travel + Leisure homepage recommendations"]).reason,
+  "explicit_geography_mismatch",
+  "Known destinations outside the explicit query geography should be rejected"
+);
+for (const invalidCityCandidate of ["Picasso Museum", "Luberon Island", "York Brooklyn Porto Dubai Bahrain Cape Town", "Restonica Valley", "Book Now Powered By"]) {
+  assert.equal(
+    destinationCandidateProof("best city in france to visit", invalidCityCandidate, ["Best cities to visit in France travel guide recommendations."]).accepted,
+    false,
+    `City destination validation should reject malformed or non-city contender: ${invalidCityCandidate}`
+  );
+}
+
 const productionCaribbeanSources = [
   {
     title: "Caribbean All-Inclusive Resorts 2026 Guide By Caribbean Journey",

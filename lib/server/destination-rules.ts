@@ -1,4 +1,4 @@
-type DestinationKind = "island" | "beach" | "neighborhood" | "ski" | "destination";
+type DestinationKind = "island" | "beach" | "neighborhood" | "ski" | "city" | "destination";
 type DestinationProofPath = "known_destination" | "strong_geographic_form" | "repeated_contextual";
 
 type KnownDestination = {
@@ -59,6 +59,10 @@ export function extractDestinationCandidatesFromText(text: string) {
   const fortPattern = /\b(Fort\s+[A-Z][A-Za-z'.-]*(?:\s+[A-Z][A-Za-z'.-]*){0,3})\b/g;
   const listContextPattern =
     /\b(?:include|includes|included|including|recommend|recommends|recommended|features?|featured|such as|like|among)\s+([^.;:!?]{3,180})/gi;
+  const proseContextPattern =
+    /\b(?:named|recommend|recommends|recommended|features?|featured|include|includes|included|including|visit|visiting|go to|stay in)\s+((?:[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'.-]+)(?:\s+(?:and|of|the|de|del|la|le|du|[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'.-]+)){0,3})\b/g;
+  const headingContextPattern =
+    /(?:^|[\n#])\s*(?:\d+[.)]\s*)?((?:[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'.-]+)(?:\s+(?:and|of|the|de|del|la|le|du|[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'.-]+)){0,3})(?=\s*(?:[,(:–—-]|\s+(?:is|was|for|near|one of|has|offers)\b))/g;
 
   for (const match of normalizedText.matchAll(suffixPattern)) {
     candidates.add(match[1]);
@@ -72,6 +76,14 @@ export function extractDestinationCandidatesFromText(text: string) {
     for (const candidate of extractCandidatesFromDestinationList(match[1])) {
       candidates.add(candidate);
     }
+  }
+
+  for (const match of normalizedText.matchAll(proseContextPattern)) {
+    candidates.add(match[1]);
+  }
+
+  for (const match of normalizedText.matchAll(headingContextPattern)) {
+    candidates.add(match[1]);
   }
 
   for (const destination of knownDestinations) {
@@ -122,6 +134,10 @@ export function destinationCandidateProof(query: string, name: string, evidenceT
     return { accepted: false, canonicalName, requiresMultipleSources: false, reason: "generic_or_malformed" };
   }
 
+  if (!destinationCandidateMatchesExplicitGeography(query, canonicalName, evidence)) {
+    return { accepted: false, canonicalName, requiresMultipleSources: false, reason: "explicit_geography_mismatch" };
+  }
+
   if (knownDestination) {
     return destinationKindFitsQuery(queryKind, knownDestination.kinds, canonicalName, evidence)
       ? { accepted: true, canonicalName: knownDestination.canonical, requiresMultipleSources: false, proofPath: "known_destination" as DestinationProofPath }
@@ -141,10 +157,15 @@ export function destinationCandidateProof(query: string, name: string, evidenceT
   return { accepted: false, canonicalName, requiresMultipleSources: false, reason: "unproven_plain_entity" };
 }
 
-export function destinationCandidateFitsQuery(query: string, name: string, evidenceTexts: string[] = []) {
+export function destinationCandidateFitsQuery(
+  query: string,
+  name: string,
+  evidenceTexts: string[] = [],
+  options: { allowRepeatedContextual?: boolean } = {}
+) {
   const proof = destinationCandidateProof(query, name, evidenceTexts);
 
-  return proof.accepted && (!proof.requiresMultipleSources || evidenceTexts.some((text) => /\brepeated_contextual\b/.test(text)));
+  return proof.accepted && (!proof.requiresMultipleSources || options.allowRepeatedContextual || evidenceTexts.some((text) => /\brepeated_contextual\b/.test(text)));
 }
 
 export function isGenericDestinationContenderName(query: string, name: string) {
@@ -163,6 +184,7 @@ export function isGenericDestinationContenderName(query: string, name: string) {
   if (/^(?:a|an|and|as|at|be|by|fi|for|from|if|in|into|is|it|of|on|or|the|this|to|with)$/.test(normalized)) return true;
   if (/\b(?:this year|next year|summer|winter|spring|fall|autumn|today|tonight|weekend)\b/.test(normalized)) return true;
   if (/^(?:visit|visiting|discover|discovering|explore|exploring)\b/.test(normalized) && /\b(?:this year|soon|now|next)\b/.test(normalized)) return true;
+  if (/\b(?:book now|powered by|photograph|photo|image|editorial guidelines|read full review|stay here|credit|getty|shutterstock)\b/.test(normalized)) return true;
   if (/^(?:what|which)\s+(?:caribbean\s+)?islands?\b/.test(normalized)) return true;
   if (/^(?:what|which)\s+[a-z]+$/.test(normalized)) return true;
   if (/^(?:all\s+inclusive|all-inclusive)\s+islands?\b/.test(normalized)) return true;
@@ -191,6 +213,11 @@ export function isGenericDestinationContenderName(query: string, name: string) {
     )
   ) {
     return true;
+  }
+  if (/\b(?:city|cities|town|towns)\b/.test(queryText)) {
+    const words = normalized.split(/\s+/).filter(Boolean);
+    if (words.length >= 5) return true;
+    if (/\b(?:beach|beaches|island|islands|museum|monument|hotel|resort|lake|region|regions|park|valley|airport|vatican)\b/.test(normalized)) return true;
   }
   if (
     /^(?:the\s+)?(?:best|top|underrated|hidden|secret|beautiful|amazing|favorite|favourite|must visit|essential)\b/.test(normalized) &&
@@ -259,6 +286,7 @@ function destinationKindFitsQuery(queryKind: DestinationKind, candidateKinds: De
   if (queryKind === "beach") {
     return /\b(?:beach|beaches|praia|coast|shore|cove|bay|seaside|waterfront)\b/.test(normalizeDestinationText(name)) || /\b(?:beach|beaches|praia|coast|shore|cove|bay|seaside|waterfront)\b/.test(evidence);
   }
+  if (queryKind === "city") return /\b(?:city|cities|town|towns|urban|capital)\b/.test(evidence);
 
   return false;
 }
@@ -272,6 +300,7 @@ function strongGeographicFormFitsQuery(queryKind: DestinationKind, name: string,
     return /\b(?:neighborhood|neighbourhood|district|quarter|village)\b/.test(normalizedName) || /\b(?:where to stay|neighborhood|neighbourhood|district|quarter|area to stay|areas to stay|stay in)\b/.test(evidence);
   }
   if (queryKind === "ski") return /\b(?:ski|skiing|snowboard|mountain|resort|village|town)\b/.test(normalizedName) || /\b(?:ski|skiing|snowboard|mountain|resort|powder|slopes?)\b/.test(evidence);
+  if (queryKind === "city") return /\b(?:city|cities|town|towns|urban|capital)\b/.test(evidence);
 
   return hasDestinationRecommendationContext(evidence);
 }
@@ -284,11 +313,53 @@ function plainContextualDestinationFitsQuery(queryKind: DestinationKind, name: s
   if (queryKind === "beach") return /\b(?:beach|beaches|praia|coast|shore|cove|bay|seaside|waterfront)\b/.test(evidence);
   if (queryKind === "neighborhood") return /\b(?:where to stay|neighborhood|neighbourhood|district|quarter|area to stay|areas to stay|stay in)\b/.test(evidence);
   if (queryKind === "ski") return /\b(?:ski|skiing|snowboard|mountain|resort|powder|slopes?)\b/.test(evidence);
+  if (queryKind === "city") return /\b(?:city|cities|town|towns|urban|capital)\b/.test(evidence);
 
   return /\b(?:destination|destinations|places? to visit|travel guide|vacation|honeymoon|visit|recommend|recommended)\b/.test(evidence);
 }
 
+function destinationCandidateMatchesExplicitGeography(query: string, name: string, evidence: string) {
+  const geography = explicitDestinationQueryGeography(query);
+
+  if (!geography) return true;
+
+  const normalizedName = normalizeDestinationText(name);
+  const geographyAliases = destinationGeographyAliases(geography);
+  return geographyAliases.some((alias) => normalizedName.includes(alias) || evidence.includes(alias));
+}
+
+function destinationGeographyAliases(geography: string) {
+  const aliases: Record<string, string[]> = {
+    europe: ["europe", "european"],
+    european: ["europe", "european"],
+    france: ["france", "french"],
+    greece: ["greece", "greek"],
+    italy: ["italy", "italian"],
+    portugal: ["portugal", "portuguese"],
+    spain: ["spain", "spanish"]
+  };
+
+  return aliases[geography] ?? [geography];
+}
+
+function explicitDestinationQueryGeography(query: string) {
+  const normalized = normalizeDestinationText(query);
+  const match =
+    normalized.match(/\b(?:in|within|around|across)\s+([a-z][a-z\s'.-]{2,40}?)(?:\s+(?:to\s+visit|for|with|without|under|over|near|around|this|next|summer|winter|spring|fall|autumn|vacation|trip))?$/) ??
+    normalized.match(/\b(best|top)\s+([a-z]+)\s+(?:city|cities|town|towns|destination|destinations|place|places)\b/);
+
+  const value = match?.[2] ?? match?.[1] ?? "";
+  const geography = value
+    .replace(/\b(?:city|cities|town|towns|destination|destinations|place|places|to|visit|best|top)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!geography || geography.length < 4) return null;
+  return geography;
+}
+
 function destinationTypeFromQuery(query: string): DestinationKind {
+  if (/\b(?:city|cities|town|towns)\b/.test(query)) return "city";
   if (/\b(?:island|islands)\b/.test(query) && !/\b(?:beach|beaches)\b/.test(query)) return "island";
   if (/\b(?:beach|beaches)\b/.test(query)) return "beach";
   if (/\b(?:neighborhood|neighborhoods|neighbourhood|neighbourhoods|where to stay|area to stay|areas to stay)\b/.test(query)) return "neighborhood";

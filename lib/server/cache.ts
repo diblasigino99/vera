@@ -532,6 +532,9 @@ async function writeSupabaseCacheEntry(consensus: ConsensusResponse, callCounts?
     .from("search_cache")
     .select("id, created_at")
     .eq("normalized_query", consensus.normalizedQuery)
+    .order("cache_version", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (existingLookupError) {

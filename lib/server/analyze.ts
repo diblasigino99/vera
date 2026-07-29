@@ -259,6 +259,33 @@ export function buildProductFallbackConsensus(
   };
 }
 
+export async function buildDestinationFallbackConsensus(
+  query: string,
+  sources: VeraSource[],
+  callCounts?: ExternalCallCounts,
+  diagnostics?: AnalyzeDiagnostics
+): Promise<ConsensusResponse | null> {
+  const evidenceType = inferQueryEvidenceType(query);
+
+  if (evidenceType !== "destination_recommendation" || sources.length < 3) {
+    return null;
+  }
+
+  const fallbackSignals = dedupeSignals(recoverDestinationSignalsFromSources(query, sources, []).map(canonicalizeDestinationSignal));
+
+  if (fallbackSignals.length < 1) {
+    return null;
+  }
+
+  const structuredConsensus = await aggregateSignals(fallbackSignals, sources, query, callCounts, diagnostics);
+
+  if (structuredConsensus.contenders.length < 1) {
+    return null;
+  }
+
+  return buildConsensus(query, sources, intentFromQuery(query), structuredConsensus, diagnostics);
+}
+
 export async function buildLocalFallbackConsensus(
   query: string,
   sources: VeraSource[],
@@ -1313,6 +1340,31 @@ function destinationRecoverySignal(source: VeraSource, contenderName: string, pr
   };
 }
 
+function repeatedContextualDestinationNamesForQuery(query: string, signals: SourceSignal[]) {
+  const sourceUrlsByName = new Map<string, Set<string>>();
+
+  for (const signal of signals) {
+    const proof = destinationCandidateProof(query, signal.contenderName, [
+      signal.sourceTitle,
+      signal.positiveMention ?? "",
+      signal.negativeMention ?? "",
+      signal.extractedReason,
+      signal.queryVariant ?? ""
+    ]);
+
+    if (!proof.accepted || !proof.requiresMultipleSources) {
+      continue;
+    }
+
+    const key = normalizeQuery(proof.canonicalName);
+    const sourceUrls = sourceUrlsByName.get(key) ?? new Set<string>();
+    sourceUrls.add(signal.sourceUrl);
+    sourceUrlsByName.set(key, sourceUrls);
+  }
+
+  return new Set(Array.from(sourceUrlsByName.entries()).filter(([, sourceUrls]) => sourceUrls.size >= 2).map(([name]) => name));
+}
+
 function canonicalizeDestinationSignal(signal: SourceSignal): SourceSignal {
   const canonicalName = canonicalDestinationName(signal.contenderName);
 
@@ -1889,6 +1941,8 @@ async function aggregateSignals(
     queryEvidenceType === "dominant_platform"
       ? evidenceSignals.filter((signal) => !isGenericDominantPlatformContender(signal.contenderName))
       : evidenceSignals;
+  const repeatedContextualDestinationNames =
+    queryEvidenceType === "destination_recommendation" ? repeatedContextualDestinationNamesForQuery(query, dominantFilteredSignals) : new Set<string>();
   const preValidationScoringSignals =
     queryEvidenceType === "product_recommendation"
       ? dominantFilteredSignals.filter(
@@ -1904,7 +1958,9 @@ async function aggregateSignals(
                 signal.negativeMention ?? "",
                 signal.extractedReason,
                 signal.queryVariant ?? ""
-              ]) &&
+              ], {
+                allowRepeatedContextual: repeatedContextualDestinationNames.has(normalizeQuery(canonicalDestinationName(signal.contenderName)))
+              }) &&
               !isRejectableContenderName(signal.contenderName, queryEvidenceType, signal, signal.extractedReason)
           )
       : queryEvidenceType === "local_recommendation"
@@ -1984,7 +2040,10 @@ async function aggregateSignals(
                 signal.negativeMention ?? "",
                 signal.extractedReason,
                 signal.queryVariant ?? ""
-              ])
+              ]),
+              {
+                allowRepeatedContextual: repeatedContextualDestinationNames.has(normalizeQuery(canonicalDestinationName(contender.name)))
+              }
             )
           )
       : queryEvidenceType === "product_recommendation" && isBroadExploratoryQuery(query)
@@ -6681,6 +6740,7 @@ function mergeCachedDestinationMetrics(a: ContenderMetrics, b: ContenderMetrics,
 
 function sanitizeCachedDestinationStructuredConsensus(structuredConsensus: StructuredConsensus, fallbackWinner?: string, query = ""): StructuredConsensus {
   const signals = structuredConsensus.signals.map(canonicalizeDestinationSignal);
+  const repeatedContextualDestinationNames = repeatedContextualDestinationNamesForQuery(query, signals);
   const contendersByName = new Map<string, ContenderMetrics>();
 
   for (const contender of structuredConsensus.contenders) {
@@ -6698,7 +6758,10 @@ function sanitizeCachedDestinationStructuredConsensus(structuredConsensus: Struc
           signal.negativeMention ?? "",
           signal.extractedReason,
           signal.queryVariant ?? ""
-        ])
+        ]),
+        {
+          allowRepeatedContextual: repeatedContextualDestinationNames.has(normalizeQuery(name))
+        }
       )
     ) {
       continue;

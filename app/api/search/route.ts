@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
   analyzeConsensus,
+  buildDestinationFallbackConsensus,
   buildDominantPlatformFallbackConsensus,
   buildLocalFallbackConsensus,
   buildNoReliableConsensus,
@@ -476,6 +477,12 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
           sources,
           "Vera found product-review sources, but not enough clean agreement to make a confident recommendation."
         ) ??
+        (await buildDestinationFallbackConsensus(
+          body.data.query,
+          sources,
+          externalCallCounts,
+          analyzeDiagnostics
+        )) ??
         (await buildLocalFallbackConsensus(
           body.data.query,
           sources,
