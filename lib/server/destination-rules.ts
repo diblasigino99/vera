@@ -174,6 +174,9 @@ export function destinationCandidateShapeRejectionReason(query: string, name: st
   ) {
     return "title_or_directory_fragment";
   }
+  if (/^(?:a|an)\s+(?:[a-z][a-z'.-]+\s+){0,3}(?:city|town|village|island|beach|destination|place|region)\b/.test(normalized)) {
+    return "title_or_directory_fragment";
+  }
   if (/^(?:spa|resort|hotel|villa|villas|suite|suites)\s+/.test(normalized)) {
     return "lodging_or_amenity_fragment";
   }

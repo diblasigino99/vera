@@ -23,6 +23,7 @@ const {
   filterCompatibleSoftwareSignalsForRegression,
   localFallbackEvidenceEligibilityForRegression,
   localSubtypeProofForRegression,
+  productOpinionAggregationScopeForRegression,
   preserveEvidenceBackedProductContendersForRegression,
   resolveEntityNamesForRegression,
   resolveProductEntitySignalsForRegression,
@@ -692,6 +693,72 @@ const cachedSingleSplit = sanitizeCachedLocalConsensus(
 assert.equal(cachedSingleSplit.mode, "no_reliable_consensus", "Cached/sanitized split consensus with 1 result should obey the invariant");
 assert.equal(cachedSingleSplit.results.length, 1, "Cached invariant should preserve the valid surviving result");
 
+const evidenceBackedDentist = contender("Gregg Ueckert", { positives: 1, sourceUrls: ["regression://gregg-dentist"], score: 4 });
+const cachedSingleDentistNoReliable = sanitizeCachedLocalConsensus(
+  consensusFixture({
+    query: "best dentist in austin",
+    mode: "no_reliable_consensus",
+    results: [
+      {
+        ...resultFromContender(evidenceBackedDentist),
+        evidence: ["Gregg Ueckert was positively mentioned in attributed Austin dentist evidence."],
+        sources: [
+          {
+            title: "Austin dentist recommendations",
+            url: "regression://gregg-dentist",
+            domain: "regression",
+            snippet: "Gregg Ueckert is mentioned in Austin dentist recommendations."
+          }
+        ],
+        verifiedAddress: undefined
+      }
+    ],
+    contenders: [evidenceBackedDentist],
+    signals: [
+      {
+        sourceUrl: "regression://gregg-dentist",
+        sourceTitle: "Austin dentist recommendations",
+        domain: "regression",
+        sourceType: "editorial",
+        sourceWeight: 1,
+        sourceQuality: "high",
+        sourceQualityWeight: 1,
+        contenderName: "Gregg Ueckert",
+        sentiment: "positive",
+        mentionStrength: "moderate",
+        positiveMention: "Gregg Ueckert was positively mentioned in attributed Austin dentist evidence.",
+        extractedReason: "Regression",
+        themes: ["dentist recommendation"]
+      }
+    ]
+  })
+);
+assert.equal(cachedSingleDentistNoReliable.mode, "no_reliable_consensus", "Single evidence-backed dentist should remain no reliable consensus");
+assert.deepEqual(
+  cachedSingleDentistNoReliable.results.map((result) => result.name),
+  ["Gregg Ueckert"],
+  "No reliable consensus should still display a valid evidence-backed single local contender"
+);
+
+const unsupportedDentist = contender("Unsupported Dentist", { positives: 0, sourceUrls: [], score: 0 });
+const cachedUnsupportedDentistNoReliable = sanitizeCachedLocalConsensus(
+  consensusFixture({
+    query: "best dentist in austin",
+    mode: "no_reliable_consensus",
+    results: [
+      {
+        ...resultFromContender(unsupportedDentist),
+        evidence: [],
+        sources: [],
+        verifiedAddress: undefined
+      }
+    ],
+    contenders: [unsupportedDentist],
+    signals: []
+  })
+);
+assert.equal(cachedUnsupportedDentistNoReliable.results.length, 0, "Unsupported sparse local contenders should remain hidden");
+
 console.log(
   JSON.stringify(
     {
@@ -700,7 +767,9 @@ console.log(
         oneResultMode: splitOneResult.mode,
         oneResultNames: splitOneResult.results.map((result) => result.name),
         zeroResultMode: splitZeroResult.mode,
-        cachedOneResultMode: cachedSingleSplit.mode
+        cachedOneResultMode: cachedSingleSplit.mode,
+        cachedDentistNames: cachedSingleDentistNoReliable.results.map((result) => result.name),
+        unsupportedDentistCount: cachedUnsupportedDentistNoReliable.results.length
       }
     },
     null,
@@ -906,6 +975,54 @@ const presenceOnlyWrongSubtypeFallback = localFallbackEvidenceEligibilityForRegr
 );
 assert.equal(presenceOnlyWrongSubtypeFallback.eligible, false, "Places-verified wrong-subtype name presence must not receive positive fallback evidence");
 
+const dirtyMartiniPresenceOnlyFallback = localFallbackEvidenceEligibilityForRegression(
+  "best dirty martini on long island",
+  "Cibo Pasta Bar",
+  ["bar", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "cibopastabar.com",
+    sourceTitle: "CIBO Pasta Bar",
+    sourceSnippet: "CIBO Pasta Bar offers dinner, reservations, menus, and private events on Long Island.",
+    queryVariant: "best dirty martini on long island"
+  }
+);
+assert.equal(
+  dirtyMartiniPresenceOnlyFallback.eligible,
+  false,
+  "Business-name/site presence alone must not create positive dirty-martini recommendation support"
+);
+assert.equal(
+  dirtyMartiniPresenceOnlyFallback.rejectionReason,
+  "fallback_source_presence_only",
+  "CIBO own-site/category presence should remain eligibility context, not positive recommendation evidence"
+);
+
+const dirtyMartiniValidationOnlyProof = localSubtypeProofForRegression(
+  "best dirty martini on long island",
+  "Cibo Pasta Bar",
+  ["bar", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    verifiedAddress: "123 Main St, Long Island, NY 11701, USA",
+    sourceTitle: "CIBO Pasta Bar",
+    sourceSnippet: "CIBO Pasta Bar offers dinner, reservations, menus, and private events.",
+    positiveEvidence: false
+  }
+);
+assert.equal(dirtyMartiniValidationOnlyProof.subtypeProof, true, "Places/category validation can still establish cocktail/bar eligibility");
+assert.equal(dirtyMartiniValidationOnlyProof.discoveryPasses, false, "Places/category validation alone must not create positive consensus support");
+
+const validDirtyMartiniFallback = localFallbackEvidenceEligibilityForRegression(
+  "best dirty martini on long island",
+  "Cibo Pasta Bar",
+  ["bar", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Best dirty martinis on Long Island",
+    sourceSnippet: "Cibo Pasta Bar is recommended for a dirty martini and a strong cocktail program.",
+    queryVariant: "best dirty martini on long island"
+  }
+);
+assert.equal(validDirtyMartiniFallback.eligible, true, "Dirty-martini fallback should still admit real candidate-specific cocktail recommendation evidence");
+
 const operationalBusinessStatus = localSubtypeProofForRegression(
   "best italian restaurant in williamsburg",
   "Oregano",
@@ -1059,6 +1176,35 @@ assert.equal(waterBottleTimeoutFallback?.mode, "no_reliable_consensus", "Weak ge
 assert.ok((waterBottleTimeoutFallback?.results.length ?? 0) > 0, "Water bottle timeout fallback should display evidence-backed contenders");
 assert.ok(waterBottleTimeoutFallback?.results.some((result) => /takeya/i.test(result.name)), "Water bottle timeout fallback should retain Takeya from source evidence");
 
+const malformedWaterBottleTimeoutFallback = await buildProductFallbackConsensus("best water bottle brand", [
+  sourceFixture(
+    "youtube.com",
+    "watch",
+    "Best Water Bottles | Consumer Reports",
+    "Description\nConsumer Reports tested insulated bottles.\nMost Versatile\n## Hydro Flask Wide Mouth Water Bottle\nHydro Flask performed well."
+  ),
+  sourceFixture(
+    "allrecipes.com",
+    "best-insulated-water-bottles",
+    "The Best Insulated Water Bottles, Tested by Allrecipes",
+    "Most Versatile\n## Takeya Actives Insulated Water Bottle\nTakeya was recommended by testers."
+  ),
+  sourceFixture(
+    "example-review.com",
+    "best-water-bottles",
+    "Best Water Bottles Tested",
+    "Best Overall\n## Yeti Rambler Water Bottle\nYeti performed well in testing."
+  )
+]);
+const malformedWaterBottleNames = malformedWaterBottleTimeoutFallback?.results.map((result) => result.name) ?? [];
+assert.ok(malformedWaterBottleTimeoutFallback, "Malformed water bottle timeout fallback should still retain real evidence-backed products");
+assert.equal(malformedWaterBottleTimeoutFallback?.mode, "no_reliable_consensus", "Malformed water bottle timeout fallback should not force consensus");
+assert.equal(malformedWaterBottleNames.includes("Consumer Reports"), false, "Product fallback should reject publisher/source names as contenders");
+assert.equal(malformedWaterBottleNames.includes("Description"), false, "Product fallback should reject metadata headings as contenders");
+assert.equal(malformedWaterBottleNames.includes("Most Versatile"), false, "Product fallback should reject award/prose labels as contenders");
+assert.ok(malformedWaterBottleNames.some((name) => /hydro flask/i.test(name)), "Product fallback should retain real water bottle product/brand evidence");
+assert.ok(malformedWaterBottleNames.some((name) => /takeya/i.test(name)), "Product fallback should retain Takeya evidence");
+
 const uncategorizedTimeoutFallback = await buildProductFallbackConsensus("best reusable lunch box", [
   sourceFixture("example-review.com", "best-lunch-boxes", "Best Lunch Boxes Tested", "## Bentgo Fresh Lunch Box\nBest overall lunch box in testing."),
   sourceFixture("example-kitchen.com", "lunch-box-review", "Reusable Lunch Box Reviews", "## PlanetBox Rover\nA durable stainless lunch box with strong owner reviews."),
@@ -1130,6 +1276,84 @@ assert.deepEqual(
   "Away opinion fallback should roll child/model evidence up to Away and reject unrelated luggage brands"
 );
 
+const awayOpinionNormalScope = await productOpinionAggregationScopeForRegression("is away luggage worth it", [
+  {
+    name: "Away Bigger Carry-On",
+    reason: "Away's Bigger Carry-On remains the focus of this luggage review.",
+    sourceTitle: "Is Away Luggage Worth It?"
+  },
+  {
+    name: "Travelpro Platinum Elite",
+    reason: "Travelpro is mentioned as an alternative while the source evaluates whether Away luggage is worth it.",
+    sourceTitle: "Away luggage compared"
+  },
+  {
+    name: "Monos Carry-On",
+    reason: "Monos appears as another alternative in a discussion centered on Away.",
+    sourceTitle: "Carry-ons tested"
+  }
+]);
+assert.deepEqual(
+  awayOpinionNormalScope.resultNames,
+  ["Away"],
+  "Away product opinion normal aggregation should display only the scoped target entity"
+);
+assert.equal(
+  awayOpinionNormalScope.structuredContenderNames.includes("Travelpro"),
+  false,
+  "Travelpro should not enter aggregation as a primary contender for a scoped Away opinion query"
+);
+assert.equal(
+  awayOpinionNormalScope.structuredContenderNames.includes("Monos"),
+  false,
+  "Monos should not enter aggregation as a primary contender for a scoped Away opinion query"
+);
+
+const hydroFlaskOpinionNormalScope = await productOpinionAggregationScopeForRegression("is hydro flask worth it", [
+  {
+    name: "Hydro Flask Standard Flex",
+    reason: "Hydro Flask Standard Flex is the product being evaluated.",
+    sourceTitle: "Is Hydro Flask Worth It?"
+  },
+  {
+    name: "Yeti Rambler Water Bottle",
+    reason: "Yeti is mentioned as a competing insulated bottle.",
+    sourceTitle: "Hydro Flask comparison"
+  },
+  {
+    name: "Owala FreeSip",
+    reason: "Owala appears as another bottle alternative in a Hydro Flask review.",
+    sourceTitle: "Water bottles tested"
+  }
+]);
+assert.deepEqual(
+  hydroFlaskOpinionNormalScope.resultNames,
+  ["Hydro Flask"],
+  "Hydro Flask product opinion normal aggregation should remain scoped to Hydro Flask"
+);
+
+const awayComparisonScope = await productOpinionAggregationScopeForRegression("is away luggage worth it vs travelpro", [
+  {
+    name: "Away Bigger Carry-On",
+    reason: "Away's Bigger Carry-On is compared directly with Travelpro.",
+    sourceTitle: "Away vs Travelpro"
+  },
+  {
+    name: "Travelpro Platinum Elite",
+    reason: "Travelpro Platinum Elite is a direct comparison alternative to Away.",
+    sourceTitle: "Away vs Travelpro"
+  },
+  {
+    name: "Monos Carry-On",
+    reason: "Monos is also included as a luggage comparison point.",
+    sourceTitle: "Luggage comparisons"
+  }
+]);
+assert.ok(
+  awayComparisonScope.resultNames.includes("Away") && awayComparisonScope.resultNames.includes("Travelpro"),
+  "Explicit product comparison queries should not be scoped to only the first mentioned target"
+);
+
 const zeroTargetOpinionTimeoutFallback = await buildProductFallbackConsensus("is hydro flask worth it", [
   sourceFixture("example-review.com", "yeti-review", "Yeti Rambler Review", "## Yeti Rambler Water Bottle\nYeti performed well in testing."),
   sourceFixture("example-outdoors.com", "owala-review", "Owala Bottle Review", "## Owala FreeSip\nOwala was popular with testers."),
@@ -1146,6 +1370,7 @@ console.log(
     {
       productTimeoutFallback: {
         waterBottle: waterBottleTimeoutFallback?.results.map((result) => result.name),
+        malformedWaterBottle: malformedWaterBottleNames,
         uncategorized: uncategorizedTimeoutFallback?.results.map((result) => result.name),
         emptyAllowed: emptyTimeoutFallback === null,
         hydroFlaskOpinion: hydroFlaskOpinionTimeoutFallback?.results.map((result) => result.name),
@@ -1323,6 +1548,44 @@ for (const item of repeatedContextualCityCases) {
 }
 
 console.log(JSON.stringify({ repeatedContextualCityValidation: repeatedContextualCityCases.map((item) => ({ query: item.query, city: item.city })) }, null, 2));
+
+assert.equal(
+  destinationCandidateProof("best city to visit in spain", "A Golden City", ["Spain travel guide: a golden city with art and architecture."]).accepted,
+  false,
+  "Destination city validation should reject indefinite-article prose fragments like A Golden City"
+);
+assert.equal(
+  destinationCandidateProof("best city to visit in spain", "A Golden City", ["Spain travel guide: a golden city with art and architecture."]).reason,
+  "title_or_directory_fragment",
+  "A Golden City should be rejected at destination shape validation"
+);
+
+for (const validSpanishCityCandidate of ["Barcelona", "Madrid", "Seville", "Granada", "Valencia"]) {
+  const proof = destinationCandidateProof("best city to visit in spain", validSpanishCityCandidate, [
+    `The best cities to visit in Spain include ${validSpanishCityCandidate} for food, culture, and history.`
+  ]);
+  assert.equal(proof.accepted, true, `${validSpanishCityCandidate} should remain eligible as a contextual Spanish city candidate`);
+  assert.equal(proof.requiresMultipleSources, true, `${validSpanishCityCandidate} should still require repeated contextual evidence`);
+}
+
+const spanishCityRecoveryContenders = destinationContendersFromSources("best city to visit in spain", [
+  {
+    title: "Best Cities to Visit in Spain",
+    url: "regression://spain-cities-1",
+    sourceQuality: 1.4,
+    snippet: "Spain favorites include Barcelona, Madrid, and Seville. A golden city awaits travelers in every region."
+  },
+  {
+    title: "Spain city guide",
+    url: "regression://spain-cities-2",
+    sourceQuality: 1.4,
+    snippet: "Recommended cities to visit in Spain include Barcelona, Madrid, Granada, and Valencia. A golden city is how one writer described the trip."
+  }
+]);
+const spanishCityRecoveryNames = spanishCityRecoveryContenders.map((item) => item.name);
+assert.equal(spanishCityRecoveryNames.includes("A Golden City"), false, "Destination recovery should not retain A Golden City as a city contender");
+assert.ok(spanishCityRecoveryNames.includes("Barcelona"), "Destination recovery should preserve Barcelona for Spain city queries");
+assert.ok(spanishCityRecoveryNames.includes("Madrid"), "Destination recovery should preserve Madrid for Spain city queries");
 
 for (const invalidCityCandidate of ["Amalfi Coast", "Tuscany", "Lake Como", "Sicily"]) {
   assert.equal(

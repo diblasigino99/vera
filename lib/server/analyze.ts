@@ -287,7 +287,7 @@ async function buildGenericProductFallbackConsensus(
   callCounts?: ExternalCallCounts,
   diagnostics?: AnalyzeDiagnostics
 ) {
-  const opinionTarget = productBrandOpinionTarget(query);
+  const opinionTarget = productOpinionScopedTarget(query);
   const recoveredSignals = recoverGenericProductSignalsFromSources(query, sources);
   const fallbackSignals = dedupeSignals(opinionTarget ? scopeProductOpinionFallbackSignals(query, recoveredSignals, opinionTarget, diagnostics) : recoveredSignals);
 
@@ -318,9 +318,19 @@ async function buildGenericProductFallbackConsensus(
 
 function scopeProductOpinionFallbackSignals(query: string, signals: SourceSignal[], opinionTarget: string, diagnostics?: AnalyzeDiagnostics) {
   const resolvedSignals = resolveSignalsForRequestedEntityLevel(query, "product_recommendation", signals, diagnostics);
+  return scopeProductOpinionResolvedSignalsToTarget(query, resolvedSignals, opinionTarget, diagnostics, "product_entity_opinion_fallback_scope");
+}
+
+function scopeProductOpinionResolvedSignalsToTarget(
+  query: string,
+  signals: SourceSignal[],
+  opinionTarget: string,
+  diagnostics: AnalyzeDiagnostics | undefined,
+  validator: string
+) {
   const retained: SourceSignal[] = [];
 
-  for (const signal of resolvedSignals) {
+  for (const signal of signals) {
     if (normalizedEntityName(signal.contenderName) === normalizedEntityName(opinionTarget)) {
       retained.push(signal);
       continue;
@@ -331,13 +341,13 @@ function scopeProductOpinionFallbackSignals(query: string, signals: SourceSignal
       reasonCode: "wrong_entity_type",
       originalName: signal.contenderName,
       canonicalName: signal.contenderName,
-      validator: "product_entity_opinion_fallback_scope",
+      validator,
       sourceUrl: signal.sourceUrl,
       metadata: {
         requestedTarget: opinionTarget,
         detectedQueryCategory: "product_recommendation",
         inferredCandidateType: "unrelated_product_entity",
-        reason: "Explicit product opinion fallback only accepts the target entity or child/model evidence resolved to that target."
+        reason: "Explicit product opinion queries only accept the target entity or child/model evidence resolved to that target unless the query asks for alternatives or comparison."
       }
     });
   }
@@ -482,12 +492,45 @@ function genericProductFallbackCandidateIsValid(query: string, candidate: string
   const words = normalized.split(/\s+/).filter(Boolean);
 
   if (!normalized || words.length > 8) return false;
+  if (productFallbackCandidateIsMetadataOrProseFragment(normalized, source)) return false;
   if (isGenericProductContender(query, candidate)) return false;
   if (isRejectableContenderName(candidate, "product_recommendation", source, "generic product timeout fallback")) return false;
   if (/^(?:best|top|our|also|image|photo|pros?|cons?|credit|material|volume|care|price|amazon|read more|top comments?|none)$/i.test(normalized)) return false;
   if (looksLikeRetailerEntity(normalized, `${source?.title ?? ""} ${source?.snippet ?? ""}`)) return false;
   if (looksLikeDestinationOrPlaceEntity(normalized, `${source?.title ?? ""} ${source?.snippet ?? ""}`)) return false;
   return /\b[A-Z]{2,}\b/.test(candidate) || /^[A-Z][A-Za-z0-9&'’().+\-/]+(?:\s+[A-Z0-9][A-Za-z0-9&'’().+\-/]+){0,6}$/.test(candidate);
+}
+
+function productFallbackCandidateIsMetadataOrProseFragment(normalizedCandidate: string, source?: VeraSource) {
+  if (
+    /^(?:description|overview|details?|specifications?|features?|pros?|cons?|materials?|volume|care|price|credit|image|photo|video|transcript|chapter|comments?|top comments?|read more|most popular|most versatile|most durable|most stylish|most leakproof|most leak proof|best overall|best value|best budget|best premium|best insulated|top pick|our pick|runner up|upgrade pick|also consider)$/.test(
+      normalizedCandidate
+    )
+  ) {
+    return true;
+  }
+
+  if (/^(?:most|best|top|our|also)\s+(?:[a-z]+(?:\s+[a-z]+){0,3})$/.test(normalizedCandidate) && !/\b(?:bottle|machine|maker|shoe|luggage|suitcase|mattress|chair|router|headphones|laptop|phone|camera|monitor|watch|backpack|bag|pack|box)\b/.test(normalizedCandidate)) {
+    return true;
+  }
+
+  if (!source) return false;
+
+  const title = normalizeQuery(source.title);
+  const domainLabel = normalizeQuery(source.domain.replace(/^www\./, "").split(".")[0] ?? "");
+  const publisherFragments = new Set(
+    [
+      domainLabel,
+      ...title
+        .split(/\s*(?:\||-|:|—|–)\s*/)
+        .map((part) => part.trim())
+        .filter(Boolean)
+    ].filter(Boolean)
+  );
+
+  if (publisherFragments.has(normalizedCandidate)) return true;
+
+  return /^(?:consumer reports|wirecutter|the wirecutter|new york times|nytimes|good housekeeping|popular mechanics|cnet|reviewed|tom s guide|pcmag|techradar|youtube)$/.test(normalizedCandidate);
 }
 
 function genericProductFallbackMentionStrength(source: VeraSource, candidate: string): SourceSignal["mentionStrength"] {
@@ -1885,6 +1928,40 @@ export function filterCompatibleSoftwareSignalsForRegression(
   };
 }
 
+export async function productOpinionAggregationScopeForRegression(
+  query: string,
+  items: Array<{ name: string; reason?: string; sourceTitle?: string; sourceUrl?: string }>
+) {
+  const diagnostics = createAnalyzeDiagnostics();
+  const sources = items.map((item, index) => {
+    const sourceUrl = item.sourceUrl ?? `regression://${index + 1}`;
+
+    return {
+      title: item.sourceTitle ?? `Regression source ${index + 1}`,
+      url: sourceUrl,
+      domain: "regression.test",
+      snippet: item.reason ?? "Regression evidence",
+      canonicalUrl: sourceUrl
+    };
+  });
+  const signals = items.map((item, index) => ({
+    ...regressionSourceSignal(item.name, index, "product_recommendation"),
+    sourceUrl: item.sourceUrl ?? `regression://${index + 1}`,
+    sourceTitle: item.sourceTitle ?? `Regression source ${index + 1}`,
+    positiveMention: item.reason ?? "Regression evidence",
+    extractedReason: item.reason ?? "Regression evidence"
+  }));
+  const structuredConsensus = await aggregateSignals(signals, sources, query, undefined, diagnostics);
+  const consensus = buildConsensus(query, sources, intentFromQuery(query), structuredConsensus, diagnostics);
+
+  return {
+    mode: consensus.mode,
+    resultNames: consensus.results.map((result) => result.name),
+    structuredContenderNames: structuredConsensus.contenders.map((contender) => contender.name),
+    rejectedNames: diagnostics.entityValidationDiagnostics.filter((item) => item.status === "rejected").map((item) => item.originalName)
+  };
+}
+
 export function preserveEvidenceBackedProductContendersForRegression(query: string, names: string[]) {
   const diagnostics = createAnalyzeDiagnostics();
   const signals = resolveSignalsForRequestedEntityLevel(
@@ -2497,6 +2574,22 @@ function productBrandOpinionTarget(query: string) {
   return Array.from(productParentBrandCanonicalNames.entries()).find(([brand]) => new RegExp(`\\b${escapeRegExp(brand)}\\b`).test(normalized))?.[1] ?? null;
 }
 
+function productOpinionScopedTarget(query: string) {
+  const target = productBrandOpinionTarget(query);
+
+  if (!target || productOpinionExplicitlyRequestsAlternatives(query)) {
+    return null;
+  }
+
+  return target;
+}
+
+function productOpinionExplicitlyRequestsAlternatives(query: string) {
+  const normalized = normalizeQuery(query);
+
+  return /\b(?:vs|versus|compare|compared|comparison|alternative|alternatives|replacement|replacements|instead of|rather than|better than|over)\b/.test(normalized);
+}
+
 function aliasRelationship(originalName: string, canonicalName: string): EntityResolutionAction["relationshipType"] {
   if (originalName === canonicalName) return "exact_duplicate";
   if (normalizedEntityName(originalName) === normalizedEntityName(canonicalName)) return "normalized_duplicate";
@@ -2992,7 +3085,11 @@ async function aggregateSignals(
     );
   }
   const entityResolvedSignals = resolveSignalsForRequestedEntityLevel(query, queryEvidenceType, evidenceQualifiedSignals, diagnostics);
-  const compatibleSignals = filterSignalsByRequestedEntityCompatibility(query, queryEvidenceType, entityResolvedSignals, diagnostics);
+  const productOpinionTarget = queryEvidenceType === "product_recommendation" ? productOpinionScopedTarget(query) : null;
+  const targetScopedSignals = productOpinionTarget
+    ? scopeProductOpinionResolvedSignalsToTarget(query, entityResolvedSignals, productOpinionTarget, diagnostics, "product_entity_opinion_scope")
+    : entityResolvedSignals;
+  const compatibleSignals = filterSignalsByRequestedEntityCompatibility(query, queryEvidenceType, targetScopedSignals, diagnostics);
   const aggregationSignals = queryEvidenceType === "local_recommendation" ? mergeLocalBusinessSignalNames(compatibleSignals) : compatibleSignals;
   const byName = new Map<string, SourceSignal[]>();
 
@@ -5252,12 +5349,8 @@ function localFallbackPresenceEvidenceRejectionReason(query: string, signal: Sou
   const contextSupportsSubtype = intent.supportPattern.test(context);
   const contextConflicts = Boolean(intent.conflictPattern?.test(context));
   const sourceHasCandidateRecommendation = localFallbackSourceHasRecommendationContextForCandidate(query, signal.contenderName, source);
-  const sourceIsCandidateSpecific = localFallbackSourceLooksCandidateSpecific(signal.contenderName, source);
 
   if (!sourceHasCandidateRecommendation) {
-    if (placesTypesSupportSpecificIntent(intent, signal.placesTypes ?? []) && sourceIsCandidateSpecific) {
-      return null;
-    }
     return "fallback_source_presence_only";
   }
 
@@ -5319,15 +5412,6 @@ function localFallbackSourceHasRecommendationContextForCandidate(query: string, 
   if (/\b(yelp|tripadvisor|opentable|resy|healthgrades|zocdoc|angi|homeadvisor)\b/.test(normalizeQuery(source.domain)) && recommendationPattern.test(sourceContext)) return true;
 
   return false;
-}
-
-function localFallbackSourceLooksCandidateSpecific(contenderName: string, source: VeraSource) {
-  const normalizedName = normalizeQuery(contenderName);
-  const nameTokens = normalizedName.split(/\s+/).filter((token) => token.length >= 3);
-  const titleNamesCandidate = localTextReferencesCandidate(source.title, normalizedName, nameTokens);
-  const slugNamesCandidate = urlBusinessSlugs(source.url).some((slug) => localNamesAreDuplicateVariants(localBusinessKey(slug), localBusinessKey(contenderName)));
-
-  return titleNamesCandidate || slugNamesCandidate;
 }
 
 function localThemesFromEvidence(value: string) {
@@ -7713,8 +7797,9 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
   const specificLocalIntent = localSpecificIntentForQuery(consensus.query);
   const hasValidCuisineSpecificLocalResults =
     Boolean(specificLocalIntent && localSpecificIntentRequiresBusinessSpecificEvidence(specificLocalIntent)) && cleanResults.length >= 2;
+  const hasEvidenceBackedLocalResult = cleanResults.some(cachedLocalResultHasPositiveAttributedEvidence);
 
-  if (cleanResults.length < 3 && !cleanResults.some((result) => Boolean(result.verifiedAddress)) && !hasValidCuisineSpecificLocalResults) {
+  if (cleanResults.length < 3 && !cleanResults.some((result) => Boolean(result.verifiedAddress)) && !hasValidCuisineSpecificLocalResults && !hasEvidenceBackedLocalResult) {
     return {
       ...consensus,
       mode: "no_reliable_consensus",
@@ -7751,6 +7836,14 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
         }
       : consensus.structuredConsensus
   });
+}
+
+function cachedLocalResultHasPositiveAttributedEvidence(result: ConsensusResponse["results"][number]) {
+  return (
+    Boolean(result.metrics && isEvidenceBackedPresentationContender(result.metrics)) &&
+    result.evidence.some((item) => item.trim().length > 0) &&
+    result.sources.some((source) => isValidAttributableSourceUrl(source.url))
+  );
 }
 
 function cachedLocalResultPassesOperationalStatus(consensus: ConsensusResponse, result: ConsensusResponse["results"][number]) {
