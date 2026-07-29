@@ -1323,8 +1323,43 @@ function prepareSourcesForOpenAI(sources: VeraSource[], evidenceType: QueryEvide
 }
 
 function trimForOpenAI(text: string, maxChars: number) {
-  const compact = text.replace(/\s+/g, " ").trim();
-  return compact.length > maxChars ? `${compact.slice(0, maxChars).trim()}...` : compact;
+  const compact = removeUnpairedSurrogates(text.replace(/\s+/g, " ").trim());
+  if (compact.length <= maxChars) return compact;
+
+  let truncated = "";
+  for (const char of compact) {
+    if (truncated.length + char.length > maxChars) break;
+    truncated += char;
+  }
+
+  return `${removeUnpairedSurrogates(truncated).trim()}...`;
+}
+
+function removeUnpairedSurrogates(text: string) {
+  let result = "";
+
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = text.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        result += text[index] + text[index + 1];
+        index += 1;
+      }
+      continue;
+    }
+
+    if (code >= 0xdc00 && code <= 0xdfff) continue;
+
+    result += text[index];
+  }
+
+  return result;
+}
+
+export function trimForOpenAIRegression(text: string, maxChars: number) {
+  return trimForOpenAI(text, maxChars);
 }
 
 function intentFromQuery(query: string): ConsensusResponse["intent"] {
@@ -1727,6 +1762,7 @@ function cleanupStageForEvidenceType(
 
   if (evidenceType === "destination_recommendation") return "geography_cleanup";
   if (evidenceType === "product_recommendation") return "insufficient_evidence_cleanup";
+  if (evidenceType === "software_tool") return "insufficient_evidence_cleanup";
 
   return "entity_type_cleanup";
 }
@@ -1743,6 +1779,15 @@ function cleanupReasonCodeForEvidenceType(
 
   if (evidenceType === "destination_recommendation") return "wrong_geography";
   if (evidenceType === "product_recommendation") return "insufficient_evidence";
+  if (evidenceType === "software_tool") {
+    if (contender.positiveMentionCount <= 0) return "software_missing_positive_evidence";
+    if (contender.netWeightedScore < 0) return "insufficient_evidence";
+
+    const subtypeRejection = softwareSubtypeCompatibilityRejectionReason(query, contender.name, signals);
+    if (subtypeRejection) return subtypeRejection.reasonCode;
+
+    return "software_missing_category_evidence";
+  }
 
   return "wrong_entity_type";
 }
@@ -1809,6 +1854,30 @@ export function filterCompatibleEntityNamesForRegression(query: string, evidence
   const signals = names.map((name, index) => regressionSourceSignal(name, index, evidenceType));
   const resolved = resolveSignalsForRequestedEntityLevel(query, evidenceType, signals, diagnostics);
   const compatible = filterSignalsByRequestedEntityCompatibility(query, evidenceType, resolved, diagnostics);
+
+  return {
+    compatibleNames: Array.from(new Set(compatible.map((signal) => signal.contenderName))),
+    diagnostics: diagnostics.entityValidationDiagnostics
+  };
+}
+
+export function filterCompatibleSoftwareSignalsForRegression(
+  query: string,
+  items: Array<{ name: string; reason?: string; sourceTitle?: string; sourceUrl?: string; sentiment?: SourceSignal["sentiment"] }>
+) {
+  const diagnostics = createAnalyzeDiagnostics();
+  const signals = items.map((item, index) => ({
+    ...regressionSourceSignal(item.name, index, "software_tool"),
+    sourceUrl: item.sourceUrl ?? `regression://${index + 1}`,
+    sourceTitle: item.sourceTitle ?? `Regression source ${index + 1}`,
+    sentiment: item.sentiment ?? "positive",
+    mentionStrength: inferMentionStrength(item.reason ?? "Regression evidence"),
+    positiveMention: item.sentiment === "negative" ? undefined : (item.reason ?? "Regression evidence"),
+    negativeMention: item.sentiment === "negative" ? (item.reason ?? "Regression evidence") : undefined,
+    extractedReason: item.reason ?? "Regression evidence"
+  }));
+  const resolved = resolveSignalsForRequestedEntityLevel(query, "software_tool", signals, diagnostics);
+  const compatible = filterSignalsByRequestedEntityCompatibility(query, "software_tool", resolved, diagnostics);
 
   return {
     compatibleNames: Array.from(new Set(compatible.map((signal) => signal.contenderName))),
@@ -2502,6 +2571,7 @@ function filterSignalsByRequestedEntityCompatibility(
       metadata: {
         queryCategory: evidenceType,
         subtype: requestedEntityTypeForQuery(query, evidenceType),
+        softwareSubtype: evidenceType === "software_tool" ? requestedSoftwareSubtypeForQuery(query) : undefined,
         inferredCandidateType: rejection.inferredCandidateType,
         reason: rejection.reason
       }
@@ -2544,6 +2614,11 @@ function requestedEntityCompatibilityRejectionReason(
     if (detectedCategory.contenderCategory === "product" && !/\b(app|software|saas|platform|tool|assistant|crm|workspace|suite|notes?|email marketing|project management)\b/.test(combined)) {
       return { reasonCode: "wrong_entity_type", inferredCandidateType: "physical_product", reason: "Software/tool query cannot aggregate unrelated physical products." };
     }
+
+    const softwareSubtypeRejection = softwareSubtypeCompatibilityRejectionReason(query, name, signals);
+    if (softwareSubtypeRejection) {
+      return softwareSubtypeRejection;
+    }
   }
 
   if (evidenceType === "product_recommendation") {
@@ -2574,6 +2649,195 @@ function requestedEntityCompatibilityRejectionReason(
         reason: `Destination query cannot aggregate ${detectedCategory.contenderCategory} entities.`
       };
     }
+  }
+
+  return null;
+}
+
+type SoftwareSubtype =
+  | "crm"
+  | "ai_coding_assistant"
+  | "project_management"
+  | "email_marketing"
+  | "note_taking"
+  | "password_manager"
+  | "team_chat"
+  | "analytics"
+  | "help_desk"
+  | "accounting"
+  | "website_builder"
+  | "ecommerce_platform"
+  | "payroll";
+
+function softwareSubtypeCompatibilityRejectionReason(
+  query: string,
+  name: string,
+  signals: SourceSignal[]
+): { reasonCode: EntityValidationDiagnostic["reasonCode"]; inferredCandidateType: string; reason: string } | null {
+  const subtype = requestedSoftwareSubtypeForQuery(query);
+
+  if (!subtype) return null;
+
+  const target = softwareOpinionTarget(query);
+  const normalizedName = normalizedEntityName(name);
+  const isTarget = target ? normalizedEntityName(target) === normalizedName : false;
+  const positiveSignals = signals.filter((signal) => signal.sentiment === "positive" && isValidAttributableSourceUrl(signal.sourceUrl));
+
+  if (!positiveSignals.length) {
+    return {
+      reasonCode: "software_missing_positive_evidence",
+      inferredCandidateType: "software_without_positive_evidence",
+      reason: `Software ${subtype} contender lacks positive attributable evidence.`
+    };
+  }
+
+  const categoryCompatible = signals.some((signal) => softwareSignalHasSubtypeEvidence(subtype, signal, isTarget));
+
+  if (!categoryCompatible) {
+    return {
+      reasonCode: "software_missing_category_evidence",
+      inferredCandidateType: "software_subtype_unproven",
+      reason: `Software contender lacks candidate-specific evidence for requested ${subtype} category.`
+    };
+  }
+
+  if (target && !isTarget && !softwareAlternativeIsScopedToOpinionQuery(query, subtype, signals)) {
+    return {
+      reasonCode: "software_opinion_alternative_not_scoped",
+      inferredCandidateType: "unscoped_software_alternative",
+      reason: "Software opinion alternative is not explicitly framed as a target or category alternative with sufficient support."
+    };
+  }
+
+  return null;
+}
+
+function requestedSoftwareSubtypeForQuery(query: string): SoftwareSubtype | null {
+  const normalized = normalizeQuery(query);
+
+  if (/\b(crm|customer relationship management|sales crm|sales pipeline)\b/.test(normalized)) return "crm";
+  if (/\b(ai coding assistant|coding assistant|code assistant|coding agent|ai coding agent|developer assistant|programming assistant)\b/.test(normalized)) return "ai_coding_assistant";
+  if (/\b(project management|task management|work management)\b/.test(normalized)) return "project_management";
+  if (/\b(email marketing|newsletter automation|campaign automation|marketing platform)\b/.test(normalized)) return "email_marketing";
+  if (/\b(note taking|notetaking|notes app|note app|knowledge capture)\b/.test(normalized)) return "note_taking";
+  if (/\bpassword manager\b/.test(normalized)) return "password_manager";
+  if (/\b(team chat|work chat|business chat|workplace chat)\b/.test(normalized)) return "team_chat";
+  if (/\banalytics\b/.test(normalized)) return "analytics";
+  if (/\b(help desk|customer support|support desk)\b/.test(normalized)) return "help_desk";
+  if (/\baccounting\b/.test(normalized)) return "accounting";
+  if (/\bwebsite builder\b/.test(normalized)) return "website_builder";
+  if (/\becommerce platform|e-commerce platform|online store platform\b/.test(normalized)) return "ecommerce_platform";
+  if (/\bpayroll\b/.test(normalized)) return "payroll";
+
+  return null;
+}
+
+function softwareSignalHasSubtypeEvidence(subtype: SoftwareSubtype, signal: SourceSignal, isTarget: boolean) {
+  const candidateText = normalizeQuery(
+    [signal.contenderName, signal.extractedReason, signal.positiveMention, signal.negativeMention, signal.themes.join(" ")].filter(Boolean).join(" ")
+  );
+  const sourceTitleText = normalizeQuery(signal.sourceTitle);
+  const normalizedName = normalizeQuery(signal.contenderName);
+
+  if (softwareSubtypePattern(subtype).test(candidateText)) return true;
+  if (isTarget && softwareSubtypePattern(subtype).test(sourceTitleText)) return true;
+
+  const positive = signal.sentiment === "positive" && isValidAttributableSourceUrl(signal.sourceUrl);
+  if (!positive) return false;
+  if (softwareSubtypeNicheMismatch(subtype, signal)) return false;
+
+  return sourceTitleText.includes(normalizedName) && softwareSubtypePattern(subtype).test(sourceTitleText);
+}
+
+function softwareAlternativeIsScopedToOpinionQuery(query: string, subtype: SoftwareSubtype, signals: SourceSignal[]) {
+  const target = softwareOpinionTarget(query);
+  const targetPattern = target ? new RegExp(`\\b${escapeRegExp(normalizeQuery(target)).replace(/\s+/g, "\\s+")}\\b`) : null;
+  const scopedSignals = signals.filter((signal) => {
+    if (signal.sentiment !== "positive" || !isValidAttributableSourceUrl(signal.sourceUrl)) return false;
+
+    const text = normalizeQuery([signal.contenderName, signal.sourceTitle, signal.extractedReason, signal.positiveMention, signal.themes.join(" ")].filter(Boolean).join(" "));
+    const hasCategoryAlternative = softwareAlternativePattern(subtype).test(text);
+    const hasTargetAlternative = Boolean(targetPattern && targetPattern.test(text) && /\b(alternative|alternatives|replacement|replacements|instead of|over|versus|vs|switch from|migrate from)\b/.test(text));
+
+    return hasCategoryAlternative || hasTargetAlternative;
+  });
+
+  if (scopedSignals.length >= 2) return true;
+  return scopedSignals.some((signal) => softwareSourceAuthority(signal) === "high" || signal.mentionStrength === "strong");
+}
+
+function softwareSubtypePattern(subtype: SoftwareSubtype) {
+  switch (subtype) {
+    case "crm":
+      return /\b(crm|customer relationship|sales pipeline|lead tracking|lead management|contact management|deal tracking|sales automation|follow-?up loop)\b/;
+    case "ai_coding_assistant":
+      return /\b(coding assistant|code assistant|coding agent|code agent|developer tool|developer assistant|programming|code completion|code generation|refactor|ide|vscode|vs code|cursor|claude code|copilot|chatgpt)\b/;
+    case "project_management":
+      return /\b(project management|task management|work management|kanban|gantt|scrum|agile|jira|roadmap|sprint|project tracking|team workflow)\b/;
+    case "email_marketing":
+      return /\b(email marketing|newsletter|campaign|campaigns|deliverability|email automation|marketing automation|email api|subscriber|subscribers|mailchimp|klaviyo|activecampaign|brevo)\b/;
+    case "note_taking":
+      return /\b(note taking|notetaking|notes?|knowledge base|knowledge capture|markdown notes|meeting notes|personal knowledge|pkm|evernote|notion|obsidian|apple notes|goodnotes|google keep)\b/;
+    case "password_manager":
+      return /\b(password manager|password vault|credentials|passkeys|1password|bitwarden|dashlane)\b/;
+    case "team_chat":
+      return /\b(team chat|work chat|messaging|slack|teams|discord|workplace chat)\b/;
+    case "analytics":
+      return /\b(analytics|product analytics|web analytics|event tracking|dashboard|amplitude|mixpanel|heap|google analytics)\b/;
+    case "help_desk":
+      return /\b(help desk|customer support|ticketing|support desk|zendesk|freshdesk|intercom|help scout)\b/;
+    case "accounting":
+      return /\b(accounting|bookkeeping|invoicing|expenses|quickbooks|xero|freshbooks)\b/;
+    case "website_builder":
+      return /\b(website builder|site builder|webflow|wix|squarespace|landing page|no-code site)\b/;
+    case "ecommerce_platform":
+      return /\b(ecommerce|e-commerce|online store|shopify|woocommerce|bigcommerce|storefront)\b/;
+    case "payroll":
+      return /\b(payroll|payroll tax|benefits|gusto|adp|onpay|surepayroll)\b/;
+  }
+}
+
+function softwareAlternativePattern(subtype: SoftwareSubtype) {
+  switch (subtype) {
+    case "crm":
+      return /\b(crm alternatives?|salesforce alternatives?|salesforce alternative|salesforce replacements?|salesforce replacement|replace salesforce|instead of salesforce|switch from salesforce|migrate from salesforce|alternative crms?)\b/;
+    case "ai_coding_assistant":
+      return /\b(coding assistant alternatives?|code assistant alternatives?|copilot alternatives?|developer tool alternatives?)\b/;
+    case "project_management":
+      return /\b(project management alternatives?|task management alternatives?|jira alternatives?|asana alternatives?|trello alternatives?)\b/;
+    case "email_marketing":
+      return /\b(email marketing alternatives?|newsletter alternatives?|campaign platform alternatives?|mailchimp alternatives?)\b/;
+    case "note_taking":
+      return /\b(note taking alternatives?|notes app alternatives?|notion alternatives?|evernote alternatives?|obsidian alternatives?)\b/;
+    default:
+      return new RegExp(`\\b${escapeRegExp(subtype.replace(/_/g, " "))}\\b.*\\balternatives?\\b|\\balternatives?\\b.*\\b${escapeRegExp(subtype.replace(/_/g, " "))}\\b`);
+  }
+}
+
+function softwareSubtypeNicheMismatch(subtype: SoftwareSubtype, signal: SourceSignal) {
+  const text = normalizeQuery([signal.contenderName, signal.sourceTitle, signal.extractedReason, signal.positiveMention].filter(Boolean).join(" "));
+
+  if (subtype === "note_taking" && /\b(therapist|therapists|therapy|clinical|patient|ehr|practice management)\b/.test(text)) {
+    return !/\b(generic|general|personal|student|students|productivity|knowledge|markdown|meeting notes)\b/.test(text);
+  }
+
+  return false;
+}
+
+function softwareOpinionTarget(query: string) {
+  const normalized = normalizeQuery(query);
+
+  if (!/\b(worth it|worth buying|overrated|still (?:the )?best|still good|any good|recommended|recommend)\b/.test(normalized)) {
+    return null;
+  }
+
+  const known = softwareCategoryForQuery(query)?.leaders.find((leader) => leader.aliases.some((alias) => new RegExp(`\\b${escapeRegExp(alias)}\\b`).test(normalized)));
+  if (known) return canonicalSoftwareEntityName(known.label, query);
+
+  if (/\bcrm\b/.test(normalized)) {
+    const crmTargets = ["salesforce", "hubspot", "pipedrive", "zoho crm", "zoho"];
+    const target = crmTargets.find((alias) => new RegExp(`\\b${escapeRegExp(alias)}\\b`).test(normalized));
+    if (target) return canonicalSoftwareEntityName(target, query);
   }
 
   return null;
@@ -2639,6 +2903,12 @@ function isValidAttributableSourceUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+function softwareContenderPassesAggregationEligibility(contender: ContenderMetrics, signals: SourceSignal[]) {
+  if (contender.positiveMentionCount <= 0) return false;
+  if (contender.netWeightedScore < 0) return false;
+  return signals.some((signal) => signal.sentiment === "positive" && isValidAttributableSourceUrl(signal.sourceUrl));
 }
 
 async function aggregateSignals(
@@ -2770,6 +3040,8 @@ async function aggregateSignals(
           )
       : queryEvidenceType === "product_recommendation" && isBroadExploratoryQuery(query)
         ? contendersBeforeFiltering.filter((contender) => !isWeakBroadProductContender(contender, query))
+        : queryEvidenceType === "software_tool"
+          ? contendersBeforeFiltering.filter((contender) => softwareContenderPassesAggregationEligibility(contender, byName.get(contender.name) ?? []))
         : contendersBeforeFiltering;
   const preservedFallbackContenders =
     queryEvidenceType === "product_recommendation" && initiallyQualityFilteredContenders.length === 0

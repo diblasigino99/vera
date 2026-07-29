@@ -20,13 +20,15 @@ const {
   buildProductFallbackConsensus,
   enforceDisplayableSplitConsensusInvariant,
   filterCompatibleEntityNamesForRegression,
+  filterCompatibleSoftwareSignalsForRegression,
   localFallbackEvidenceEligibilityForRegression,
   localSubtypeProofForRegression,
   preserveEvidenceBackedProductContendersForRegression,
   resolveEntityNamesForRegression,
   resolveProductEntitySignalsForRegression,
   sanitizeCachedLocalConsensus,
-  selectNoReliableConsensusDisplayContendersForRegression
+  selectNoReliableConsensusDisplayContendersForRegression,
+  trimForOpenAIRegression
 } = jiti("./lib/server/analyze.ts");
 const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
 const { inferQueryEvidenceType } = jiti("./lib/utils.ts");
@@ -130,6 +132,53 @@ function resultFromContender(item, index = 0) {
     verifiedAddress: "284 Grand St, Brooklyn, NY 11211, USA"
   };
 }
+
+function hasUnpairedSurrogate(value) {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+      index += 1;
+      continue;
+    }
+    if (code >= 0xdc00 && code <= 0xdfff) return true;
+  }
+
+  return false;
+}
+
+function assertOpenAITrimSafe(input, maxChars, expected, message) {
+  const output = trimForOpenAIRegression(input, maxChars);
+  assert.equal(hasUnpairedSurrogate(output), false, `${message}: output should not contain unpaired surrogates`);
+  assert.doesNotThrow(() => JSON.parse(JSON.stringify({ messages: [{ role: "user", content: output }] })), `${message}: output should serialize as JSON`);
+  assert.equal(output, expected, message);
+}
+
+assertOpenAITrimSafe("abc😀def", 4, "abc...", "Emoji split at trim boundary should be removed safely with ellipsis");
+assertOpenAITrimSafe("abc😀def", 5, "abc😀...", "Emoji fitting before trim boundary should be preserved");
+assertOpenAITrimSafe("a😀b🚀c", 5, "a😀b...", "Multiple emoji should truncate without splitting");
+assertOpenAITrimSafe("café mañana", 20, "café mañana", "Accented Latin text should remain unchanged");
+assertOpenAITrimSafe("東京 京都 大阪", 20, "東京 京都 大阪", "Non-Latin valid Unicode should remain unchanged");
+assertOpenAITrimSafe("plain   ascii\ntext", 40, "plain ascii text", "Short ASCII text should preserve existing whitespace normalization");
+assertOpenAITrimSafe("plain ascii text that is long", 12, "plain ascii...", "Long ASCII text should truncate with ellipsis");
+assertOpenAITrimSafe(`abc${String.fromCharCode(0xd83c)}def`, 20, "abcdef", "Already malformed high surrogate should be removed without corrupting surrounding text");
+assertOpenAITrimSafe(`abc${String.fromCharCode(0xdc00)}def`, 20, "abcdef", "Already malformed low surrogate should be removed without corrupting surrounding text");
+assertOpenAITrimSafe(`Brevo G2: 4.5 ${String.fromCodePoint(0x1f4a1)} reviews`, 15, "Brevo G2: 4.5...", "Mailtrap-style emoji boundary should not produce invalid JSON");
+
+console.log(
+  JSON.stringify(
+    {
+      openAIUnicodeTrim: {
+        emojiBoundary: trimForOpenAIRegression("abc😀def", 4),
+        emojiPreserved: trimForOpenAIRegression("abc😀def", 5),
+        mailtrapBoundary: trimForOpenAIRegression(`Brevo G2: 4.5 ${String.fromCodePoint(0x1f4a1)} reviews`, 15)
+      }
+    },
+    null,
+    2
+  )
+);
 
 function classifyRegressionCase({ query, evidenceType, contenders, sourceCount, isBroadExploratoryProductQuery = false }) {
   if (sourceCount < minimumSourceCount || contenders.length === 0) {
@@ -494,19 +543,93 @@ assert.deepEqual(mattressPreserved, ["Helix Midnight Luxe"], "Broad-product pres
 
 console.log(JSON.stringify({ broadProductPreservation: { waterBottlePreserved, mattressPreserved } }, null, 2));
 
-const aiCodingCompatibility = filterCompatibleEntityNamesForRegression("best ai coding assistant", "software_tool", ["Honda Pilot", "Claude Code", "Cursor"]);
+const aiCodingCompatibility = filterCompatibleSoftwareSignalsForRegression("best ai coding assistant", [
+  { name: "Honda Pilot", reason: "listed as an SUV in an automotive comparison", sourceTitle: "Best vehicles tested" },
+  { name: "Claude Code", reason: "recommended for complex refactoring and code generation", sourceTitle: "Best AI coding assistants" },
+  { name: "Cursor", reason: "recommended as a coding assistant for daily IDE work", sourceTitle: "Best AI coding assistants" },
+  { name: "ChatGPT", reason: "produces useful code and programming help", sourceTitle: "Best AI coding assistants" }
+]);
 assert.equal(aiCodingCompatibility.compatibleNames.includes("Honda Pilot"), false, "Software queries should reject clear vehicle entities");
 assert.ok(aiCodingCompatibility.compatibleNames.includes("Claude Code"), "Software queries should retain software/tool entities");
 assert.ok(aiCodingCompatibility.compatibleNames.includes("Cursor"), "Software queries should retain software/tool entities");
+assert.ok(aiCodingCompatibility.compatibleNames.includes("ChatGPT"), "Software queries should retain supported coding-assistant entities");
 assert.ok(
   aiCodingCompatibility.diagnostics.some((diagnostic) => diagnostic.originalName === "Honda Pilot" && diagnostic.validator === "requested_entity_type_compatibility"),
   "Software compatibility rejection should produce diagnostics"
 );
 
-const noteTakingCompatibility = filterCompatibleEntityNamesForRegression("best note taking app", "software_tool", ["GoodNotes", "Notion", "Obsidian"]);
-assert.deepEqual(noteTakingCompatibility.compatibleNames.sort(), ["GoodNotes", "Notion", "Obsidian"].sort(), "Working software app contenders should remain compatible");
+const noteTakingCompatibility = filterCompatibleSoftwareSignalsForRegression("best note taking app", [
+  { name: "GoodNotes", reason: "recommended for handwritten notes and study notebooks", sourceTitle: "Best note taking apps" },
+  { name: "Notion", reason: "recommended as a flexible notes and knowledge base app", sourceTitle: "Best note taking apps" },
+  { name: "Obsidian", reason: "recommended for markdown notes and personal knowledge management", sourceTitle: "Best note taking apps" },
+  { name: "TherapyNotes", reason: "praised for therapist practice management and patient records", sourceTitle: "Best note taking tool for therapists" }
+]);
+assert.deepEqual(noteTakingCompatibility.compatibleNames.sort(), ["GoodNotes", "Notion", "Obsidian"].sort(), "Working software note-taking contenders should remain compatible while niche clinical tools need generic note-taking proof");
 
-console.log(JSON.stringify({ requestedEntityTypeCompatibility: { aiCodingCompatibility, noteTakingCompatibility } }, null, 2));
+const crmOpinionCompatibility = filterCompatibleSoftwareSignalsForRegression("is salesforce still the best crm", [
+  { name: "Salesforce", reason: "still worth considering as a CRM for lead tracking and follow-ups", sourceTitle: "Best CRM software" },
+  { name: "HubSpot", reason: "experts strongly recommend HubSpot as a Salesforce alternative CRM for teams that value adoption", sourceTitle: "HubSpot CRM alternatives" },
+  { name: "Shape", reason: "recommended from one community comment as a CRM alternative", sourceTitle: "CRM Recommendation" },
+  { name: "Sheetify", reason: "recommended from one community comment as a CRM alternative", sourceTitle: "CRM Recommendation" },
+  { name: "RandomApp", reason: "recommended in the same thread", sourceTitle: "CRM Recommendation" }
+]);
+assert.ok(crmOpinionCompatibility.compatibleNames.includes("Salesforce CRM"), "Salesforce target should remain eligible for CRM opinion queries");
+assert.ok(crmOpinionCompatibility.compatibleNames.includes("HubSpot"), "Explicitly scoped CRM/Salesforce alternatives with strong context should remain eligible");
+assert.equal(crmOpinionCompatibility.compatibleNames.includes("Shape"), false, "One weak source should not make Shape a leading Salesforce-opinion alternative");
+assert.equal(crmOpinionCompatibility.compatibleNames.includes("Sheetify"), false, "One weak source should not make Sheetify a leading Salesforce-opinion alternative");
+assert.equal(crmOpinionCompatibility.compatibleNames.includes("RandomApp"), false, "Unrelated software should not survive CRM subtype compatibility");
+
+const crmCategoryCompatibility = filterCompatibleSoftwareSignalsForRegression("best crm software", [
+  { name: "HubSpot", reason: "recommended as a CRM for sales pipeline and contact management", sourceTitle: "Best CRM software" },
+  { name: "Close", reason: "recommended for fast follow-up loop and sales pipeline work", sourceTitle: "Best CRM software" },
+  { name: "GenericDocs", reason: "recommended as a document collaboration app", sourceTitle: "Best CRM software" },
+  { name: "Zoho CRM", reason: "mentioned in comparisons but not recommended", sentiment: "neutral", sourceTitle: "Best CRM software" }
+]);
+assert.ok(crmCategoryCompatibility.compatibleNames.includes("HubSpot"), "CRM-compatible tools should remain eligible");
+assert.ok(crmCategoryCompatibility.compatibleNames.includes("Close"), "Unknown legitimate CRM tools should survive when candidate evidence proves CRM fit");
+assert.equal(crmCategoryCompatibility.compatibleNames.includes("GenericDocs"), false, "Generic unrelated software should be rejected for CRM queries");
+assert.equal(crmCategoryCompatibility.compatibleNames.includes("Zoho CRM"), false, "Neutral-only software contenders should not enter aggregation eligibility");
+
+const projectManagementCompatibility = filterCompatibleSoftwareSignalsForRegression("best project management software", [
+  { name: "Trello", reason: "recommended for kanban project management", sourceTitle: "Best project management software" },
+  { name: "ONES.com", reason: "recommended as a Jira alternative for project tracking", sourceTitle: "Best project management software" }
+]);
+assert.deepEqual(projectManagementCompatibility.compatibleNames.sort(), ["ONES.com", "Trello"].sort(), "Project-management software tools should remain eligible");
+
+const emailMarketingCompatibility = filterCompatibleSoftwareSignalsForRegression("best email marketing platform", [
+  { name: "Mailchimp", reason: "recommended for email marketing campaigns and newsletters", sourceTitle: "Best email marketing platforms" },
+  { name: "Klaviyo", reason: "recommended for ecommerce email marketing automation", sourceTitle: "Best email marketing platforms" },
+  { name: "ActiveCampaign", reason: "recommended for email automation and campaign workflows", sourceTitle: "Best email marketing platforms" },
+  { name: "Brevo", reason: "recommended for newsletters and email marketing automation", sourceTitle: "Best email marketing platforms" }
+]);
+assert.deepEqual(
+  emailMarketingCompatibility.compatibleNames.sort(),
+  ["ActiveCampaign", "Brevo", "Klaviyo", "Mailchimp"].sort(),
+  "Legitimate email marketing tools should remain eligible when candidate evidence supports email marketing fit"
+);
+
+const unknownSoftwareCompatibility = filterCompatibleSoftwareSignalsForRegression("best email marketing platform", [
+  { name: "CampaignForge", reason: "recommended for email marketing campaigns, newsletters, and subscriber automation", sourceTitle: "Best email marketing platforms" }
+]);
+assert.deepEqual(unknownSoftwareCompatibility.compatibleNames, ["CampaignForge"], "Unknown legitimate software should survive with strong subtype evidence");
+
+console.log(
+  JSON.stringify(
+    {
+      requestedEntityTypeCompatibility: {
+        aiCodingCompatibility,
+        noteTakingCompatibility,
+        crmOpinionCompatibility,
+        crmCategoryCompatibility,
+        projectManagementCompatibility,
+        emailMarketingCompatibility,
+        unknownSoftwareCompatibility
+      }
+    },
+    null,
+    2
+  )
+);
 
 const splitTwoContenders = [contender("Antica Pesa", { sourceUrls: ["regression://1"] }), contender("I Cavallini", { sourceUrls: ["regression://2"] })];
 const splitTwoResults = enforceDisplayableSplitConsensusInvariant(
