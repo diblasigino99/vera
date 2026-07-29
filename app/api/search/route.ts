@@ -472,11 +472,13 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
           sources,
           "Vera found relevant sources, but not enough clean agreement to separate one clear favorite from the alternatives."
         ) ??
-        buildProductFallbackConsensus(
+        (await buildProductFallbackConsensus(
           body.data.query,
           sources,
-          "Vera found product-review sources, but not enough clean agreement to make a confident recommendation."
-        ) ??
+          "Vera found product-review sources, but not enough clean agreement to make a confident recommendation.",
+          externalCallCounts,
+          analyzeDiagnostics
+        )) ??
         (await buildDestinationFallbackConsensus(
           body.data.query,
           sources,
@@ -505,11 +507,14 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
     });
     if (evidenceType === "product_recommendation" && consensus.results.length === 0) {
       consensus =
-        buildProductFallbackConsensus(
+        (await buildProductFallbackConsensus(
           body.data.query,
           sources,
-          NO_RELIABLE_CONSENSUS_BODY
-        ) ?? consensus;
+          NO_RELIABLE_CONSENSUS_BODY,
+          externalCallCounts,
+          analyzeDiagnostics,
+          { allowGenericRecoveredSignals: openAITimedOut }
+        )) ?? consensus;
       updateTraceFromConsensus(trace, consensus, "product_fallback");
       updateTraceFromAnalyzeDiagnostics(trace, analyzeDiagnostics);
     }

@@ -17,6 +17,7 @@ Module._resolveFilename = function resolveAlias(request, parent, isMain, options
 
 const jiti = (await import("jiti")).default(process.cwd() + "/");
 const {
+  buildProductFallbackConsensus,
   filterCompatibleEntityNamesForRegression,
   preserveEvidenceBackedProductContendersForRegression,
   resolveEntityNamesForRegression,
@@ -350,6 +351,67 @@ function sourceFixture(domain, path, title, snippet, queryVariant = "primary") {
     canonicalUrl: `https://${domain}/${path}`
   };
 }
+
+const waterBottleTimeoutFallback = await buildProductFallbackConsensus("best water bottle brand", [
+  sourceFixture(
+    "nytimes.com",
+    "wirecutter/reviews/best-water-bottle",
+    "The 5 Best Water Bottles of 2026 | Reviews by Wirecutter",
+    "## Takeya Actives Insulated Water Bottle\nThe Takeya bottle sealed reliably and performed well in long-term testing."
+  ),
+  sourceFixture(
+    "goodhousekeeping.com",
+    "home-products/best-water-bottles",
+    "4 Best Water Bottles of 2026, Tested & Reviewed",
+    "## Yeti Rambler Water Bottle\nBest Overall. The Yeti Rambler performed well in Lab testing."
+  ),
+  sourceFixture(
+    "shopping.yahoo.com",
+    "best-water-bottles",
+    "The 11 best water bottles of 2026, tested and reviewed",
+    "### Best water bottle overall\n#### Hydro Flask Standard Flex Cap, 24 oz.\nTopping our list is the Hydro Flask Insulated Water Bottle."
+  ),
+  sourceFixture(
+    "reddit.com",
+    "r/BuyItForLife/best_water_bottle_to_buy",
+    "Best water bottle to buy : r/BuyItForLife",
+    "I have Stanley, YETI, RTIC, Owala, and off brand bottles. Stanley keeps water cold; YETI is second place."
+  )
+]);
+assert.ok(waterBottleTimeoutFallback, "Uncategorized water bottle timeout fallback should return a consensus payload");
+assert.equal(waterBottleTimeoutFallback?.mode, "no_reliable_consensus", "Weak generic product fallback should preserve no reliable consensus mode");
+assert.ok((waterBottleTimeoutFallback?.results.length ?? 0) > 0, "Water bottle timeout fallback should display evidence-backed contenders");
+assert.ok(waterBottleTimeoutFallback?.results.some((result) => /takeya/i.test(result.name)), "Water bottle timeout fallback should retain Takeya from source evidence");
+
+const uncategorizedTimeoutFallback = await buildProductFallbackConsensus("best reusable lunch box", [
+  sourceFixture("example-review.com", "best-lunch-boxes", "Best Lunch Boxes Tested", "## Bentgo Fresh Lunch Box\nBest overall lunch box in testing."),
+  sourceFixture("example-kitchen.com", "lunch-box-review", "Reusable Lunch Box Reviews", "## PlanetBox Rover\nA durable stainless lunch box with strong owner reviews."),
+  sourceFixture("reddit.com", "r/buyitforlife/lunch_box", "Lunch box recommendations", "I like Bentgo Fresh and PlanetBox Rover for reusable lunch boxes.")
+]);
+assert.ok(uncategorizedTimeoutFallback, "Uncategorized product timeout fallback should work without a product category prior");
+assert.equal(uncategorizedTimeoutFallback?.mode, "no_reliable_consensus");
+assert.ok((uncategorizedTimeoutFallback?.results.length ?? 0) > 0, "Uncategorized product timeout fallback should include notable contenders");
+
+const emptyTimeoutFallback = await buildProductFallbackConsensus("best reusable lunch box", [
+  sourceFixture("example.com", "guide", "Best Lunch Box Guide", "This article discusses materials, prices, and care but names no specific products."),
+  sourceFixture("retailer.example", "sale", "Lunch Box Deals", "Shop online store deals, add to cart, and browse discounts."),
+  sourceFixture("example.org", "tips", "How to choose a lunch box", "Consider size, dishwasher safety, insulation, and budget.")
+]);
+assert.equal(emptyTimeoutFallback, null, "Timeout fallback with zero valid recovered contenders should allow genuinely empty no-consensus fallback");
+
+console.log(
+  JSON.stringify(
+    {
+      productTimeoutFallback: {
+        waterBottle: waterBottleTimeoutFallback?.results.map((result) => result.name),
+        uncategorized: uncategorizedTimeoutFallback?.results.map((result) => result.name),
+        emptyAllowed: emptyTimeoutFallback === null
+      }
+    },
+    null,
+    2
+  )
+);
 
 const sourceSelectionCases = [
   {

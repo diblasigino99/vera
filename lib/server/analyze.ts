@@ -201,15 +201,26 @@ export function buildDominantPlatformFallbackConsensus(
   };
 }
 
-export function buildProductFallbackConsensus(
+export async function buildProductFallbackConsensus(
   query: string,
   sources: VeraSource[],
-  explanation = "Vera found product-review sources, but not enough clean agreement to compare every alternative confidently."
-): ConsensusResponse | null {
+  explanation = "Vera found product-review sources, but not enough clean agreement to compare every alternative confidently.",
+  callCounts?: ExternalCallCounts,
+  diagnostics?: AnalyzeDiagnostics,
+  options?: { allowGenericRecoveredSignals?: boolean }
+): Promise<ConsensusResponse | null> {
   const evidenceType = inferQueryEvidenceType(query);
   const category = productCategoryForQuery(query);
 
-  if (evidenceType !== "product_recommendation" || isAutomotiveAvoidanceQuery(query) || !category || sources.length < 3) {
+  if (evidenceType !== "product_recommendation" || isAutomotiveAvoidanceQuery(query) || sources.length < 3) {
+    return null;
+  }
+
+  if (!category && options?.allowGenericRecoveredSignals !== false) {
+    return buildGenericProductFallbackConsensus(query, sources, callCounts, diagnostics);
+  }
+
+  if (!category) {
     return null;
   }
 
@@ -257,6 +268,156 @@ export function buildProductFallbackConsensus(
     createdAt,
     cached: false
   };
+}
+
+async function buildGenericProductFallbackConsensus(
+  query: string,
+  sources: VeraSource[],
+  callCounts?: ExternalCallCounts,
+  diagnostics?: AnalyzeDiagnostics
+) {
+  const fallbackSignals = dedupeSignals(recoverGenericProductSignalsFromSources(query, sources));
+
+  if (fallbackSignals.length < 1) {
+    return null;
+  }
+
+  const structuredConsensus = await aggregateSignals(fallbackSignals, sources, query, callCounts, diagnostics);
+  const evidenceBackedContenders = structuredConsensus.contenders.filter(isEvidenceBackedPresentationContender);
+
+  if (evidenceBackedContenders.length < 1) {
+    return null;
+  }
+
+  return buildConsensus(
+    query,
+    sources,
+    intentFromQuery(query),
+    {
+      ...structuredConsensus,
+      winner: undefined,
+      consensusClassification: "no_reliable_consensus"
+    },
+    diagnostics
+  );
+}
+
+function recoverGenericProductSignalsFromSources(query: string, sources: VeraSource[]): SourceSignal[] {
+  const evidenceType: QueryEvidenceType = "product_recommendation";
+  const signals: SourceSignal[] = [];
+
+  for (const source of sources) {
+    if (!isValidAttributableSourceUrl(source.url)) {
+      continue;
+    }
+
+    const sourceType = inferSourceType(source);
+    const sourceQuality = inferSourceQuality(source, sourceType);
+    const text = [source.title, source.snippet ?? "", source.enrichedText ?? "", source.enrichedBodyText ?? "", source.supportingContender ?? ""].filter(Boolean).join("\n");
+    const candidates = extractGenericProductCandidates(query, text);
+
+    for (const candidate of candidates.slice(0, 6)) {
+      if (!genericProductFallbackCandidateIsValid(query, candidate, source)) {
+        continue;
+      }
+
+      signals.push({
+        sourceUrl: source.url,
+        sourceTitle: source.title,
+        domain: source.domain,
+        sourceType,
+        sourceWeight: sourceTypeWeight(sourceType, evidenceType),
+        sourceQuality,
+        sourceQualityWeight: sourceQualityWeightFor(sourceQuality),
+        queryVariant: source.queryVariant,
+        contenderName: candidate,
+        sentiment: "positive",
+        mentionStrength: genericProductFallbackMentionStrength(source, candidate),
+        positiveMention: "Named in retrieved product-review evidence",
+        extractedReason: "Named in retrieved product-review evidence",
+        themes: []
+      });
+    }
+  }
+
+  return signals;
+}
+
+function extractGenericProductCandidates(query: string, text: string) {
+  const candidates = new Set<string>();
+  const normalizedText = text.replace(/[“”]/g, '"').replace(/[’]/g, "'");
+  const headingPattern = /(?:^|\n)\s*#{2,5}\s+([A-Z][A-Za-z0-9&'’().,+/\- ]{2,80})(?=\n|$)/g;
+  const rankedHeadingPattern = /(?:^|\n)\s*\d+[.)]\s+([A-Z][A-Za-z0-9&'’().,+/\- ]{2,80})(?=\n|$)/g;
+  const bestLabelPattern =
+    /\b(?:best\s+(?:overall|value|budget|premium|insulated|stainless steel|for [a-z ]{2,24})|also consider|top pick|our pick)\s*(?:\n|\r|\s){1,12}(?:#{2,5}\s*)?([A-Z][A-Za-z0-9&'’().,+/\- ]{2,80})/gi;
+  const includingPattern = /\b(?:including|include|tested and ranked|compared)\s+([^.;:\n]{8,180})/gi;
+
+  for (const match of normalizedText.matchAll(headingPattern)) {
+    addGenericProductCandidate(candidates, match[1]);
+  }
+
+  for (const match of normalizedText.matchAll(rankedHeadingPattern)) {
+    addGenericProductCandidate(candidates, match[1]);
+  }
+
+  for (const match of normalizedText.matchAll(bestLabelPattern)) {
+    addGenericProductCandidate(candidates, match[1]);
+  }
+
+  for (const match of normalizedText.matchAll(includingPattern)) {
+    for (const item of splitCandidateList(match[1])) {
+      addGenericProductCandidate(candidates, item);
+    }
+  }
+
+  return Array.from(candidates)
+    .map(cleanGenericProductCandidate)
+    .filter((candidate) => genericProductFallbackCandidateIsValid(query, candidate))
+    .slice(0, 30);
+}
+
+function addGenericProductCandidate(candidates: Set<string>, value: string) {
+  const candidate = cleanGenericProductCandidate(value);
+  if (candidate) {
+    candidates.add(candidate);
+  }
+}
+
+function splitCandidateList(value: string) {
+  return value
+    .replace(/\bover a dozen other brands\b.*$/i, "")
+    .split(/,|\band\b/)
+    .map((item) => item.trim());
+}
+
+function cleanGenericProductCandidate(value: string) {
+  return cleanName(value)
+    .replace(/\s+\$?\d+(?:[.,]\d+)?(?:\s*(?:oz|ounce|ounces|ml|l|liter|litre|cup|cups|inch|inches))?\.?$/i, "")
+    .replace(/\s+(?:material|volume|care|pros|cons|credit|amazon|also consider)\b.*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function genericProductFallbackCandidateIsValid(query: string, candidate: string, source?: VeraSource) {
+  const normalized = normalizeQuery(candidate.replace(/([a-z])([A-Z])/g, "$1 $2"));
+  const words = normalized.split(/\s+/).filter(Boolean);
+
+  if (!normalized || words.length > 8) return false;
+  if (isGenericProductContender(query, candidate)) return false;
+  if (isRejectableContenderName(candidate, "product_recommendation", source, "generic product timeout fallback")) return false;
+  if (/^(?:best|top|our|also|image|photo|pros?|cons?|credit|material|volume|care|price|amazon|read more|top comments?|none)$/i.test(normalized)) return false;
+  if (looksLikeRetailerEntity(normalized, `${source?.title ?? ""} ${source?.snippet ?? ""}`)) return false;
+  if (looksLikeDestinationOrPlaceEntity(normalized, `${source?.title ?? ""} ${source?.snippet ?? ""}`)) return false;
+  return /\b[A-Z]{2,}\b/.test(candidate) || /^[A-Z][A-Za-z0-9&'’().+\-/]+(?:\s+[A-Z0-9][A-Za-z0-9&'’().+\-/]+){0,6}$/.test(candidate);
+}
+
+function genericProductFallbackMentionStrength(source: VeraSource, candidate: string): SourceSignal["mentionStrength"] {
+  const text = normalizeQuery(`${source.title} ${source.snippet ?? ""}`);
+  if (new RegExp(`\\b(?:best overall|top pick|our pick|best .*?)\\b.{0,120}\\b${escapeRegExp(normalizeQuery(candidate)).replace(/\s+/g, "\\s+")}\\b`).test(text)) {
+    return "strong";
+  }
+  if (productSourceAuthorityFromSource(source) === "high") return "moderate";
+  return "weak";
 }
 
 export async function buildDestinationFallbackConsensus(
