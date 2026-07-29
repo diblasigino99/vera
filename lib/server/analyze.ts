@@ -223,6 +223,10 @@ export async function buildProductFallbackConsensus(
     return null;
   }
 
+  if (productBrandOpinionTarget(query)) {
+    return buildGenericProductFallbackConsensus(query, sources, callCounts, diagnostics);
+  }
+
   if (!category && options?.allowGenericRecoveredSignals !== false) {
     return buildGenericProductFallbackConsensus(query, sources, callCounts, diagnostics);
   }
@@ -283,13 +287,16 @@ async function buildGenericProductFallbackConsensus(
   callCounts?: ExternalCallCounts,
   diagnostics?: AnalyzeDiagnostics
 ) {
-  const fallbackSignals = dedupeSignals(recoverGenericProductSignalsFromSources(query, sources));
+  const opinionTarget = productBrandOpinionTarget(query);
+  const recoveredSignals = recoverGenericProductSignalsFromSources(query, sources);
+  const fallbackSignals = dedupeSignals(opinionTarget ? scopeProductOpinionFallbackSignals(query, recoveredSignals, opinionTarget, diagnostics) : recoveredSignals);
 
   if (fallbackSignals.length < 1) {
     return null;
   }
 
-  const structuredConsensus = await aggregateSignals(fallbackSignals, sources, query, callCounts, diagnostics);
+  const aggregatedConsensus = await aggregateSignals(fallbackSignals, sources, query, callCounts, diagnostics);
+  const structuredConsensus = opinionTarget ? scopeProductOpinionFallbackStructuredConsensus(aggregatedConsensus, opinionTarget, diagnostics) : aggregatedConsensus;
   const evidenceBackedContenders = structuredConsensus.contenders.filter(isEvidenceBackedPresentationContender);
 
   if (evidenceBackedContenders.length < 1) {
@@ -307,6 +314,71 @@ async function buildGenericProductFallbackConsensus(
     },
     diagnostics
   );
+}
+
+function scopeProductOpinionFallbackSignals(query: string, signals: SourceSignal[], opinionTarget: string, diagnostics?: AnalyzeDiagnostics) {
+  const resolvedSignals = resolveSignalsForRequestedEntityLevel(query, "product_recommendation", signals, diagnostics);
+  const retained: SourceSignal[] = [];
+
+  for (const signal of resolvedSignals) {
+    if (normalizedEntityName(signal.contenderName) === normalizedEntityName(opinionTarget)) {
+      retained.push(signal);
+      continue;
+    }
+
+    diagnostics?.entityValidationDiagnostics.push({
+      status: "rejected",
+      reasonCode: "wrong_entity_type",
+      originalName: signal.contenderName,
+      canonicalName: signal.contenderName,
+      validator: "product_entity_opinion_fallback_scope",
+      sourceUrl: signal.sourceUrl,
+      metadata: {
+        requestedTarget: opinionTarget,
+        detectedQueryCategory: "product_recommendation",
+        inferredCandidateType: "unrelated_product_entity",
+        reason: "Explicit product opinion fallback only accepts the target entity or child/model evidence resolved to that target."
+      }
+    });
+  }
+
+  return retained;
+}
+
+function scopeProductOpinionFallbackStructuredConsensus(
+  structuredConsensus: StructuredConsensus,
+  opinionTarget: string,
+  diagnostics?: AnalyzeDiagnostics
+): StructuredConsensus {
+  const targetKey = normalizedEntityName(opinionTarget);
+  const contenders = structuredConsensus.contenders.filter((contender) => normalizedEntityName(contender.name) === targetKey);
+  const contenderNames = new Set(contenders.map((contender) => contender.name));
+  const signals = structuredConsensus.signals.filter((signal) => contenderNames.has(signal.contenderName));
+  const mentionCounts = Object.fromEntries(Object.entries(structuredConsensus.mentionCounts).filter(([name]) => normalizedEntityName(name) === targetKey));
+
+  for (const contender of structuredConsensus.contenders) {
+    if (normalizedEntityName(contender.name) === targetKey) continue;
+
+    diagnostics?.cleanupDiagnostics.push({
+      contenderName: contender.name,
+      stage: "final_result_cleanup",
+      reasonCode: "wrong_entity_type",
+      message: "Removed unrelated product contender from explicit product opinion fallback.",
+      metadata: {
+        requestedTarget: opinionTarget,
+        validator: "product_entity_opinion_fallback_scope"
+      }
+    });
+  }
+
+  return {
+    ...structuredConsensus,
+    contenders,
+    mentionCounts,
+    signals,
+    winner: contenders.length ? opinionTarget : undefined,
+    consensusClassification: "no_reliable_consensus"
+  };
 }
 
 function recoverGenericProductSignalsFromSources(query: string, sources: VeraSource[]): SourceSignal[] {
@@ -1988,7 +2060,7 @@ function resolveEntityName(
         { detectedEntityType: granularity.kind }
       );
     }
-    const canonicalBrand = productParentBrandCanonicalNames.get(normalized);
+    const canonicalBrand = canonicalProductBrandForNormalizedName(normalized);
     if (granularity.kind === "brand" && canonicalBrand && canonicalBrand !== originalName) {
       return resolutionAction(originalName, canonicalBrand, "canonical_variant", "merged", "canonicalized_entity", requestedEntityType, true);
     }
@@ -2181,6 +2253,7 @@ const productParentBrandCanonicalNames = new Map<string, string>(
     "tplink",
     "away",
     "rimowa",
+    "travel pro",
     "travelpro",
     "monos",
     "tumi",
@@ -2208,7 +2281,9 @@ const productParentBrandCanonicalNames = new Map<string, string>(
     "bmw",
     "mercedes",
     "audi",
+    "coleman",
     "hydro flask",
+    "hydroflask",
     "yeti",
     "stanley",
     "owala",
@@ -2240,7 +2315,9 @@ const productParentBrandCanonicalNames = new Map<string, string>(
     "saucony",
     "on",
     "altra",
-    "mizuno"
+    "mizuno",
+    "north face",
+    "the north face"
   ].map((name) => [name, canonicalProductBrandName(name)])
 );
 
@@ -2275,11 +2352,11 @@ function parentBrandPrefixForProductChild(normalized: string) {
   const childTerms = normalized.slice(brand.length).trim();
   if (!productChildDescriptorPattern().test(childTerms)) return null;
 
-  return productParentBrandCanonicalNames.get(brand) ?? titleCaseEntity(brand);
+  return canonicalProductBrandForNormalizedName(brand) ?? titleCaseEntity(brand);
 }
 
 function productChildDescriptorPattern() {
-  return /\b(?:macbook|macbooks|laptop|laptops|iphone|ipad|watch|galaxy|pixel|surface|thinkpad|yoga|inspiron|xps|latitude|spectre|envy|elitebook|zenbook|vivobook|rog|predator|aspire|swift|gram|air|pro|max|plus|ultra|fios|workspace|365|office|crm|rambler|standard|flex|trail|series|straw|chug|tumbler|bottle|water bottle|insulated|stainless|classic|quik|quick|sip|kids|wide mouth|mouth|free sip|freesip|aerolite|roamer|roam|carry on|carry-on|bigger carry on|bigger carry-on|cabin|platinum|elite|baseline|spinner|suitcase|luggage|ghost|pegasus|gel nimbus|gel-nimbus|clifton|bondi|speedgoat|endorphin|adrenaline|novablast|bambino|barista|express|dedica|classic|moccamaster|k supreme|supreme|vertuo|midnight|luxe|hybrid|memory foam|foam|premier|original|snow|restore|adapt|cloud|cloudfoam)\b/;
+  return /\b(?:macbook|macbooks|laptop|laptops|iphone|ipad|watch|galaxy|pixel|surface|thinkpad|yoga|inspiron|xps|latitude|spectre|envy|elitebook|zenbook|vivobook|rog|predator|aspire|swift|gram|air|pro|max|plus|ultra|fios|workspace|365|office|crm|rambler|standard|flex|trail|series|straw|chug|tumbler|bottle|water bottle|insulated|stainless|classic|quik|quick|sip|kids|wide mouth|mouth|free sip|freesip|free flow|autoseal|aerolite|roamer|roam|carry on|carry-on|bigger carry on|bigger carry-on|cabin|platinum|elite|baseline|spinner|suitcase|luggage|backpack|ghost|pegasus|gel nimbus|gel-nimbus|clifton|bondi|speedgoat|endorphin|adrenaline|novablast|bambino|barista|express|dedica|classic|moccamaster|k supreme|supreme|vertuo|midnight|luxe|hybrid|memory foam|foam|premier|original|snow|restore|adapt|cloud|cloudfoam)\b/;
 }
 
 function parentBrandForProductFamily(normalized: string) {
@@ -2296,7 +2373,7 @@ function parentBrandForProductFamily(normalized: string) {
 }
 
 function isBroadBrandName(normalized: string) {
-  return productParentBrandCanonicalNames.has(normalized);
+  return canonicalProductBrandForNormalizedName(normalized) !== null;
 }
 
 function canonicalProductBrandName(normalized: string) {
@@ -2312,10 +2389,33 @@ function canonicalProductBrandName(normalized: string) {
     "tp link": "TP-Link",
     delonghi: "De'Longhi",
     "de longhi": "De'Longhi",
-    "s well": "S'well"
+    "s well": "S'well",
+    hydroflask: "Hydro Flask",
+    "hydro flask": "Hydro Flask",
+    "travel pro": "Travelpro",
+    travelpro: "Travelpro",
+    "north face": "The North Face",
+    "the north face": "The North Face"
   };
 
   return known[normalized] ?? titleCaseEntity(normalized);
+}
+
+function canonicalProductBrandForNormalizedName(normalized: string) {
+  return productParentBrandCanonicalNames.get(normalized) ?? canonicalProductBrandAliasName(normalized);
+}
+
+function canonicalProductBrandAliasName(normalized: string) {
+  const aliases: Record<string, string> = {
+    hydroflask: "Hydro Flask",
+    "hydro flask": "Hydro Flask",
+    "travel pro": "Travelpro",
+    travelpro: "Travelpro",
+    "north face": "The North Face",
+    "the north face": "The North Face"
+  };
+
+  return aliases[normalized] ?? null;
 }
 
 function productBrandOpinionTarget(query: string) {

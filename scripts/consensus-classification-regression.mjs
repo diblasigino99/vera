@@ -367,16 +367,40 @@ const entityResolutionCases = [
   {
     query: "best water bottle brand",
     evidenceType: "product_recommendation",
-    names: ["Hydro Flask", "Hydro Flask Standard Flex", "Yeti Rambler Water Bottle", "YETI", "Takeya"],
-    expectedNames: ["Hydro Flask", "Yeti", "Takeya"],
-    expectedActions: ["downgraded"]
+    names: [
+      "Hydro Flask",
+      "Hydroflask",
+      "HydroFlask",
+      "Hydro Flask Standard Flex",
+      "Yeti Rambler Water Bottle",
+      "YETI",
+      "Takeya",
+      "Coleman Free Flow Autoseal",
+      "coleman free flow autoseal bottle"
+    ],
+    expectedNames: ["Hydro Flask", "Yeti", "Takeya", "Coleman"],
+    expectedActions: ["merged", "downgraded"]
+  },
+  {
+    query: "best luggage brand",
+    evidenceType: "product_recommendation",
+    names: ["Travel Pro", "Travelpro", "Travelpro Platinum Elite"],
+    expectedNames: ["Travelpro"],
+    expectedActions: ["merged", "downgraded"]
+  },
+  {
+    query: "best backpack brand",
+    evidenceType: "product_recommendation",
+    names: ["North Face", "The North Face", "The North Face Borealis Backpack"],
+    expectedNames: ["The North Face"],
+    expectedActions: ["merged", "downgraded"]
   },
   {
     query: "is hydro flask worth it",
     evidenceType: "product_recommendation",
-    names: ["Hydro Flask", "Hydro Flask Trail Series"],
+    names: ["Hydro Flask", "Hydroflask", "Hydro Flask Trail Series"],
     expectedNames: ["Hydro Flask"],
-    expectedActions: ["downgraded"]
+    expectedActions: ["merged", "downgraded"]
   },
   {
     query: "is away luggage worth it",
@@ -428,6 +452,7 @@ for (const item of entityResolutionCases) {
 
 const waterBottleSameSourceRollup = resolveProductEntitySignalsForRegression("best water bottle brand", [
   { name: "Hydro Flask", sourceUrl: "regression://same-review" },
+  { name: "Hydroflask", sourceUrl: "regression://same-review" },
   { name: "Hydro Flask Standard Flex", sourceUrl: "regression://same-review" },
   { name: "Yeti Rambler Water Bottle", sourceUrl: "regression://yeti-review" }
 ]);
@@ -927,13 +952,82 @@ const emptyTimeoutFallback = await buildProductFallbackConsensus("best reusable 
 ]);
 assert.equal(emptyTimeoutFallback, null, "Timeout fallback with zero valid recovered contenders should allow genuinely empty no-consensus fallback");
 
+const hydroFlaskOpinionTimeoutFallback = await buildProductFallbackConsensus("is hydro flask worth it", [
+  sourceFixture(
+    "example-review.com",
+    "hydro-flask-worth-it",
+    "Is Hydro Flask Worth It?",
+    "## Hydro Flask Standard Flex\nHydro Flask is a durable pick for insulated water bottles."
+  ),
+  sourceFixture(
+    "example-outdoors.com",
+    "water-bottle-comparison",
+    "Hydro Flask vs other water bottles",
+    "## Yeti Rambler Water Bottle\nYeti is another popular bottle, but this review focuses on whether Hydro Flask is worth buying."
+  ),
+  sourceFixture(
+    "example-kitchen.com",
+    "bottles-tested",
+    "Water Bottles Tested",
+    "## S'well Commuter\nS'well and Zojirushi were compared against Hydro Flask."
+  )
+]);
+assert.ok(hydroFlaskOpinionTimeoutFallback, "Product opinion timeout fallback should keep target-scoped evidence");
+assert.equal(hydroFlaskOpinionTimeoutFallback?.mode, "no_reliable_consensus", "Product opinion timeout fallback should preserve no reliable consensus mode");
+assert.deepEqual(
+  hydroFlaskOpinionTimeoutFallback?.results.map((result) => result.name),
+  ["Hydro Flask"],
+  "Hydro Flask opinion fallback should roll child/model evidence up to Hydro Flask and reject unrelated bottle brands"
+);
+
+const awayOpinionTimeoutFallback = await buildProductFallbackConsensus("is away luggage worth it", [
+  sourceFixture(
+    "example-travel.com",
+    "away-luggage-worth-it",
+    "Is Away Luggage Worth It?",
+    "## Away Bigger Carry-On\nAway's Bigger Carry-On remains the focus of this luggage review."
+  ),
+  sourceFixture(
+    "example-luggage.com",
+    "carry-on-comparison",
+    "Carry-on luggage compared",
+    "## Travelpro Platinum Elite\nTravelpro is compared with Away in this review."
+  ),
+  sourceFixture(
+    "example-packing.com",
+    "luggage-tested",
+    "Best carry-ons tested",
+    "## Monos Carry-On\nMonos appears as another alternative, while the article discusses whether Away is worth it."
+  )
+]);
+assert.ok(awayOpinionTimeoutFallback, "Away opinion timeout fallback should keep target-scoped evidence");
+assert.deepEqual(
+  awayOpinionTimeoutFallback?.results.map((result) => result.name),
+  ["Away"],
+  "Away opinion fallback should roll child/model evidence up to Away and reject unrelated luggage brands"
+);
+
+const zeroTargetOpinionTimeoutFallback = await buildProductFallbackConsensus("is hydro flask worth it", [
+  sourceFixture("example-review.com", "yeti-review", "Yeti Rambler Review", "## Yeti Rambler Water Bottle\nYeti performed well in testing."),
+  sourceFixture("example-outdoors.com", "owala-review", "Owala Bottle Review", "## Owala FreeSip\nOwala was popular with testers."),
+  sourceFixture("example-kitchen.com", "takeya-review", "Takeya Bottle Review", "## Takeya Actives\nTakeya sealed reliably.")
+]);
+assert.equal(
+  zeroTargetOpinionTimeoutFallback,
+  null,
+  "Explicit product opinion fallback with zero target evidence should allow an honest empty no-consensus response instead of unrelated products"
+);
+
 console.log(
   JSON.stringify(
     {
       productTimeoutFallback: {
         waterBottle: waterBottleTimeoutFallback?.results.map((result) => result.name),
         uncategorized: uncategorizedTimeoutFallback?.results.map((result) => result.name),
-        emptyAllowed: emptyTimeoutFallback === null
+        emptyAllowed: emptyTimeoutFallback === null,
+        hydroFlaskOpinion: hydroFlaskOpinionTimeoutFallback?.results.map((result) => result.name),
+        awayOpinion: awayOpinionTimeoutFallback?.results.map((result) => result.name),
+        zeroTargetOpinionEmptyAllowed: zeroTargetOpinionTimeoutFallback === null
       }
     },
     null,

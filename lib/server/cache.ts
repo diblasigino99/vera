@@ -9,7 +9,7 @@ import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 const memorySearches = new Map<string, ConsensusResponse>();
 const localCachePath = join(process.cwd(), ".vera-cache", "searches.json");
 const localSavesPath = join(process.cwd(), ".vera-cache", "saves.json");
-const localCacheVersion = 77;
+const localCacheVersion = 79;
 const localRecommendationCacheVersion = 95;
 const destinationRecommendationCacheVersion = 90;
 const negativeIntentCacheVersion = 78;
