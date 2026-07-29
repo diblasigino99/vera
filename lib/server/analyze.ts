@@ -25,7 +25,14 @@ import {
 } from "@/lib/utils";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
 import { diagnoseMultiContenderSplitEvidence } from "@/lib/server/consensus-classification";
-import { canonicalDestinationName, destinationCandidateFitsQuery, destinationCandidateProof, extractDestinationCandidatesFromText, isGenericDestinationContenderName } from "@/lib/server/destination-rules";
+import {
+  canonicalDestinationName,
+  destinationCandidateFitsQuery,
+  destinationCandidateProof,
+  destinationCandidateShapeRejectionReason,
+  extractDestinationCandidatesFromText,
+  isGenericDestinationContenderName
+} from "@/lib/server/destination-rules";
 import { getCachedPlacesValidationSnapshot, validateLocalSignalsWithPlaces } from "@/lib/server/places";
 import type { PlacesValidationDiagnostics } from "@/lib/server/places";
 import type { ClassificationDecisionTrace, EntityResolutionDiagnostic, EntityValidationDiagnostic, FinalCleanupDiagnostic } from "@/lib/server/consensus-engine";
@@ -1776,6 +1783,43 @@ export function localSubtypeProofForRegression(
   };
 }
 
+export function localFallbackEvidenceEligibilityForRegression(
+  query: string,
+  contenderName: string,
+  placesTypes: string[] = [],
+  options: {
+    sourceTitle?: string;
+    sourceSnippet?: string;
+    sourceDomain?: string;
+    queryVariant?: string;
+    verifiedAddress?: string;
+  } = {}
+) {
+  const signal: SourceSignal = {
+    ...regressionSourceSignal(contenderName, 0, "local_recommendation"),
+    positiveMention: "Business name appears in retrieved local evidence",
+    extractedReason: "Business name appears in snippet evidence; candidate confidence medium",
+    verifiedAddress: options.verifiedAddress ?? "284 Grand St, Brooklyn, NY 11211, USA",
+    placesTypes,
+    placesLocationConfidence: 1,
+    placesVerified: placesTypes.length > 0,
+    ...(placesTypes.length ? { placesCategoryConfidence: 1 } : {})
+  };
+  const source: VeraSource = {
+    title: options.sourceTitle ?? "Regression local recommendation source",
+    url: signal.sourceUrl,
+    domain: options.sourceDomain ?? signal.domain,
+    snippet: options.sourceSnippet ?? "",
+    ...(options.queryVariant ? { queryVariant: options.queryVariant } : {})
+  };
+  const rejectionReason = localFallbackPresenceEvidenceRejectionReason(query, signal, source);
+
+  return {
+    eligible: rejectionReason === null,
+    rejectionReason
+  };
+}
+
 function regressionSourceSignal(name: string, index: number, evidenceType: QueryEvidenceType): SourceSignal {
   return {
     sourceUrl: `regression://${index + 1}`,
@@ -2243,10 +2287,12 @@ function requestedEntityCompatibilityRejectionReason(
   }
 
   if (evidenceType === "destination_recommendation") {
-    if (/^(?:visit|visiting|explore|exploring|discover|discovering|stay|book|go|see)\b/.test(normalizedName)) {
+    const destinationShapeRejection = destinationCandidateShapeRejectionReason(query, name);
+
+    if (destinationShapeRejection === "action_phrase") {
       return { reasonCode: "generic_entity", inferredCandidateType: "action_phrase", reason: "Destination query cannot aggregate imperative or action phrases." };
     }
-    if (looksLikeDestinationTitleFragment(normalizedName)) {
+    if (destinationShapeRejection || looksLikeDestinationTitleFragment(normalizedName)) {
       return { reasonCode: "generic_entity", inferredCandidateType: "title_fragment", reason: "Destination query cannot aggregate article-title or prose fragments." };
     }
     if (detectedCategory.contenderCategory === "software" || detectedCategory.contenderCategory === "product" || detectedCategory.contenderCategory === "restaurant" || detectedCategory.contenderCategory === "retail") {
@@ -2383,6 +2429,8 @@ async function aggregateSignals(
     queryEvidenceType === "local_recommendation"
       ? await validateLocalSignalsWithPlaces(query, preValidationScoringSignals, rankedLocalCandidateNames, callCounts, placesDiagnostics)
       : preValidationScoringSignals;
+  const evidenceQualifiedSignals =
+    queryEvidenceType === "local_recommendation" ? filterLocalFallbackPresenceSignalsByEvidence(query, scoringSignals, sources) : scoringSignals;
   if (diagnostics && placesDiagnostics) {
     diagnostics.placesValidationDiagnostics = placesDiagnostics;
     diagnostics.entityValidationDiagnostics.push(...placesDiagnostics.outcomes);
@@ -2390,7 +2438,7 @@ async function aggregateSignals(
   if (queryEvidenceType === "local_recommendation") {
     console.log(
       "LOCAL_VERIFIED_SIGNAL_AFTER_PLACES",
-      scoringSignals
+      evidenceQualifiedSignals
         .filter((signal) => signal.placesVerified)
         .map((signal) => ({
           contender: signal.contenderName,
@@ -2398,10 +2446,10 @@ async function aggregateSignals(
           placesCategoryConfidence: signal.placesCategoryConfidence ?? null,
           placesLocationConfidence: signal.placesLocationConfidence ?? null,
           placesTypes: signal.placesTypes ?? []
-        }))
+      }))
     );
   }
-  const entityResolvedSignals = resolveSignalsForRequestedEntityLevel(query, queryEvidenceType, scoringSignals, diagnostics);
+  const entityResolvedSignals = resolveSignalsForRequestedEntityLevel(query, queryEvidenceType, evidenceQualifiedSignals, diagnostics);
   const compatibleSignals = filterSignalsByRequestedEntityCompatibility(query, queryEvidenceType, entityResolvedSignals, diagnostics);
   const aggregationSignals = queryEvidenceType === "local_recommendation" ? mergeLocalBusinessSignalNames(compatibleSignals) : compatibleSignals;
   const byName = new Map<string, SourceSignal[]>();
@@ -4605,6 +4653,137 @@ function localPriorSignal(
     extractedReason: contextParts.join("; "),
     themes: themes.length ? themes : ["frequently recommended"]
   };
+}
+
+function filterLocalFallbackPresenceSignalsByEvidence(query: string, signals: SourceSignal[], sources: VeraSource[]) {
+  const sourceByUrl = new Map(sources.map((source) => [source.url, source]));
+
+  return signals.filter((signal) => {
+    if (!isLocalFallbackPresenceSignal(signal)) {
+      return true;
+    }
+
+    const source = sourceByUrl.get(signal.sourceUrl);
+    const rejectionReason = localFallbackPresenceEvidenceRejectionReason(query, signal, source);
+
+    if (!rejectionReason) {
+      return true;
+    }
+
+    console.log("LOCAL_FALLBACK_EVIDENCE_REJECTED", {
+      candidate: signal.contenderName,
+      source: signal.sourceUrl,
+      reason: rejectionReason,
+      requestedSubtype: localSpecificIntentForQuery(query)?.key ?? localCategoryForQuery(query),
+      placesTypes: signal.placesTypes ?? [],
+      verifiedAddress: signal.verifiedAddress ?? null
+    });
+    console.log("LOCAL_SPARSE_RECOVERY_REJECTED", {
+      candidate: signal.contenderName,
+      source: signal.sourceUrl,
+      reason: rejectionReason,
+      stage: "fallback_evidence_guard"
+    });
+
+    return false;
+  });
+}
+
+function isLocalFallbackPresenceSignal(signal: SourceSignal) {
+  return /^(?:Business name appears in retrieved local evidence|Appears in local source results)$/i.test(signal.positiveMention ?? "");
+}
+
+function localFallbackPresenceEvidenceRejectionReason(query: string, signal: SourceSignal, source?: VeraSource) {
+  if (!source) return "fallback_missing_business_specific_evidence";
+
+  const intent = localSpecificIntentForQuery(query);
+
+  if (!intent) {
+    return localFallbackSourceHasRecommendationContextForCandidate(query, signal.contenderName, source)
+      ? null
+      : "fallback_source_presence_only";
+  }
+
+  const context = localCandidateSpecificSourceContext(signal.contenderName, source);
+  const contextSupportsSubtype = intent.supportPattern.test(context);
+  const contextConflicts = Boolean(intent.conflictPattern?.test(context));
+  const sourceHasCandidateRecommendation = localFallbackSourceHasRecommendationContextForCandidate(query, signal.contenderName, source);
+  const sourceIsCandidateSpecific = localFallbackSourceLooksCandidateSpecific(signal.contenderName, source);
+
+  if (!sourceHasCandidateRecommendation) {
+    if (placesTypesSupportSpecificIntent(intent, signal.placesTypes ?? []) && sourceIsCandidateSpecific) {
+      return null;
+    }
+    return "fallback_source_presence_only";
+  }
+
+  if (placesTypesSupportSpecificIntent(intent, signal.placesTypes ?? [])) {
+    return null;
+  }
+
+  if (contextSupportsSubtype && !contextConflicts) {
+    return null;
+  }
+
+  if (contextSupportsSubtype && contextConflicts) {
+    return "fallback_subtype_context_mismatch";
+  }
+
+  if (!contextSupportsSubtype) {
+    return "fallback_subtype_context_mismatch";
+  }
+
+  return "fallback_source_presence_only";
+}
+
+function localCandidateSpecificSourceContext(contenderName: string, source: VeraSource) {
+  const normalizedName = normalizeQuery(contenderName);
+  const nameTokens = normalizedName.split(/\s+/).filter((token) => token.length >= 3);
+  const text = [source.title, source.snippet ?? "", source.enrichedBodyText ?? "", source.enrichedText ?? "", source.supportingContender ?? ""]
+    .filter(Boolean)
+    .join("\n");
+  const lines = text
+    .split(/\n+|[.!?]\s+/g)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const matchedLines = lines.filter((line) => localTextReferencesCandidate(line, normalizedName, nameTokens));
+  const title = localTextReferencesCandidate(source.title, normalizedName, nameTokens) ? source.title : "";
+
+  return normalizeQuery([title, ...matchedLines.slice(0, 6)].join(" "));
+}
+
+function localTextReferencesCandidate(text: string, normalizedName: string, nameTokens: string[]) {
+  const normalizedText = normalizeQuery(text);
+
+  if (!normalizedText || !normalizedName) return false;
+  if (normalizedText.includes(normalizedName)) return true;
+
+  const distinctiveTokens = nameTokens.filter((token) => !/^(?:the|and|of|at|on|restaurant|cafe|coffee|shop|pizza|pizzeria|sushi|bar|grill|kitchen)$/.test(token));
+  if (distinctiveTokens.length === 0) return false;
+
+  return distinctiveTokens.every((token) => normalizedText.includes(token));
+}
+
+function localFallbackSourceHasRecommendationContextForCandidate(query: string, contenderName: string, source: VeraSource) {
+  const candidateContext = localCandidateSpecificSourceContext(contenderName, source);
+  const sourceContext = normalizeQuery([source.title, source.domain].join(" "));
+  const recommendationPattern = /\b(best|top|favorite|favourite|recommended|recommendations?|must try|must-try|essential|where to eat|where to drink|where to go|hit list|guide|review|reviews|rated|stars?)\b/;
+
+  if (!candidateContext) return false;
+  if (recommendationPattern.test(candidateContext)) return true;
+  if (recommendationPattern.test(sourceContext) && localLocationTokens(normalizeLocalQueryIntent(query)).some((location: string) => normalizeQuery(sourceContext).includes(location))) return true;
+  if (/\b(yelp|tripadvisor|opentable|resy|healthgrades|zocdoc|angi|homeadvisor)\b/.test(normalizeQuery(source.domain)) && recommendationPattern.test(sourceContext)) return true;
+
+  return false;
+}
+
+function localFallbackSourceLooksCandidateSpecific(contenderName: string, source: VeraSource) {
+  const normalizedName = normalizeQuery(contenderName);
+  const nameTokens = normalizedName.split(/\s+/).filter((token) => token.length >= 3);
+  const titleNamesCandidate = localTextReferencesCandidate(source.title, normalizedName, nameTokens);
+  const slugNamesCandidate = urlBusinessSlugs(source.url).some((slug) => localNamesAreDuplicateVariants(localBusinessKey(slug), localBusinessKey(contenderName)));
+
+  return titleNamesCandidate || slugNamesCandidate;
 }
 
 function localThemesFromEvidence(value: string) {
@@ -7126,11 +7305,25 @@ function sanitizeCachedDestinationConsensus(consensus: ConsensusResponse): Conse
     });
   }
 
-  let results = Array.from(resultByName.values()).map((result, index) => ({
-    ...result,
-    rank: index + 1,
-    id: `${slugify(result.name)}-${index + 1}`
-  }));
+  let results = Array.from(resultByName.values())
+    .filter((result) =>
+      destinationCandidateFitsQuery(
+        consensus.query,
+        result.name,
+        [
+          result.summary,
+          ...result.reasons,
+          ...result.evidence,
+          ...result.sources.flatMap((source) => [source.title, source.snippet ?? ""])
+        ],
+        { allowRepeatedContextual: true }
+      )
+    )
+    .map((result, index) => ({
+      ...result,
+      rank: index + 1,
+      id: `${slugify(result.name)}-${index + 1}`
+    }));
   const structuredConsensus = consensus.structuredConsensus
     ? sanitizeCachedDestinationStructuredConsensus(consensus.structuredConsensus, results[0]?.name, consensus.query)
     : consensus.structuredConsensus;

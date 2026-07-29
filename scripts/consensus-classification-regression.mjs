@@ -20,6 +20,7 @@ const {
   buildProductFallbackConsensus,
   enforceDisplayableSplitConsensusInvariant,
   filterCompatibleEntityNamesForRegression,
+  localFallbackEvidenceEligibilityForRegression,
   localSubtypeProofForRegression,
   preserveEvidenceBackedProductContendersForRegression,
   resolveEntityNamesForRegression,
@@ -578,6 +579,120 @@ const wrongCuisineSubtypeProof = localSubtypeProofForRegression(
 assert.equal(wrongCuisineSubtypeProof.subtypeProof, false, "Wrong cuisine subtype should not satisfy Italian subtype proof");
 assert.equal(wrongCuisineSubtypeProof.discoveryPasses, false, "Wrong cuisine subtype should still be rejected for cuisine-specific local queries");
 
+const italianPizzaCrossLinkFallback = localFallbackEvidenceEligibilityForRegression(
+  "best italian restaurant in williamsburg",
+  "Fini Pizza",
+  ["pizza_restaurant", "pizza_delivery", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "novacircle.com",
+    sourceTitle: "Patrizia's of Williamsburg",
+    sourceSnippet: "Nearby: Fini Pizza Jersey City. Italian restaurant recommendations for Williamsburg.",
+    queryVariant: "best italian restaurant in williamsburg"
+  }
+);
+assert.equal(italianPizzaCrossLinkFallback.eligible, false, "Fallback must not create positive evidence for pizza-only cross-link text in an Italian query");
+assert.equal(
+  italianPizzaCrossLinkFallback.rejectionReason,
+  "fallback_source_presence_only",
+  "Pizza-only cross-link fallback should be rejected as source presence only"
+);
+
+const validItalianFallback = localFallbackEvidenceEligibilityForRegression(
+  "best italian restaurant in williamsburg",
+  "Oregano",
+  ["italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Williamsburg Italian restaurant recommendations",
+    sourceSnippet: "Oregano is one of the recommended Williamsburg Italian restaurants.",
+    queryVariant: "best italian restaurant in williamsburg"
+  }
+);
+assert.equal(validItalianFallback.eligible, true, "Valid Italian fallback candidates with business-specific evidence should remain eligible");
+
+const seafoodSteakhouseFallback = localFallbackEvidenceEligibilityForRegression(
+  "best seafood restaurant in miami",
+  "Sunny's Steakhouse",
+  ["steak_house", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Best seafood restaurants in Miami",
+    sourceSnippet: "Also nearby: Sunny's Steakhouse. A Fish Called Avalon and Joe's Stone Crab are seafood favorites.",
+    queryVariant: "best seafood restaurant in miami"
+  }
+);
+assert.equal(seafoodSteakhouseFallback.eligible, false, "Fallback must not admit a steak_house candidate into a seafood query from weak presence text");
+
+const validSushiFallback = localFallbackEvidenceEligibilityForRegression(
+  "best sushi in brooklyn",
+  "Sake Sushi",
+  ["sushi_restaurant", "japanese_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Best sushi in Brooklyn",
+    sourceSnippet: "Sake Sushi is recommended for sushi and sashimi.",
+    queryVariant: "best sushi in brooklyn"
+  }
+);
+assert.equal(validSushiFallback.eligible, true, "Valid sushi fallback should remain eligible");
+
+const validMexicanFallback = localFallbackEvidenceEligibilityForRegression(
+  "best mexican restaurant in austin",
+  "Taqueria De Diez",
+  ["restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Best Mexican food in Austin",
+    sourceSnippet: "Taqueria De Diez is recommended for tacos and Mexican food.",
+    queryVariant: "best mexican restaurant in austin"
+  }
+);
+assert.equal(validMexicanFallback.eligible, true, "Candidate-specific Mexican fallback context should remain eligible without a Places subtype prior");
+
+const validCoffeeFallback = localFallbackEvidenceEligibilityForRegression(
+  "best coffee shop in brooklyn",
+  "Gigi's Coffee Shop",
+  ["coffee_shop", "cafe", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Best coffee shops in Brooklyn",
+    sourceSnippet: "Gigi's Coffee Shop is a recommended coffee shop for breakfast and coffee.",
+    queryVariant: "best coffee shop in brooklyn"
+  }
+);
+assert.equal(validCoffeeFallback.eligible, true, "Existing valid coffee fallback behavior should remain intact");
+
+const sparseValidFallback = localFallbackEvidenceEligibilityForRegression(
+  "best brunch in brooklyn",
+  "Sunday in Brooklyn",
+  ["brunch_restaurant", "breakfast_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Brooklyn brunch recommendations",
+    sourceSnippet: "Sunday in Brooklyn is recommended for brunch and pancakes.",
+    queryVariant: "best brunch in brooklyn"
+  }
+);
+assert.equal(sparseValidFallback.eligible, true, "Sparse local fallback should still recover business-specific positive evidence");
+
+const presenceOnlyFallback = localFallbackEvidenceEligibilityForRegression(
+  "best coffee shop in brooklyn",
+  "Random Cafe",
+  ["coffee_shop", "cafe", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Brooklyn neighborhood page",
+    sourceSnippet: "Random Cafe appears in the page footer.",
+    queryVariant: "best coffee shop in brooklyn"
+  }
+);
+assert.equal(presenceOnlyFallback.eligible, false, "Places-verified business with name presence only must not receive positive fallback evidence");
+
+const presenceOnlyWrongSubtypeFallback = localFallbackEvidenceEligibilityForRegression(
+  "best seafood restaurant in miami",
+  "Random Steakhouse",
+  ["steak_house", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceTitle: "Miami neighborhood page",
+    sourceSnippet: "Random Steakhouse appears in the page footer.",
+    queryVariant: "best seafood restaurant in miami"
+  }
+);
+assert.equal(presenceOnlyWrongSubtypeFallback.eligible, false, "Places-verified wrong-subtype name presence must not receive positive fallback evidence");
+
 const operationalBusinessStatus = localSubtypeProofForRegression(
   "best italian restaurant in williamsburg",
   "Oregano",
@@ -847,6 +962,9 @@ for (const invalid of [
   "Fi",
   "For",
   "Visit This Year",
+  "Visit the Design District",
+  "Explore the Islands",
+  "Discover Rome",
   "Underrated Beaches",
   "the Top Portugal Beaches",
   "Best Islands in Portugal",
@@ -856,6 +974,10 @@ for (const invalid of [
   "Which Caribbean Island",
   "West Coast",
   "Best Caribbean Islands",
+  "Our Readers' Favorite Islands",
+  "Most the Islands",
+  "Seeking CANDID Reviews of Multiple Caribbean Islands",
+  "Caribbean Destination Grand Cayman Grenada Caribbean Island",
   "Discover the Best Islands",
   "Jamaica and Pigeon Island"
 ]) {
@@ -919,6 +1041,116 @@ for (const item of repeatedContextualCityCases) {
 }
 
 console.log(JSON.stringify({ repeatedContextualCityValidation: repeatedContextualCityCases.map((item) => ({ query: item.query, city: item.city })) }, null, 2));
+
+for (const invalidCityCandidate of ["Amalfi Coast", "Tuscany", "Lake Como", "Sicily"]) {
+  assert.equal(
+    destinationCandidateProof("best city to visit in italy", invalidCityCandidate, ["Best cities to visit in Italy include historic towns, capitals, and coastal destinations."]).accepted,
+    false,
+    `${invalidCityCandidate} should not satisfy city destination subtype proof from source-wide city words`
+  );
+}
+
+for (const validCityCandidate of ["Rome", "Florence", "Venice", "Milan", "Naples", "Bologna"]) {
+  const proof = destinationCandidateProof("best city to visit in italy", validCityCandidate, [
+    `The best cities to visit in Italy include ${validCityCandidate} for food, culture, and history.`
+  ]);
+  assert.equal(proof.accepted, true, `${validCityCandidate} should remain eligible as a contextual city candidate`);
+  assert.equal(proof.requiresMultipleSources, true, `${validCityCandidate} should still require repeated contextual evidence`);
+}
+
+for (const invalidIslandCandidate of [
+  "Our Readers' Favorite Islands",
+  "Most the Islands",
+  "Seeking CANDID Reviews of Multiple Caribbean Islands",
+  "Caribbean",
+  "Caribbean Islands",
+  "Non-Touristy Island",
+  "Spa the Most Beautiful Islands",
+  "Spa Jicaro Island",
+  "Caribbean Destination Grand Cayman Grenada Caribbean Island"
+]) {
+  assert.equal(
+    destinationCandidateProof("best caribbean island", invalidIslandCandidate, ["Best Caribbean island travel guide recommendations."]).accepted,
+    false,
+    `${invalidIslandCandidate} should not satisfy island destination validation`
+  );
+}
+
+for (const validIslandCandidate of ["Aruba", "Antigua", "St. Lucia", "Jamaica", "Bahamas", "Turks and Caicos"]) {
+  assert.equal(
+    destinationCandidateProof("best caribbean island", validIslandCandidate, [`${validIslandCandidate} is recommended as a Caribbean island destination.`]).accepted,
+    true,
+    `${validIslandCandidate} should remain a valid Caribbean island candidate`
+  );
+  assert.equal(
+    destinationCandidateProof("best island in the caribbean for couples", validIslandCandidate, [`${validIslandCandidate} is recommended as a Caribbean island for couples.`]).accepted,
+    true,
+    `${validIslandCandidate} should not be rejected by Caribbean geography aliases`
+  );
+}
+
+assert.equal(canonicalDestinationName("St Lucia"), "St. Lucia", "St Lucia alias normalization should be preserved");
+
+const unfamiliarDestinationProof = destinationCandidateProof("best places to visit in europe", "Luminara", [
+  "This travel guide recommends Luminara as a quiet European destination for a slow vacation."
+]);
+assert.equal(unfamiliarDestinationProof.accepted, true, "Valid unfamiliar destination names should not be rejected merely for being unknown");
+assert.equal(unfamiliarDestinationProof.requiresMultipleSources, true, "Unfamiliar plain destinations should still require repeated contextual evidence");
+
+const cachedDestinationFixture = consensusFixture({
+  query: "best caribbean island",
+  mode: "split_consensus",
+  results: [
+    resultFromContender(contender("Aruba", { positives: 2, sourceUrls: ["regression://aruba-1", "regression://aruba-2"], score: 8 })),
+    resultFromContender(contender("Our Readers' Favorite Islands", { positives: 1, sourceUrls: ["regression://bad-title"], score: 5 }), 1)
+  ],
+  contenders: [
+    contender("Aruba", { positives: 2, sourceUrls: ["regression://aruba-1", "regression://aruba-2"], score: 8 }),
+    contender("Our Readers' Favorite Islands", { positives: 1, sourceUrls: ["regression://bad-title"], score: 5 })
+  ],
+  signals: [
+    {
+      contenderName: "Aruba",
+      sourceUrl: "regression://aruba-1",
+      sourceTitle: "Best Caribbean island guide",
+      domain: "regression",
+      sourceType: "editorial",
+      sourceWeight: 2,
+      sourceQuality: "high",
+      sourceQualityWeight: 1,
+      sentiment: "positive",
+      mentionStrength: "moderate",
+      positiveMention: "Aruba is recommended as a Caribbean island.",
+      themes: ["destination recommendation"]
+    },
+    {
+      contenderName: "Our Readers' Favorite Islands",
+      sourceUrl: "regression://bad-title",
+      sourceTitle: "Our Readers' Favorite Islands in the Caribbean",
+      domain: "regression",
+      sourceType: "editorial",
+      sourceWeight: 2,
+      sourceQuality: "high",
+      sourceQualityWeight: 1,
+      sentiment: "positive",
+      mentionStrength: "moderate",
+      positiveMention: "Article title fragment.",
+      themes: ["destination recommendation"]
+    }
+  ]
+});
+cachedDestinationFixture.structuredConsensus.queryEvidenceType = "destination_recommendation";
+const sanitizedCachedDestination = sanitizeCachedLocalConsensus(cachedDestinationFixture);
+assert.deepEqual(
+  sanitizedCachedDestination.results.map((result) => result.name),
+  ["Aruba"],
+  "Cached destination results should reject malformed contender shapes"
+);
+assert.deepEqual(
+  sanitizedCachedDestination.structuredConsensus?.contenders.map((contender) => contender.name),
+  ["Aruba"],
+  "Cached destination structured consensus should reject malformed contender shapes"
+);
 
 const noReliableRecurringDisplay = selectNoReliableConsensusDisplayContendersForRegression([
   contender("Rome", { positives: 2, sourceUrls: ["regression://rome-1", "regression://rome-2"], score: 7 }),
