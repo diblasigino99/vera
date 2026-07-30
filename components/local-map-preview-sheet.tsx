@@ -22,6 +22,7 @@ export function LocalMapPreviewSheet({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+  const [useSameTabMapsNavigation, setUseSameTabMapsNavigation] = useState(false);
   const embedUrl = verifiedAddress
     ? `https://www.google.com/maps?q=${encodeURIComponent(`${businessName} ${verifiedAddress}`)}&output=embed`
     : null;
@@ -61,6 +62,16 @@ export function LocalMapPreviewSheet({
       previousFocusRef.current?.focus();
     };
   }, [onClose]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(hover: none), (pointer: coarse)");
+    const updateNavigationMode = () => setUseSameTabMapsNavigation(mediaQuery.matches);
+
+    updateNavigationMode();
+    mediaQuery.addEventListener("change", updateNavigationMode);
+
+    return () => mediaQuery.removeEventListener("change", updateNavigationMode);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center px-3 pb-3 pt-10 sm:items-center sm:p-6">
@@ -118,8 +129,8 @@ export function LocalMapPreviewSheet({
           <a
             className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[#111114] px-4 text-center text-sm font-medium text-white transition hover:bg-[#2C2C30]"
             href={mapsAction.url}
-            rel="noopener noreferrer"
-            target="_blank"
+            rel={useSameTabMapsNavigation ? undefined : "noopener noreferrer"}
+            target={useSameTabMapsNavigation ? undefined : "_blank"}
           >
             Open in Google Maps
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />

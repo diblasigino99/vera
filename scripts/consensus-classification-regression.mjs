@@ -670,7 +670,7 @@ assert.deepEqual(
 );
 assert.equal(
   decoratedLocalMapsActions.results[0].actions?.[0]?.url,
-  "https://www.google.com/maps/place/?q=place_id:ChIJRegressionAzerbaijan",
+  "https://www.google.com/maps/search/?api=1&query=Azerbaijan%20Grill&query_place_id=ChIJRegressionAzerbaijan",
   "Local maps action should use the verified Google Places ID"
 );
 assert.equal(decoratedLocalMapsActions.mode, localMapsActions.mode, "Local maps action must not change mode");

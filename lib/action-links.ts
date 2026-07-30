@@ -203,7 +203,7 @@ function resolveLocalActions(consensus: ConsensusResponse, result: ConsensusResu
   const official = sources.find((source) => sourceLooksOfficialForContender(source, result.name));
   const actions: ContenderAction[] = [];
   const website = official ? buildAction("website", official, "verified_local_source") : undefined;
-  const maps = buildMapsAction(localPlaceIdForResult(consensus, result));
+  const maps = buildMapsAction(localPlaceIdForResult(consensus, result), result.name);
 
   if (website) {
     actions.push(website);
@@ -299,8 +299,9 @@ function buildAction(type: ContenderActionType, source: VeraSource, actionSource
   };
 }
 
-function buildMapsAction(placeId?: string): ContenderAction | undefined {
+function buildMapsAction(placeId?: string, query?: string): ContenderAction | undefined {
   const cleanPlaceId = placeId?.trim();
+  const cleanQuery = query?.trim();
 
   if (!cleanPlaceId || !/^[A-Za-z0-9_-]+$/.test(cleanPlaceId)) {
     return undefined;
@@ -309,7 +310,7 @@ function buildMapsAction(placeId?: string): ContenderAction | undefined {
   return {
     type: "maps",
     label: "View on Maps",
-    url: `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(cleanPlaceId)}`,
+    url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanQuery || cleanPlaceId)}&query_place_id=${encodeURIComponent(cleanPlaceId)}`,
     domain: "google.com",
     source: "google_places"
   };
