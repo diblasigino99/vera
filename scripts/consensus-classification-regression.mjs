@@ -35,7 +35,7 @@ const {
 } = jiti("./lib/server/analyze.ts");
 const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
 const { scorePlacesResultForRegression } = jiti("./lib/server/places.ts");
-const { classifyConsensusEligibility, inferQueryEvidenceType } = jiti("./lib/utils.ts");
+const { canonicalizeQuery, classifyConsensusEligibility, inferQueryEvidenceType, parseLocalIntent } = jiti("./lib/utils.ts");
 const { attachContenderActions, productAmazonDestinationAccepted, productOfficialDestinationAccepted } = jiti("./lib/action-links.ts");
 const { attachPostDecisionActionsWithBudget } = jiti("./lib/server/action-resolution.ts");
 
@@ -987,7 +987,17 @@ const routingRegressionCases = [
   { query: "best Caribbean island for couples", expectedEvidenceType: "destination_recommendation" },
   { query: "best city in Italy", expectedEvidenceType: "destination_recommendation" },
   { query: "best island in Greece", expectedEvidenceType: "destination_recommendation" },
-  { query: "best italian restaurant in Williamsburg", expectedEvidenceType: "local_recommendation" }
+  { query: "best italian restaurant in Williamsburg", expectedEvidenceType: "local_recommendation" },
+  { query: "best lunch places east meadow", expectedEvidenceType: "local_recommendation" },
+  { query: "best lunch place east meadow", expectedEvidenceType: "local_recommendation" },
+  { query: "best lunch spots in east meadow", expectedEvidenceType: "local_recommendation" },
+  { query: "best lunch spots brooklyn", expectedEvidenceType: "local_recommendation" },
+  { query: "best places to eat in east meadow", expectedEvidenceType: "local_recommendation" },
+  { query: "best place to eat in east meadow", expectedEvidenceType: "local_recommendation" },
+  { query: "best places to eat queens", expectedEvidenceType: "local_recommendation" },
+  { query: "best spots to eat queens", expectedEvidenceType: "local_recommendation" },
+  { query: "top dinner spots williamsburg", expectedEvidenceType: "local_recommendation" },
+  { query: "best places for lunch massapequa", expectedEvidenceType: "local_recommendation" }
 ];
 
 for (const item of routingRegressionCases) {
@@ -996,6 +1006,42 @@ for (const item of routingRegressionCases) {
 }
 
 console.log(JSON.stringify({ routingRegression: routingRegressionCases }, null, 2));
+
+const localFoodIntentRegressionCases = [
+  { query: "best lunch places east meadow", category: "restaurant", location: "East Meadow", locationForSearch: "East Meadow", canonical: "restaurant east meadow" },
+  { query: "best lunch place east meadow", category: "restaurant", location: "East Meadow", locationForSearch: "East Meadow", canonical: "restaurant east meadow" },
+  { query: "best lunch spots in east meadow", category: "restaurant", location: "East Meadow", locationForSearch: "East Meadow", canonical: "restaurant east meadow" },
+  { query: "best lunch spots brooklyn", category: "restaurant", location: "Brooklyn", locationForSearch: "Brooklyn, NY", canonical: "restaurant brooklyn" },
+  { query: "best places to eat in east meadow", category: "restaurant", location: "East Meadow", locationForSearch: "East Meadow", canonical: "restaurant east meadow" },
+  { query: "best place to eat in east meadow", category: "restaurant", location: "East Meadow", locationForSearch: "East Meadow", canonical: "restaurant east meadow" },
+  { query: "best places to eat queens", category: "restaurant", location: "Queens", locationForSearch: "Queens, NY", canonical: "restaurant queens" },
+  { query: "best spots to eat queens", category: "restaurant", location: "Queens", locationForSearch: "Queens, NY", canonical: "restaurant queens" },
+  { query: "top dinner spots williamsburg", category: "restaurant", location: "Williamsburg", locationForSearch: "Williamsburg, Brooklyn, NY", canonical: "restaurant williamsburg" },
+  { query: "best places for lunch massapequa", category: "restaurant", location: "Massapequa", locationForSearch: "Massapequa, NY", canonical: "restaurant massapequa" }
+];
+
+for (const item of localFoodIntentRegressionCases) {
+  const parsed = parseLocalIntent(item.query);
+  assert.equal(parsed.category, item.category, `${item.query} should parse as ${item.category}`);
+  assert.equal(parsed.location, item.location, `${item.query} should parse local geography`);
+  assert.equal(parsed.locationForSearch, item.locationForSearch, `${item.query} should canonicalize local geography for retrieval`);
+  assert.equal(canonicalizeQuery(item.query), item.canonical, `${item.query} should share restaurant-style canonical cache identity`);
+}
+
+for (const query of [
+  "best lunch box",
+  "lunch bag reviews",
+  "best place to buy a mattress online",
+  "best product placement software",
+  "best travel spots in italy",
+  "best vacation spots in europe",
+  "best camping stove",
+  "best running shoes"
+]) {
+  assert.notEqual(inferQueryEvidenceType(query), "local_recommendation", `${query} must not route as local food`);
+}
+
+console.log(JSON.stringify({ localFoodIntentRegression: localFoodIntentRegressionCases }, null, 2));
 
 function placesFixture(name, { types = [], address = "Jericho Union Free School District, NY, USA", status = undefined } = {}) {
   return {

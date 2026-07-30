@@ -73,8 +73,9 @@ export type ParsedLocalIntent = {
 export function parseLocalIntent(query: string): ParsedLocalIntent {
   const normalized = normalizeLocalQueryIntent(query);
   const locationMatch = normalized.match(/\b(?:in|near|around|on)\s+(.+?)$/);
-  const rawLocation = cleanLocalLocationPhrase(locationMatch?.[1] ?? "");
-  const rawCategory = (locationMatch ? normalized.slice(0, locationMatch.index).trim() : normalized).trim();
+  const trailingFoodIntent = locationMatch ? null : parseTrailingLocalFoodIntent(normalized);
+  const rawLocation = cleanLocalLocationPhrase(locationMatch?.[1] ?? trailingFoodIntent?.location ?? "");
+  const rawCategory = (locationMatch ? normalized.slice(0, locationMatch.index).trim() : trailingFoodIntent?.category ?? normalized).trim();
   const category = normalizeLocalCategoryPhrase(rawCategory);
 
   return {
@@ -114,9 +115,35 @@ function normalizeLocalCategoryPhrase(value: string) {
   if (/\b(ramen)\b/.test(normalized)) return "ramen";
   if (/\b(mexican|taqueria|taco)\b/.test(normalized)) return "Mexican restaurant";
   if (/\b(steakhouse|steak house|steak)\b/.test(normalized)) return "steakhouse";
-  if (/\b(restaurant|restaurants|place to eat|places to eat)\b/.test(normalized)) return "restaurant";
+  if (/\b(restaurant|restaurants)\b/.test(normalized) || hasLocalFoodRecommendationPhrase(normalized)) return "restaurant";
 
   return normalized || "local business";
+}
+
+function parseTrailingLocalFoodIntent(normalized: string) {
+  const match = normalized.match(
+    /^((?:best|top|great|good|recommended|highest rated|most recommended)\s+)?((?:lunch|dinner)\s+(?:places?|spots?)|(?:places?|spots?)\s+(?:to eat|for\s+(?:lunch|dinner)))\s+(.+)$/
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const phrase = match[2]?.trim() ?? "";
+  const location = match[3]?.trim() ?? "";
+
+  if (!location || /\b(?:online|reviews?|review|buy|purchase|order|delivery)\b/.test(location)) {
+    return null;
+  }
+
+  return {
+    category: phrase,
+    location
+  };
+}
+
+function hasLocalFoodRecommendationPhrase(normalized: string) {
+  return /\b(?:lunch|dinner)\s+(?:places?|spots?)\b/.test(normalized) || /\b(?:places?|spots?)\s+(?:to eat|for\s+(?:lunch|dinner))\b/.test(normalized);
 }
 
 function cleanLocalLocationPhrase(value: string) {
@@ -233,7 +260,7 @@ export function parseLocalQueryConstraints(query: string): LocalQueryConstraint[
 export function canonicalizeQuery(query: string) {
   const normalized = normalizeQuery(query)
     .replace(/\b(highest rated|most recommended|recommended|recommendations|recommendation|best|top|great|good)\b/g, " ")
-    .replace(/\b(places to eat|place to eat|spots to eat|spot to eat|places for food|food places)\b/g, " restaurant ")
+    .replace(/\b(lunch places?|lunch spots?|dinner places?|dinner spots?|places to eat|place to eat|spots to eat|spot to eat|places for lunch|place for lunch|spots for lunch|spot for lunch|places for dinner|place for dinner|spots for dinner|spot for dinner|places for food|food places)\b/g, " restaurant ")
     .replace(/\b(new york|n y)\b/g, "ny")
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\b(the|a|an|really|very|please|near|around|for|to|in|find|show|me)\b/g, " ");
@@ -371,9 +398,10 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   }
 
   if (
-    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|dirty martini|martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|hair salon|nursing home|nursing homes|skilled nursing|assisted living|memory care|senior care|school|schools|school district|school districts|public school|public schools|private school|private schools|high school|high schools|elementary school|elementary schools|middle school|middle schools|clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store|place to eat|place to stay|near me)\b/.test(
+    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|dirty martini|martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|hair salon|nursing home|nursing homes|skilled nursing|assisted living|memory care|senior care|school|schools|school district|school districts|public school|public schools|private school|private schools|high school|high schools|elementary school|elementary schools|middle school|middle schools|clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store|places? to eat|spots? to eat|places? for lunch|spots? for lunch|places? for dinner|spots? for dinner|lunch places?|lunch spots?|dinner places?|dinner spots?|place to stay|near me)\b/.test(
       normalized
     ) ||
+    hasLocalFoodRecommendationPhrase(normalized) ||
     /\b\d{5}(?:-\d{4})?\b/.test(normalized)
   ) {
     return "local_recommendation";
