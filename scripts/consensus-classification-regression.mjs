@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import path from "node:path";
 import Module from "node:module";
 import { diagnoseMultiContenderSplitEvidence } from "../lib/server/consensus-classification.ts";
@@ -34,6 +35,7 @@ const {
 } = jiti("./lib/server/analyze.ts");
 const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
 const { inferQueryEvidenceType } = jiti("./lib/utils.ts");
+const { attachContenderActions } = jiti("./lib/action-links.ts");
 
 const minimumSourceCount = 3;
 const minimumTopPositiveMentions = 3;
@@ -157,6 +159,16 @@ function assertOpenAITrimSafe(input, maxChars, expected, message) {
   assert.equal(output, expected, message);
 }
 
+function source(title, url, domain, snippet = "", supportingContender = undefined) {
+  return {
+    title,
+    url,
+    domain,
+    snippet,
+    supportingContender
+  };
+}
+
 assertOpenAITrimSafe("abc😀def", 4, "abc...", "Emoji split at trim boundary should be removed safely with ellipsis");
 assertOpenAITrimSafe("abc😀def", 5, "abc😀...", "Emoji fitting before trim boundary should be preserved");
 assertOpenAITrimSafe("a😀b🚀c", 5, "a😀b...", "Multiple emoji should truncate without splitting");
@@ -167,6 +179,128 @@ assertOpenAITrimSafe("plain ascii text that is long", 12, "plain ascii...", "Lon
 assertOpenAITrimSafe(`abc${String.fromCharCode(0xd83c)}def`, 20, "abcdef", "Already malformed high surrogate should be removed without corrupting surrounding text");
 assertOpenAITrimSafe(`abc${String.fromCharCode(0xdc00)}def`, 20, "abcdef", "Already malformed low surrogate should be removed without corrupting surrounding text");
 assertOpenAITrimSafe(`Brevo G2: 4.5 ${String.fromCodePoint(0x1f4a1)} reviews`, 15, "Brevo G2: 4.5...", "Mailtrap-style emoji boundary should not produce invalid JSON");
+
+const actionProductA = contender("Away Carry-On", {
+  positives: 3,
+  sourceUrls: ["https://www.awaytravel.com/suitcases/carry-on"]
+});
+actionProductA.contenderCategory = "product";
+const actionProductB = contender("Travelpro Platinum Elite", {
+  positives: 2,
+  sourceUrls: ["https://www.travelpro.com/collections/platinum-elite"]
+});
+actionProductB.contenderCategory = "product";
+const splitProductActions = consensusFixture({
+  mode: "split_consensus",
+  query: "best carry on luggage",
+  contenders: [actionProductA, actionProductB],
+  results: [actionProductA, actionProductB].map(resultFromContender)
+});
+splitProductActions.structuredConsensus.queryEvidenceType = "product_recommendation";
+splitProductActions.sources = [
+  source("Away Carry-On", "https://www.awaytravel.com/suitcases/carry-on", "awaytravel.com", "Away Carry-On product page.", "Away Carry-On"),
+  source("Travelpro Platinum Elite", "https://www.travelpro.com/collections/platinum-elite", "travelpro.com", "Travelpro Platinum Elite product page.", "Travelpro Platinum Elite")
+];
+splitProductActions.results[0].sources = [splitProductActions.sources[0]];
+splitProductActions.results[1].sources = [splitProductActions.sources[1]];
+
+const decoratedSplitProductActions = attachContenderActions(splitProductActions);
+assert.equal(decoratedSplitProductActions.mode, splitProductActions.mode, "Action links must not change consensus classification");
+assert.deepEqual(
+  decoratedSplitProductActions.results.map((item) => item.name),
+  splitProductActions.results.map((item) => item.name),
+  "Action links must not change contender order"
+);
+assert.deepEqual(
+  decoratedSplitProductActions.results.map((item) => item.action?.label),
+  ["View Product", "View Product"],
+  "Every displayed split-consensus product contender can independently receive View Product"
+);
+
+const noClearProductActions = consensusFixture({
+  mode: "no_reliable_consensus",
+  query: "best water bottle brand",
+  contenders: [actionProductA],
+  results: [resultFromContender(actionProductA)]
+});
+noClearProductActions.structuredConsensus.queryEvidenceType = "product_recommendation";
+noClearProductActions.sources = [splitProductActions.sources[0]];
+noClearProductActions.results[0].sources = [splitProductActions.sources[0]];
+assert.equal(
+  attachContenderActions(noClearProductActions).results[0].action?.label,
+  "View Product",
+  "No-clear evidence-backed contenders can receive product actions"
+);
+
+const missingUrlActions = consensusFixture({
+  mode: "strong_consensus",
+  query: "best coffee machine",
+  contenders: [actionProductA],
+  results: [resultFromContender(actionProductA)]
+});
+missingUrlActions.structuredConsensus.queryEvidenceType = "product_recommendation";
+missingUrlActions.sources = [source("Editorial review", "https://www.nytimes.com/wirecutter/reviews/best-coffee-maker", "nytimes.com", "A review mentions Away Carry-On.")];
+missingUrlActions.results[0].sources = missingUrlActions.sources;
+assert.equal(
+  attachContenderActions(missingUrlActions).results[0].action,
+  undefined,
+  "Missing or unverified URLs should not create an action"
+);
+
+const softwareActionContender = contender("HubSpot", { positives: 3, sourceUrls: ["https://www.hubspot.com/products/crm"] });
+softwareActionContender.contenderCategory = "software";
+const softwareActions = consensusFixture({
+  mode: "strong_consensus",
+  query: "best crm software",
+  contenders: [softwareActionContender],
+  results: [resultFromContender(softwareActionContender)]
+});
+softwareActions.structuredConsensus.queryEvidenceType = "software_tool";
+softwareActions.sources = [source("HubSpot CRM", "https://www.hubspot.com/products/crm", "hubspot.com", "HubSpot CRM official website.", "HubSpot")];
+softwareActions.results[0].sources = softwareActions.sources;
+assert.equal(attachContenderActions(softwareActions).results[0].action?.label, "Visit Website", "Software actions use Visit Website");
+
+const localActionContender = contender("Oregano", { positives: 2, sourceUrls: ["https://www.oreganobk.com"] });
+localActionContender.contenderCategory = "restaurant";
+const localActions = consensusFixture({
+  mode: "moderate_consensus",
+  query: "best italian restaurant in williamsburg",
+  contenders: [localActionContender],
+  results: [resultFromContender(localActionContender)]
+});
+localActions.structuredConsensus.queryEvidenceType = "local_recommendation";
+localActions.sources = [source("Oregano", "https://www.oreganobk.com", "oreganobk.com", "Oregano official website.", "Oregano")];
+localActions.results[0].sources = localActions.sources;
+assert.equal(attachContenderActions(localActions).results[0].action?.label, "Website", "Local actions use Website");
+
+const providerActionContender = contender("Verizon Fios", { positives: 2, sourceUrls: ["https://www.verizon.com/home/internet/fios"] });
+providerActionContender.contenderCategory = "service";
+const providerActions = consensusFixture({
+  mode: "moderate_consensus",
+  query: "best internet provider",
+  contenders: [providerActionContender],
+  results: [resultFromContender(providerActionContender)]
+});
+providerActions.structuredConsensus.queryEvidenceType = "provider_or_brand_recommendation";
+providerActions.sources = [source("Verizon Fios", "https://www.verizon.com/home/internet/fios", "verizon.com", "Verizon Fios official website.", "Verizon Fios")];
+providerActions.results[0].sources = providerActions.sources;
+assert.equal(attachContenderActions(providerActions).results[0].action?.label, "Visit Website", "Provider actions use Visit Website");
+
+const destinationContender = contender("Valencia", { positives: 2, sourceUrls: ["https://www.visitvalencia.com"] });
+destinationContender.contenderCategory = "other";
+const destinationActions = consensusFixture({
+  mode: "no_reliable_consensus",
+  query: "best city to visit in spain",
+  contenders: [destinationContender],
+  results: [resultFromContender(destinationContender)]
+});
+destinationActions.structuredConsensus.queryEvidenceType = "destination_recommendation";
+destinationActions.sources = [source("Visit Valencia", "https://www.visitvalencia.com", "visitvalencia.com", "Official Valencia visitor guide.", "Valencia")];
+destinationActions.results[0].sources = destinationActions.sources;
+assert.equal(attachContenderActions(destinationActions).results[0].action, undefined, "Destination entities should not receive forced action links");
+
+const analyzeSource = fs.readFileSync(path.join(root, "lib/server/analyze.ts"), "utf8");
+assert.equal(analyzeSource.includes("attachContenderActions"), false, "Consensus analysis must not reference the action-link presentation layer");
 
 console.log(
   JSON.stringify(

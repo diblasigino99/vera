@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
+import { attachContenderActions } from "@/lib/action-links";
 import { NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
+import { ContenderActionLink } from "@/components/contender-action-link";
 import { confidenceExplanationForMode, editorializeTrustCopy, resultGeneratedLabel } from "@/lib/trust-copy";
 
 type ResultClientFallbackProps = {
@@ -32,7 +34,7 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
     }
 
     try {
-      setConsensus(JSON.parse(stored) as ConsensusResponse);
+      setConsensus(attachContenderActions(JSON.parse(stored) as ConsensusResponse));
     } catch {
       setConsensus(null);
     }
@@ -96,6 +98,19 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
             {consensus.mode !== "no_reliable_consensus" ? <span>{confidenceExplanationForMode(consensus.mode)}</span> : null}
             {generatedLabel ? <span>{generatedLabel}</span> : null}
           </div>
+          {result.action ? (
+            <div className="mt-7">
+              <ContenderActionLink
+                action={result.action}
+                category={consensus.structuredConsensus?.queryEvidenceType}
+                consensusMode={consensus.mode}
+                contenderName={result.name}
+                displayPosition={result.rank}
+                searchId={consensus.id}
+                searchQuery={consensus.query}
+              />
+            </div>
+          ) : null}
         </header>
 
         <div className="mt-14 grid gap-14">
@@ -139,6 +154,7 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
               <div className="border-t border-[#ECECF0]">
                 {[result, ...contenders.slice(0, 2)].map((item) => (
                   <ComparisonRow
+                    consensus={consensus}
                     item={item}
                     selected={item.id === result.id}
                     showConsensusScore={consensus.mode !== "no_reliable_consensus"}
@@ -201,7 +217,17 @@ function EvidenceRow({ reason, result }: { reason: string; result: ConsensusResu
   );
 }
 
-function ComparisonRow({ item, selected, showConsensusScore }: { item: ConsensusResult; selected: boolean; showConsensusScore: boolean }) {
+function ComparisonRow({
+  consensus,
+  item,
+  selected,
+  showConsensusScore
+}: {
+  consensus: ConsensusResponse;
+  item: ConsensusResult;
+  selected: boolean;
+  showConsensusScore: boolean;
+}) {
   const primaryReason = item.reasons[0]?.toLowerCase() ?? "its recurring strengths";
 
   return (
@@ -216,6 +242,20 @@ function ComparisonRow({ item, selected, showConsensusScore }: { item: Consensus
             {selected ? `Choose ${item.name}` : `${item.name} is a stronger fit`} when {primaryReason} matters most.
           </p>
           <p className="mt-3 text-sm font-medium text-muted">Best fit: {item.summary}</p>
+          {item.action ? (
+            <div className="mt-4">
+              <ContenderActionLink
+                action={item.action}
+                actionType="link"
+                category={consensus.structuredConsensus?.queryEvidenceType}
+                consensusMode={consensus.mode}
+                contenderName={item.name}
+                displayPosition={item.rank}
+                searchId={consensus.id}
+                searchQuery={consensus.query}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

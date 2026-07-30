@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
+import { attachContenderActions } from "@/lib/action-links";
 import { getConsensusById } from "@/lib/server/cache";
 import { parseResultSlug } from "@/lib/result-slug";
 import { NO_RELIABLE_CONSENSUS_BODY, NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
+import { ContenderActionLink } from "@/components/contender-action-link";
 import { ResultClientFallback } from "./result-client-fallback";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { confidenceExplanationForMode, editorializeTrustCopy, resultGeneratedLabel } from "@/lib/trust-copy";
@@ -37,7 +39,8 @@ export default async function ResultPage({ params }: ResultPageProps) {
     resultId: parsed.resultId
   });
 
-  const consensus = await getConsensusById(parsed.searchId);
+  const storedConsensus = await getConsensusById(parsed.searchId);
+  const consensus = storedConsensus ? attachContenderActions(storedConsensus) : null;
   const result = consensus?.results.find((item) => item.id === parsed.resultId);
 
   if (!consensus || !result) {
@@ -90,6 +93,19 @@ export default async function ResultPage({ params }: ResultPageProps) {
             {consensus.mode !== "no_reliable_consensus" ? <span>{confidenceExplanationForMode(consensus.mode)}</span> : null}
             {generatedLabel ? <span>{generatedLabel}</span> : null}
           </div>
+          {result.action ? (
+            <div className="mt-7">
+              <ContenderActionLink
+                action={result.action}
+                category={consensus.structuredConsensus?.queryEvidenceType}
+                consensusMode={consensus.mode}
+                contenderName={result.name}
+                displayPosition={result.rank}
+                searchId={consensus.id}
+                searchQuery={consensus.query}
+              />
+            </div>
+          ) : null}
         </header>
 
         <div className="mt-14 grid gap-14">
@@ -138,7 +154,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
           >
             <div className="border-t border-[#ECECF0]">
               {buildComparisons(consensus, result, contenders).map((comparison) => (
-                <ComparisonRow comparison={comparison} key={comparison.name} />
+                <ComparisonRow comparison={comparison} consensus={consensus} key={comparison.name} />
               ))}
             </div>
           </DetailSection>
@@ -242,7 +258,8 @@ function EvidenceRow({ pattern }: { pattern: PatternSummary }) {
 }
 
 function ComparisonRow({
-  comparison
+  comparison,
+  consensus
 }: {
   comparison: {
     name: string;
@@ -250,7 +267,10 @@ function ComparisonRow({
     knownFor: string;
     tradeoff: string;
     bestFor: string;
+    action?: ConsensusResult["action"];
+    rank: number;
   };
+  consensus: ConsensusResponse;
 }) {
   return (
     <div className="border-b border-[#ECECF0] py-5">
@@ -263,6 +283,20 @@ function ComparisonRow({
           <p className="leading-7 text-graphite">{comparison.knownFor}</p>
           <p className="mt-3 leading-7 text-graphite">{comparison.tradeoff}</p>
           <p className="mt-3 text-sm font-medium text-muted">{comparison.bestFor}</p>
+          {comparison.action ? (
+            <div className="mt-4">
+              <ContenderActionLink
+                action={comparison.action}
+                actionType="link"
+                category={consensus.structuredConsensus?.queryEvidenceType}
+                consensusMode={consensus.mode}
+                contenderName={comparison.name}
+                displayPosition={comparison.rank}
+                searchId={consensus.id}
+                searchQuery={consensus.query}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -420,7 +454,9 @@ function buildComparisons(consensus: ConsensusResponse, result: ConsensusResult,
       tradeoff: isSelected
         ? `Choose ${item.name} when ${primaryReason} is the deciding factor${metricComparison(item)}${downside ? `, while accepting that ${downside}` : ""}.`
         : `Choose ${item.name} when you care more about ${primaryReason}${metricComparison(item)}${downside ? `, while accepting that ${downside}` : ""}.`,
-      bestFor: `Best fit: ${item.summary}`
+      bestFor: `Best fit: ${item.summary}`,
+      action: item.action,
+      rank: item.rank
     };
   });
 }

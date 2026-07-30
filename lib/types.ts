@@ -76,6 +76,16 @@ export type SourceSignal = {
   placesBusinessStatus?: string;
 };
 
+export type ContenderActionType = "view_product" | "visit_website" | "website" | "view_website";
+
+export type ContenderAction = {
+  type: ContenderActionType;
+  label: "View Product" | "Visit Website" | "Website" | "View Website";
+  url: string;
+  domain: string;
+  source: "official_source" | "verified_local_source" | "trusted_retailer_source";
+};
+
 export type ThemeMetric = {
   theme: string;
   frequencyCount: number;
@@ -190,6 +200,7 @@ export type ConsensusResult = {
   sources: VeraSource[];
   metrics?: ContenderMetrics;
   verifiedAddress?: string;
+  action?: ContenderAction;
 };
 
 export type ConsensusMode =

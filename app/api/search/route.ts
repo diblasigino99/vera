@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { attachContenderActions } from "@/lib/action-links";
 import {
   analyzeConsensus,
   buildDestinationFallbackConsensus,
@@ -138,7 +139,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
       cacheMs: 0,
       cacheWriteMs: Date.now() - cacheWriteStartedAt
     });
-    return NextResponse.json(fakeResult);
+    return consensusJson(fakeResult);
   }
 
   if (isUnsupportedAdultLocalCategory(body.data.query)) {
@@ -182,7 +183,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
       totalMs: totalElapsedMs,
       cacheMs: 0
     });
-    return NextResponse.json(consensus);
+    return consensusJson(consensus);
   }
 
   if (queryIntent === "negative_avoidance" || queryIntent === "reliability_risk") {
@@ -226,7 +227,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
       totalMs: totalElapsedMs,
       cacheMs: 0
     });
-    return NextResponse.json(consensus);
+    return consensusJson(consensus);
   }
 
   const vagueQueryExplanation = vagueRecommendationGuardExplanation(body.data.query, evidenceType);
@@ -271,7 +272,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
       totalMs: totalElapsedMs,
       cacheMs: 0
     });
-    return NextResponse.json(consensus);
+    return consensusJson(consensus);
   }
 
   let cacheElapsedMs = 0;
@@ -339,7 +340,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
         totalMs: Date.now() - requestStartedAt,
         cacheMs: cacheElapsedMs
       });
-      return NextResponse.json(response);
+      return consensusJson(response);
     }
   } catch (error) {
     console.error("[vera:search] cache lookup aborted live search", {
@@ -640,7 +641,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
           tavilyMs: tavilyElapsedMs,
           openAiMs: openAIElapsedMs
         });
-        return NextResponse.json(withHelpfulNoConsensusCopy(stale, body.data.query, evidenceType, queryIntent));
+        return consensusJson(withHelpfulNoConsensusCopy(stale, body.data.query, evidenceType, queryIntent));
       }
     }
 
@@ -743,7 +744,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
       openAiMs: openAIElapsedMs,
       cacheWriteMs: cacheWriteElapsedMs
     });
-    return NextResponse.json(consensus);
+    return consensusJson(consensus);
   } catch (error) {
     if (inferQueryEvidenceType(body.data.query) === "local_recommendation" && isTransientLiveSearchError(error)) {
       const stale = await getStaleCachedConsensus(body.data.query, externalCallCounts);
@@ -779,7 +780,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
           cacheMs: cacheElapsedMs,
           error: error instanceof Error ? error.message : String(error)
         });
-        return NextResponse.json(withHelpfulNoConsensusCopy(stale, body.data.query, evidenceType, queryIntent));
+        return consensusJson(withHelpfulNoConsensusCopy(stale, body.data.query, evidenceType, queryIntent));
       }
     }
 
@@ -1420,4 +1421,8 @@ function baseSearchEvent(
     placesCacheHits: externalCallCounts.placesCacheHits,
     placesValidationAttempts: externalCallCounts.placesValidationAttempts
   };
+}
+
+function consensusJson(consensus: ConsensusResponse) {
+  return NextResponse.json(attachContenderActions(consensus));
 }

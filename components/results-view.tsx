@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { VeraThinking } from "@/components/vera-thinking";
 import { SearchExperience } from "@/components/search-experience";
 import { FeedbackWidget } from "@/components/feedback-widget";
+import { ContenderActionLink } from "@/components/contender-action-link";
 import { buildResultSlug } from "@/lib/result-slug";
 import { getAnonymousId } from "@/lib/client/anonymous-id";
 import { confidenceExplanationForMode, editorializeTrustCopy, resultGeneratedLabel } from "@/lib/trust-copy";
@@ -705,6 +706,17 @@ function ResultCard({
         >
           Learn Why
         </Link>
+        {item.action ? (
+          <ContenderActionLink
+            action={item.action}
+            category={consensus.structuredConsensus?.queryEvidenceType}
+            consensusMode={consensus.mode}
+            contenderName={item.name}
+            displayPosition={item.rank}
+            searchId={searchId}
+            searchQuery={consensus.query}
+          />
+        ) : null}
         <SaveResultButton initialSaved={initialSaved} resultId={item.id} searchId={searchId} />
       </div>
     </article>
