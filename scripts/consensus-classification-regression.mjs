@@ -34,6 +34,7 @@ const {
   trimForOpenAIRegression
 } = jiti("./lib/server/analyze.ts");
 const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
+const { scorePlacesResultForRegression } = jiti("./lib/server/places.ts");
 const { classifyConsensusEligibility, inferQueryEvidenceType } = jiti("./lib/utils.ts");
 const { attachContenderActions, productAmazonDestinationAccepted, productOfficialDestinationAccepted } = jiti("./lib/action-links.ts");
 const { attachPostDecisionActionsWithBudget } = jiti("./lib/server/action-resolution.ts");
@@ -995,6 +996,127 @@ for (const item of routingRegressionCases) {
 }
 
 console.log(JSON.stringify({ routingRegression: routingRegressionCases }, null, 2));
+
+function placesFixture(name, { types = [], address = "Jericho Union Free School District, NY, USA", status = undefined } = {}) {
+  return {
+    id: `regression-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    displayName: { text: name },
+    formattedAddress: address,
+    types,
+    primaryType: types[0],
+    ...(status ? { businessStatus: status } : {})
+  };
+}
+
+const jerichoDistrictPlace = placesFixture("Jericho Union Free School District", {
+  types: ["school_district", "political"],
+  address: "Jericho Union Free School District, NY, USA"
+});
+const syossetDistrictPlace = placesFixture("Syosset Central School District", {
+  types: ["school_district", "political"],
+  address: "Syosset Central School District, NY, USA"
+});
+const queensHighSchoolPlace = placesFixture("Queens High School for the Sciences", {
+  types: ["secondary_school", "school", "educational_institution", "point_of_interest", "establishment"],
+  address: "94-50 159th St, Jamaica, NY 11451, USA",
+  status: "OPERATIONAL"
+});
+const saintAnnsPlace = placesFixture("Saint Ann's School", {
+  types: ["secondary_school", "school", "educational_institution", "point_of_interest", "establishment"],
+  address: "129 Pierrepont St, Brooklyn, NY 11201, USA",
+  status: "OPERATIONAL"
+});
+
+for (const [candidate, place] of [
+  ["Jericho Union Free School District", jerichoDistrictPlace],
+  ["Syosset Central School District", syossetDistrictPlace]
+]) {
+  const validation = scorePlacesResultForRegression("best school district on Long Island", candidate, place);
+  assert.equal(validation.status, "verified", `${candidate} should validate as a school district even with political Places type`);
+  assert.equal(validation.categoryConfidence, 1, `${candidate} should have district category confidence`);
+  assert.ok(validation.locationConfidence >= 0.25, `${candidate} should satisfy Long Island geography proof`);
+}
+
+for (const query of ["best italian restaurant in Williamsburg", "best dentist in Austin", "best coffee shop in Brooklyn", "best cocktail bar in Manhattan", "best clothing boutique in Massapequa"]) {
+  const validation = scorePlacesResultForRegression(query, "Jericho Union Free School District", jerichoDistrictPlace);
+  assert.notEqual(validation.status, "verified", `${query} must not accept school_district + political as a normal local business`);
+  assert.equal(validation.rejectionReason, "resolved_to_non_business_place", `${query} should keep normal political/non-business rejection`);
+}
+
+for (const [candidate, place] of [
+  ["Nassau County", placesFixture("Nassau County", { types: ["administrative_area_level_2", "political"], address: "Nassau County, NY, USA" })],
+  ["Long Island", placesFixture("Long Island", { types: ["natural_feature", "political"], address: "Long Island, NY, USA" })],
+  ["Queens", placesFixture("Queens", { types: ["locality", "political"], address: "Queens, NY, USA" })]
+]) {
+  const validation = scorePlacesResultForRegression("best school district on Long Island", candidate, place);
+  assert.notEqual(validation.status, "verified", `${candidate} must remain rejected as generic geography`);
+  assert.equal(validation.rejectionReason, "resolved_to_non_business_place", `${candidate} should remain a non-eligible political/location entity`);
+}
+
+for (const [candidate, place] of [
+  ["Best School Districts", placesFixture("East Meadow School District", { types: ["point_of_interest", "establishment"], address: "718 The Plain Rd, Westbury, NY 11590, USA" })],
+  ["School Quality", placesFixture("East Meadow School District", { types: ["point_of_interest", "establishment"], address: "718 The Plain Rd, Westbury, NY 11590, USA" })],
+  ["Public Schools", placesFixture("Progressive School Of Long Island", {
+    types: ["primary_school", "school", "educational_institution", "point_of_interest", "establishment"],
+    address: "1426 Little Whaleneck Rd, North Merrick, NY 11566, USA"
+  })],
+  ["Education", placesFixture("Progressive School Of Long Island", {
+    types: ["primary_school", "school", "educational_institution", "point_of_interest", "establishment"],
+    address: "1426 Little Whaleneck Rd, North Merrick, NY 11566, USA"
+  })],
+  ["School Districts in Nassau County", placesFixture("East Meadow School District", { types: ["point_of_interest", "establishment"], address: "718 The Plain Rd, Westbury, NY 11590, USA" })]
+]) {
+  const validation = scorePlacesResultForRegression("best school district on Long Island", candidate, place);
+  assert.notEqual(validation.status, "verified", `${candidate} must remain rejected as a generic education fragment`);
+}
+
+assert.equal(
+  scorePlacesResultForRegression("best high schools in Queens", "Queens High School for the Sciences", queensHighSchoolPlace).status,
+  "verified",
+  "Clean individual school validation should remain healthy"
+);
+assert.equal(
+  scorePlacesResultForRegression("best private school in Brooklyn", "Saint Ann's School", saintAnnsPlace).status,
+  "verified",
+  "Clean private school validation should remain healthy"
+);
+assert.notEqual(
+  scorePlacesResultForRegression("best schools in Long Island ny", "News 12", placesFixture("News 12", {
+    types: ["television_studio", "point_of_interest", "establishment"],
+    address: "1 Media Crossways, Woodbury, NY 11797, USA",
+    status: "OPERATIONAL"
+  })).status,
+  "verified",
+  "School queries must not verify non-school point_of_interest Places results"
+);
+assert.notEqual(
+  scorePlacesResultForRegression("best schools in Long Island ny", "Maggiano's Little Italy", placesFixture("Maggiano's Little Italy", {
+    types: ["italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+    address: "600 Garden City Plaza, Garden City, NY 11530, USA",
+    status: "OPERATIONAL"
+  })).status,
+  "verified",
+  "School queries must not verify restaurant Places results"
+);
+assert.notEqual(
+  scorePlacesResultForRegression("best school district on Long Island", "The Knox School", placesFixture("The Knox School", {
+    types: ["school", "secondary_school", "educational_institution", "point_of_interest", "establishment"],
+    address: "541 Long Beach Rd, St James, NY 11780, USA",
+    status: "OPERATIONAL"
+  })).status,
+  "verified",
+  "District query must not verify an individual school solely because it is a school"
+);
+assert.notEqual(
+  scorePlacesResultForRegression("best schools in Long Island ny", "Long Island", placesFixture("Long Island", {
+    types: ["natural_feature", "political"],
+    address: "Long Island, NY, USA"
+  })).status,
+  "verified",
+  "School query must not verify generic district/location entities"
+);
+
+console.log(JSON.stringify({ schoolDistrictPlacesValidationRegression: "passed" }, null, 2));
 
 const waterBottlePreserved = preserveEvidenceBackedProductContendersForRegression("best water bottle brand", ["Takeya", "Yeti", "Hydro Flask", "Stanley", "Owala"]);
 for (const expected of ["Takeya", "Yeti", "Hydro Flask", "Stanley", "Owala"]) {

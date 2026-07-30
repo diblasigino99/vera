@@ -837,7 +837,7 @@ function scorePlacesResults(query: string, inputName: string, cacheKey: string, 
     const nameConfidence = scoreNameMatch(inputName, displayName);
     const locationConfidence = scoreLocationMatch(query, place.formattedAddress ?? "");
     const categoryConfidence = scoreCategoryMatch(query, types, displayName);
-    const nonBusinessPenalty = isNonBusinessPlace(types) ? 0.45 : 0;
+    const nonBusinessPenalty = isNonBusinessPlace(query, types, displayName) ? 0.45 : 0;
     const closedPenalty = place.businessStatus === "CLOSED_PERMANENTLY" ? 0.45 : 0;
     const overallConfidence = clamp01(nameConfidence * 0.45 + locationConfidence * 0.3 + categoryConfidence * 0.25 - nonBusinessPenalty - closedPenalty);
 
@@ -871,7 +871,7 @@ function scorePlacesResults(query: string, inputName: string, cacheKey: string, 
     };
   }
 
-  if (isNonBusinessPlace(best.types)) {
+  if (isNonBusinessPlace(query, best.types, best.displayName)) {
     return rejectedValidation(cacheKey, inputName, normalizedInputName, best, "resolved_to_non_business_place");
   }
 
@@ -910,6 +910,41 @@ function scorePlacesResults(query: string, inputName: string, cacheKey: string, 
     nameConfidence: round2(best.nameConfidence),
     overallConfidence: round2(best.overallConfidence),
     expiresAt: new Date(Date.now() + (status === "verified" ? verifiedCacheTtlMs : downgradedCacheTtlMs)).toISOString()
+  };
+}
+
+export function scorePlacesResultForRegression(
+  query: string,
+  inputName: string,
+  place: {
+    id?: string;
+    displayName?: {
+      text?: string;
+      languageCode?: string;
+    };
+    formattedAddress?: string;
+    location?: {
+      latitude?: number;
+      longitude?: number;
+    };
+    types?: string[];
+    primaryType?: string;
+    businessStatus?: string;
+  }
+) {
+  const validation = scorePlacesResults(query, inputName, "regression", [place]);
+
+  return {
+    status: validation.status,
+    canonicalName: validation.canonicalName,
+    rejectionReason: validation.rejectionReason,
+    formattedAddress: validation.formattedAddress,
+    types: validation.types ?? [],
+    businessStatus: validation.businessStatus,
+    locationConfidence: validation.locationConfidence,
+    categoryConfidence: validation.categoryConfidence,
+    nameConfidence: validation.nameConfidence,
+    overallConfidence: validation.overallConfidence
   };
 }
 
@@ -1268,7 +1303,7 @@ function isNassauOrSuffolkAddress(address: string) {
     return true;
   }
 
-  return /\b(?:nassau|suffolk|hempstead|west hempstead|north hempstead|garden city|mineola|rockville centre|levittown|wantagh|seaford|massapequa|farmingdale|huntington|smithtown|bay shore|patchogue|medford|yaphank|west islip|lindenhurst|northport|melville)\b/.test(
+  return /\b(?:nassau|suffolk|hempstead|west hempstead|north hempstead|garden city|mineola|rockville centre|levittown|wantagh|seaford|massapequa|farmingdale|huntington|smithtown|bay shore|patchogue|medford|yaphank|west islip|lindenhurst|northport|melville|jericho|syosset|roslyn|great neck|east williston|manhasset|bethpage|hewlett|woodmere|herricks|bellmore|merrick|half hollow hills|three village|harborfields|commack)\b/.test(
     address
   );
 }
@@ -1350,13 +1385,13 @@ function scoreCategoryMatch(query: string, types: string[], displayName: string)
   if (category === "salon") return /\b(hair_care|beauty_salon|spa|store)\b/.test(normalizedTypes) || /\b(salon|hair|spa)\b/.test(normalizedName) ? 1 : 0.15;
   if (category === "nursing_home") return /\b(nursing_home|assisted_living_facility|health|doctor|hospital|point_of_interest|establishment)\b/.test(normalizedTypes) ? 1 : 0.15;
   if (category === "school") {
-    return /\b(school|primary_school|secondary_school|university|point_of_interest|establishment)\b/.test(normalizedTypes) ||
+    return /\b(school|primary_school|secondary_school|university|educational_institution)\b/.test(normalizedTypes) ||
       /\b(school|academy|high school|elementary|middle school|primary|secondary|campus)\b/.test(normalizedName)
       ? 1
       : 0.12;
   }
   if (category === "school_district") {
-    return /\b(school|local_government_office|point_of_interest|establishment)\b/.test(normalizedTypes) ||
+    return /\b(school_district|local_government_office)\b/.test(normalizedTypes) ||
       /\b(school district|public schools|district|board of education)\b/.test(normalizedName)
       ? 1
       : 0.12;
@@ -1375,14 +1410,28 @@ function scoreCategoryMatch(query: string, types: string[], displayName: string)
   return /\b(point_of_interest|establishment|store|food|restaurant|lodging)\b/.test(normalizedTypes) ? 0.8 : 0.45;
 }
 
-function isNonBusinessPlace(types: string[]) {
+function isNonBusinessPlace(query: string, types: string[], displayName: string) {
   const normalizedTypes = normalizeQuery(types.join(" "));
   const hasBusinessType = /\b(point_of_interest|establishment|restaurant|food|bar|cafe|bakery|lodging|store|clothing_store|shoe_store|jewelry_store|book_store|furniture_store|home_goods_store|dentist|doctor|plumber|health|tourist_attraction|hair_care|beauty_salon|nursing_home|assisted_living_facility|school|primary_school|secondary_school|university|local_government_office)\b/.test(
     normalizedTypes
   );
   const hasLocationOnlyType = /\b(neighborhood|locality|political|administrative_area|postal_code|route|street_address|geocode)\b/.test(normalizedTypes);
 
+  if (hasLocationOnlyType && localCategoryForPlaces(query) === "school_district" && isSchoolDistrictPlacesEntity(types, displayName)) {
+    return false;
+  }
+
   return hasLocationOnlyType && !hasBusinessType;
+}
+
+function isSchoolDistrictPlacesEntity(types: string[], displayName: string) {
+  const normalizedTypes = normalizeQuery(types.join(" "));
+  const normalizedName = normalizeQuery(displayName);
+
+  return (
+    /\b(school_district|local_government_office)\b/.test(normalizedTypes) ||
+    /\b(school district|central school district|union free school district|public schools|board of education)\b/.test(normalizedName)
+  );
 }
 
 function localLocationLabelForPlaces(query: string) {
