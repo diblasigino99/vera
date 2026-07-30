@@ -34,7 +34,7 @@ const {
   trimForOpenAIRegression
 } = jiti("./lib/server/analyze.ts");
 const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
-const { inferQueryEvidenceType } = jiti("./lib/utils.ts");
+const { classifyConsensusEligibility, inferQueryEvidenceType } = jiti("./lib/utils.ts");
 const { attachContenderActions, productAmazonDestinationAccepted, productOfficialDestinationAccepted } = jiti("./lib/action-links.ts");
 const { attachPostDecisionActionsWithBudget } = jiti("./lib/server/action-resolution.ts");
 
@@ -932,6 +932,42 @@ assert.equal(waterBottleSameSourceRollup.sourceCounts.Yeti, 1, "Yeti child rollu
 
 console.log(JSON.stringify({ productEntitySourceDeduplication: waterBottleSameSourceRollup }, null, 2));
 
+const factualEligibilityCases = [
+  "who won the nba finals this year",
+  "who is the president of france",
+  "when did the iphone launch",
+  "what is the capital of italy",
+  "what year did apple release the iphone",
+  "who founded microsoft"
+];
+
+for (const query of factualEligibilityCases) {
+  const eligibility = classifyConsensusEligibility(query);
+  assert.equal(eligibility.eligible, false, `${query} should bypass consensus as an objective factual query`);
+  assert.equal(eligibility.kind, "objective_factual", `${query} should be classified as objective_factual`);
+}
+
+const consensusEligibilityCases = [
+  "what is the best running shoe",
+  "what are the best restaurants in brooklyn",
+  "who makes the best carry on luggage",
+  "which is better notion or obsidian",
+  "Rome vs Florence",
+  "Hinge vs Bumble",
+  "is hydro flask worth it",
+  "is rome overrated",
+  "is salesforce still the best crm",
+  "best city to visit in italy"
+];
+
+for (const query of consensusEligibilityCases) {
+  const eligibility = classifyConsensusEligibility(query);
+  assert.equal(eligibility.eligible, true, `${query} should remain consensus eligible`);
+  assert.equal(eligibility.kind, "consensus", `${query} should be classified as consensus eligible`);
+}
+
+console.log(JSON.stringify({ consensusEligibilityRegression: { factualEligibilityCases, consensusEligibilityCases } }, null, 2));
+
 const routingRegressionCases = [
   { query: "best coffee machine", expectedEvidenceType: "product_recommendation" },
   { query: "best coffee shop in brooklyn", expectedEvidenceType: "local_recommendation" },
@@ -940,7 +976,17 @@ const routingRegressionCases = [
   { query: "best note taking app", expectedEvidenceType: "software_tool" },
   { query: "is away luggage worth it", expectedEvidenceType: "product_recommendation" },
   { query: "is salesforce still the best crm", expectedEvidenceType: "software_tool" },
-  { query: "best dentist in austin", expectedEvidenceType: "local_recommendation" }
+  { query: "best dentist in austin", expectedEvidenceType: "local_recommendation" },
+  { query: "best schools in Long Island ny", expectedEvidenceType: "local_recommendation" },
+  { query: "best school district on Long Island", expectedEvidenceType: "local_recommendation" },
+  { query: "best public schools in Nassau County", expectedEvidenceType: "local_recommendation" },
+  { query: "best high schools in Queens", expectedEvidenceType: "local_recommendation" },
+  { query: "best private school in Brooklyn", expectedEvidenceType: "local_recommendation" },
+  { query: "best island in the Caribbean", expectedEvidenceType: "destination_recommendation" },
+  { query: "best Caribbean island for couples", expectedEvidenceType: "destination_recommendation" },
+  { query: "best city in Italy", expectedEvidenceType: "destination_recommendation" },
+  { query: "best island in Greece", expectedEvidenceType: "destination_recommendation" },
+  { query: "best italian restaurant in Williamsburg", expectedEvidenceType: "local_recommendation" }
 ];
 
 for (const item of routingRegressionCases) {

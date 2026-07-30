@@ -827,6 +827,8 @@ function localRetrievalCategory(normalized: string) {
   if (/\b(plumber|plumbers|plumbing)\b/.test(normalized)) return "plumber";
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
   if (/\b(golf course|golf club)\b/.test(normalized)) return "golf_course";
+  if (/\b(school districts?|public school districts?|district)\b/.test(normalized)) return "school_district";
+  if (/\b(public schools?|private schools?|high schools?|elementary schools?|middle schools?|schools?)\b/.test(normalized)) return "school";
   if (/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(normalized))
     return "retail";
   if (/\b(restaurant|restaurants|place to eat|dinner|lunch|ramen|sushi|tacos|italian|mexican|seafood|steakhouse|steak house)\b/.test(normalized)) return "restaurant";
@@ -909,6 +911,14 @@ function localRetrievalLanes(category: string) {
 
   if (category === "golf_course") {
     return ["Golf Digest golf course rankings", "Golfweek best courses", "Reddit golf recommendations", "Google Maps golf course reviews", "TripAdvisor golf course reviews"];
+  }
+
+  if (category === "school_district") {
+    return ["school district rankings", "Niche school districts", "U.S. News education", "state education data", "local education reporting"];
+  }
+
+  if (category === "school") {
+    return ["school rankings", "Niche schools", "U.S. News education", "state education data", "local education reporting"];
   }
 
   if (category === "retail") {
@@ -1021,12 +1031,23 @@ function localRecoveryCategoryLabel(category: string, normalizedQuery: string) {
   if (category === "bar" && /\bcocktail\b/.test(normalizedQuery)) return "cocktail bar";
   if (category === "bar") return "bar";
   if (category === "golf_course") return "golf course";
+  if (category === "school_district") return "school district";
+  if (category === "school") return localSchoolCategoryLabel(normalizedQuery);
   if (category === "dentist") return "dentist";
   if (category === "plumber") return "plumber";
   if (category === "tattoo") return "tattoo shop";
   if (category === "salon") return "hair salon";
   if (category === "nursing_home") return "nursing home";
   return category.replace(/_/g, " ");
+}
+
+function localSchoolCategoryLabel(normalizedQuery: string) {
+  if (/\bprivate schools?\b/.test(normalizedQuery)) return "private school";
+  if (/\bpublic schools?\b/.test(normalizedQuery)) return "public school";
+  if (/\bhigh schools?\b/.test(normalizedQuery)) return "high school";
+  if (/\belementary schools?\b/.test(normalizedQuery)) return "elementary school";
+  if (/\bmiddle schools?\b/.test(normalizedQuery)) return "middle school";
+  return "school";
 }
 
 function buildLocalSparseRecoveryVariants(query: string, context: ReturnType<typeof localRecoveryContext>) {

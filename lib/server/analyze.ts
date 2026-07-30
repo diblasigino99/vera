@@ -1882,6 +1882,8 @@ type RequestedEntityType =
   | "provider_service"
   | "platform"
   | "local_business"
+  | "school"
+  | "school_district"
   | "destination"
   | "unknown";
 
@@ -2196,6 +2198,8 @@ function requestedEntityTypeForQuery(query: string, evidenceType: QueryEvidenceT
     return "provider_service";
   }
   if (/\b(crm|productivity suite|office suite|business email|email provider|email service|workspace|software|saas)\b/.test(normalized)) return "software";
+  if (/\b(school districts?|public school districts?|district)\b/.test(normalized)) return "school_district";
+  if (/\b(public schools?|private schools?|high schools?|elementary schools?|middle schools?|schools?)\b/.test(normalized)) return "school";
 
   if (evidenceType === "local_recommendation") return "local_business";
   if (evidenceType === "destination_recommendation") return "destination";
@@ -4956,6 +4960,8 @@ function localWrongCategoryPenalty(query: string, contenderName: string, signals
   if (category === "plumber" && !has(/\b(plumber|plumbing|rooter|drain|sewer|pipe|leak|water heater|service)\b/)) penalty += 9;
   if (category === "tattoo" && !has(/\b(tattoo|ink|artist|studio|body art)\b/)) penalty += 8;
   if (category === "golf_course" && !has(/\b(golf|course|club|links|country club)\b/)) penalty += 8;
+  if (category === "school_district" && !has(/\b(school district|public schools|district|education|schools?)\b/)) penalty += 8;
+  if (category === "school" && !has(/\b(school|schools|academy|high school|elementary|middle school|campus|education|students)\b/)) penalty += 8;
   if (category === "retail") {
     if (nameHas(/\b(hotel|inn|motel|resort|restaurant|pizzeria|pizza|bar|tavern|cafe|coffee|dental|plumbing|gym|fitness|museum|park)\b/)) penalty += 9;
     if (
@@ -5031,6 +5037,8 @@ function localCategoryForQuery(query: string) {
   if (/\b(plumber|plumbers|plumbing)\b/.test(normalized)) return "plumber";
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
   if (/\b(golf course|golf club)\b/.test(normalized)) return "golf_course";
+  if (/\b(school districts?|public school districts?|district)\b/.test(normalized)) return "school_district";
+  if (/\b(public schools?|private schools?|high schools?|elementary schools?|middle schools?|schools?)\b/.test(normalized)) return "school";
   if (/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(normalized))
     return "retail";
   if (/\b(restaurant|restaurants|place to eat|dinner|lunch)\b/.test(normalized)) return "restaurant";
@@ -5923,6 +5931,8 @@ function localCandidateHasCategorySignal(category: string, normalized: string) {
   if (category === "plumber") return /\b(plumb|plumbing|drain|rooter|pipe)\b/.test(normalized);
   if (category === "attraction") return /\b(museum|park|aquarium|needle|market|garden|zoo|center|theatre|theater|tour|ferry|landmark|national historical)\b/.test(normalized);
   if (category === "golf_course") return /\b(golf|course|links|club)\b/.test(normalized);
+  if (category === "school_district") return /\b(school district|public schools|district|education department|board of education)\b/.test(normalized);
+  if (category === "school") return /\b(school|academy|high school|elementary|middle school|primary school|secondary school|campus|students|education)\b/.test(normalized);
   return /\b(restaurant|kitchen|grill|bistro|diner|brasserie|osteria|trattoria|tavern|cafe|bar|pizza|sushi|ramen|taco|taqueria|bakery)\b/.test(
     normalized
   );
@@ -7403,6 +7413,8 @@ function inferIntendedCategory(query: string): VeraEntityCategory {
   if (/\b(attraction|attractions|museum|landmark|things to do)\b/.test(normalized)) return "attraction";
   if (/\b(gym|gyms|fitness|dentist|dentists|dental|plumber|plumbers|plumbing|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|spa|salon)\b/.test(normalized))
     return "service";
+  if (/\b(school districts?|public school districts?|district)\b/.test(normalized)) return "school_district";
+  if (/\b(public schools?|private schools?|high schools?|elementary schools?|middle schools?|schools?|academy)\b/.test(normalized)) return "school";
   if (/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(normalized))
     return "retail";
   if (/\b(crm|software|app|platform|tool|ai coding assistant|coding assistant)\b/.test(normalized)) return "software";
@@ -7458,6 +7470,8 @@ function categoryFromText(text: string): VeraEntityCategory | null {
     return "product";
   if (/\b(shop|store|retail|boutique|mall|pharmacy|hardware)\b/.test(text)) return "retail";
   if (/\b(museum|park|beach|theater|theatre|attraction|landmark)\b/.test(text)) return "attraction";
+  if (/\b(school district|public schools district|central school district|union free school district|independent school district|board of education)\b/.test(text)) return "school_district";
+  if (/\b(school|academy|high school|elementary school|middle school|primary school|secondary school|campus|students|education)\b/.test(text)) return "school";
   if (/\b(tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo artist|tattoo artists|tattoo|service|agency|consultant|contractor)\b/.test(text)) return "service";
 
   return null;

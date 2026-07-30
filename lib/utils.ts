@@ -103,6 +103,8 @@ function normalizeLocalCategoryPhrase(value: string) {
   if (/\b(hotel|hotels|motel|inn|resort)\b/.test(normalized)) return "hotel";
   if (/\b(clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store)\b/.test(normalized))
     return "retail store";
+  if (/\b(school districts?|public school districts?|district)\b/.test(normalized)) return "school district";
+  if (/\b(public schools?|private schools?|high schools?|elementary schools?|middle schools?|schools?)\b/.test(normalized)) return "school";
   if (/\b(bar|bars|pub)\b/.test(normalized)) return "bar";
   if (/\b(italian)\b/.test(normalized)) return "Italian restaurant";
   if (/\b(seafood)\b/.test(normalized)) return "seafood restaurant";
@@ -253,6 +255,76 @@ export type QueryEvidenceType =
 
 export type QueryIntent = "positive_recommendation" | "negative_avoidance" | "reliability_risk";
 
+export type ConsensusEligibility =
+  | {
+      eligible: true;
+      kind: "consensus";
+      reason: "recommendation_or_decision_intent" | "no_objective_factual_pattern";
+    }
+  | {
+      eligible: false;
+      kind: "objective_factual";
+      reason:
+        | "who_won"
+        | "who_is_role"
+        | "who_founded"
+        | "when_did"
+        | "what_year"
+        | "capital_question"
+        | "release_date_question"
+        | "where_located";
+    };
+
+export function classifyConsensusEligibility(query: string): ConsensusEligibility {
+  const normalized = normalizeLocalQueryIntent(query);
+
+  if (hasConsensusDecisionIntent(normalized)) {
+    return { eligible: true, kind: "consensus", reason: "recommendation_or_decision_intent" };
+  }
+
+  if (/^who\s+won\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "who_won" };
+  }
+
+  if (/^who\s+(?:is|was)\s+(?:the\s+)?(?:president|prime minister|king|queen|ceo|founder|mayor|governor|leader|champion|winner)\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "who_is_role" };
+  }
+
+  if (/^who\s+founded\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "who_founded" };
+  }
+
+  if (/^when\s+(?:did|was|were)\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "when_did" };
+  }
+
+  if (/^what\s+year\s+(?:did|was|were)\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "what_year" };
+  }
+
+  if (/^what\s+(?:is|s|was)\s+the\s+capital\s+of\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "capital_question" };
+  }
+
+  if (/^when\s+was\b.+\b(?:released|launched|introduced|founded|created|invented)\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "release_date_question" };
+  }
+
+  if (/^where\s+(?:is|was|are|were)\b.+\blocated\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "where_located" };
+  }
+
+  return { eligible: true, kind: "consensus", reason: "no_objective_factual_pattern" };
+}
+
+function hasConsensusDecisionIntent(normalized: string) {
+  return (
+    /\b(?:best|top|recommended|recommendations?|recommend|most trusted|highest rated|favorite|favourite)\b/.test(normalized) ||
+    /\b(?:vs|versus|compare|comparison|better|which is better)\b/.test(normalized) ||
+    /\b(?:worth it|worth buying|worth visiting|worth a visit|overrated|underrated|still the best|still good|still worth|should i buy|should i visit)\b/.test(normalized)
+  );
+}
+
 export function inferQueryIntent(query: string): QueryIntent {
   const normalized = normalizeLocalQueryIntent(query);
 
@@ -299,7 +371,7 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   }
 
   if (
-    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|dirty martini|martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|hair salon|nursing home|nursing homes|skilled nursing|assisted living|memory care|senior care|clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store|place to eat|place to stay|near me)\b/.test(
+    /\b(restaurant|restaurants|pizza|pizzeria|sushi|ramen|taco|tacos|taqueria|brunch|bakery|bakeries|bar|bars|pub|cocktail|espresso martini|dirty martini|martini|hotel|hotels|motel|inn|resort|coffee shop|coffee shops|coffee|cafe|cafes|café|golf course|gym|gyms|dentist|dentists|plumber|plumbers|tattoo shop|tattoo shops|tattoo studio|tattoo studios|tattoo|museum|spa|salon|hair salon|nursing home|nursing homes|skilled nursing|assisted living|memory care|senior care|school|schools|school district|school districts|public school|public schools|private school|private schools|high school|high schools|elementary school|elementary schools|middle school|middle schools|clothing boutique|boutique|clothing store|jewelry store|jewellery store|shoe store|gift shop|home decor store|bookstore|book shop|furniture store|retail store|local store|place to eat|place to stay|near me)\b/.test(
       normalized
     ) ||
     /\b\d{5}(?:-\d{4})?\b/.test(normalized)
@@ -308,7 +380,7 @@ export function inferQueryEvidenceType(query: string): QueryEvidenceType {
   }
 
   if (
-    /\b(beach|beaches|neighborhood|neighborhoods|neighbourhood|neighbourhoods|where to stay|area to stay|areas to stay|island|islands|weekend trip|weekend trips|day trip|day trips|destination|destinations|town|towns|region|regions|places to visit|place to visit|visit|attraction|attractions|landmark|landmarks|things to do)\b/.test(
+    /\b(city|cities|beach|beaches|neighborhood|neighborhoods|neighbourhood|neighbourhoods|where to stay|area to stay|areas to stay|island|islands|weekend trip|weekend trips|day trip|day trips|destination|destinations|town|towns|region|regions|places to visit|place to visit|visit|attraction|attractions|landmark|landmarks|things to do)\b/.test(
       normalized
     )
   ) {

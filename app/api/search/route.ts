@@ -22,7 +22,7 @@ import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { createSearchDiagnostics, recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
 import { recordSearchEvent } from "@/lib/server/search-events";
 import { attachPostDecisionActions } from "@/lib/server/action-resolution";
-import { canonicalizeQuery, inferQueryEvidenceType, inferQueryIntent, normalizeQuery } from "@/lib/utils";
+import { canonicalizeQuery, classifyConsensusEligibility, inferQueryEvidenceType, inferQueryIntent, normalizeQuery } from "@/lib/utils";
 import { NO_RELIABLE_CONSENSUS_BODY } from "@/lib/types";
 import type { ConsensusResponse, ContenderMetrics } from "@/lib/types";
 import type { ConsensusTrace, DiscardReason } from "@/lib/server/consensus-engine";
@@ -45,6 +45,21 @@ export async function POST(request: Request) {
   }
 
   const searchData = body.data;
+  const eligibility = classifyConsensusEligibility(searchData.query);
+
+  if (!eligibility.eligible) {
+    console.log("CONSENSUS_ELIGIBILITY_BYPASS", {
+      query: searchData.query,
+      reason: eligibility.reason
+    });
+    return NextResponse.json(
+      {
+        error: "Vera is built to analyze recommendations, comparisons, and internet consensus. This looks like a factual question.",
+        unsupportedReason: eligibility.reason
+      },
+      { status: 400 }
+    );
+  }
 
   return runConsensusEngine(searchData.query, {
     actorId: searchData.actorId,

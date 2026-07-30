@@ -47,6 +47,8 @@ export type VeraEntityCategory =
   | "retail"
   | "attraction"
   | "golf_course"
+  | "school"
+  | "school_district"
   | "software"
   | "product"
   | "service"
