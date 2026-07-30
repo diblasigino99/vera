@@ -1839,6 +1839,84 @@ const validItalianFallback = localFallbackEvidenceEligibilityForRegression(
 );
 assert.equal(validItalianFallback.eligible, true, "Valid Italian fallback candidates with business-specific evidence should remain eligible");
 
+const pulcinellaReviewSnippetFallback = localFallbackEvidenceEligibilityForRegression(
+  "best italian restaurants in massapequa",
+  "Pulcinella Neapolitan",
+  ["italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "yelp.com",
+    sourceTitle: "PULCINELLA - Restaurant Reviews",
+    sourceSnippet: "3.3 (322 reviews) Very attentive service and delicious food. The atmosphere is lovely. Staff was super friendly, knowledgeable, and attentive.",
+    queryVariant: "best italian restaurants in massapequa"
+  }
+);
+assert.equal(pulcinellaReviewSnippetFallback.eligible, true, "Candidate-tied positive review snippet should not be rejected as presence-only");
+
+const saverioCuratedListFallback = localFallbackEvidenceEligibilityForRegression(
+  "best italian restaurants in massapequa",
+  "Saverio's Authentic Pizza Napoletana",
+  ["pizza_restaurant", "italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "yelp.com",
+    sourceTitle: "TOP 10 BEST Restaurants near Massapequa, NY 11758",
+    sourceSnippet: "The Best 10 Italian Restaurants near Massapequa, NY 11758 · 1. Bacaro Italian Tavern · 2. Mangia E Bevi · 3. Cara Mia Restaurant · 4. Saverio's Authentic Pizza ...",
+    queryVariant: "best italian restaurants in massapequa"
+  }
+);
+assert.equal(saverioCuratedListFallback.eligible, true, "Candidate tied to curated best-list context should survive fallback evidence classification");
+
+const polvosMustVisitFallback = localFallbackEvidenceEligibilityForRegression(
+  "best mexican restaurant in austin",
+  "Polvos South",
+  ["mexican_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "polvosaustin.com",
+    sourceTitle: "Polvos South - Must-Visit Mexican Restaurant in Austin TX",
+    sourceSnippet: "This place was so good. Atmosphere was so fun. The food was amazing. Very authentic. Highly recommend.",
+    queryVariant: "best mexican restaurant in austin"
+  }
+);
+assert.equal(polvosMustVisitFallback.eligible, true, "Own-site fallback with explicit must-visit and praise context should be eligible");
+
+const joeStoneCrabEditorialFallback = localFallbackEvidenceEligibilityForRegression(
+  "best seafood restaurant in miami",
+  "Joe's Stone Crab",
+  ["seafood_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "miami.eater.com",
+    sourceTitle: "Joe's Stone Crab | Eater Miami",
+    sourceSnippet: "This 112-year-old restaurant is an institution. Ordering the namesake stone crabs is a must, and the seafood menu has notable favorites.",
+    queryVariant: "best seafood restaurant in miami"
+  }
+);
+assert.equal(joeStoneCrabEditorialFallback.eligible, true, "Editorial candidate page with recommendation-style context should be eligible");
+
+const coffeeBestListFallback = localFallbackEvidenceEligibilityForRegression(
+  "best coffee shop in brooklyn",
+  "Washington Coffee & News",
+  ["coffee_shop", "cafe", "food_store", "store", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "thebrooklyninitiative.com",
+    sourceTitle: "Top 5: best coffee shops in Brooklyn you must try",
+    sourceSnippet: "4. Washington Coffee & News is a neighborhood coffee stop for excellent espresso and a quiet morning.",
+    queryVariant: "best coffee shop in brooklyn"
+  }
+);
+assert.equal(coffeeBestListFallback.eligible, true, "Candidate tied to a curated coffee best-list item should be eligible");
+
+const brunchDinersChoiceFallback = localFallbackEvidenceEligibilityForRegression(
+  "best brunch in queens",
+  "Queen's Room",
+  ["bistro", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "opentable.com",
+    sourceTitle: "Diners' Choice: Great for brunch restaurants in Queens",
+    sourceSnippet: "Kween 5.0. Queen's Room 4.9. Patrizia's of Maspeth 4.7.",
+    queryVariant: "best brunch in queens"
+  }
+);
+assert.equal(brunchDinersChoiceFallback.eligible, true, "Candidate structurally tied to curated brunch list context should be eligible");
+
 const seafoodSteakhouseFallback = localFallbackEvidenceEligibilityForRegression(
   "best seafood restaurant in miami",
   "Sunny's Steakhouse",
@@ -1910,6 +1988,71 @@ const presenceOnlyFallback = localFallbackEvidenceEligibilityForRegression(
   }
 );
 assert.equal(presenceOnlyFallback.eligible, false, "Places-verified business with name presence only must not receive positive fallback evidence");
+
+const appleMapsPresenceOnlyFallback = localFallbackEvidenceEligibilityForRegression(
+  "best seafood restaurant in miami",
+  "Bahamas Fish Market",
+  ["seafood_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "maps.apple.com",
+    sourceTitle: "Bahamas Fish Market and Restaurant in Miami, FL United States - Apple Maps",
+    sourceSnippet: "Apple Maps. Directions Call Website. Ratings and reviews. Claim this place.",
+    queryVariant: "best seafood restaurant in miami"
+  }
+);
+assert.equal(appleMapsPresenceOnlyFallback.eligible, false, "Maps listing/profile presence must remain rejected");
+
+const appStorePresenceOnlyFallback = localFallbackEvidenceEligibilityForRegression(
+  "best coffee shop in brooklyn",
+  "The Corner Store",
+  ["coffee_shop", "cafe", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "play.google.com",
+    sourceTitle: "NYC Coffee Map - Apps on Google Play",
+    sourceSnippet: "Find coffee shops in New York City. Search by name and locate shops on the map.",
+    queryVariant: "best coffee shop in brooklyn"
+  }
+);
+assert.equal(appStorePresenceOnlyFallback.eligible, false, "App-store directory/listing presence must remain rejected");
+
+const directoryPresenceOnlyFallback = localFallbackEvidenceEligibilityForRegression(
+  "best italian restaurants in massapequa",
+  "Saverio's Authentic Pizza Napoletana",
+  ["pizza_restaurant", "italian_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "directory.example",
+    sourceTitle: "Italian Restaurants Near Me",
+    sourceSnippet: "Saverio's Authentic Pizza Napoletana. Address, hours, website, order online.",
+    queryVariant: "best italian restaurants in massapequa"
+  }
+);
+assert.equal(directoryPresenceOnlyFallback.eligible, false, "Generic directory page listing must remain rejected");
+
+const genericOwnSiteFallback = localFallbackEvidenceEligibilityForRegression(
+  "best mexican restaurant in austin",
+  "El Patio",
+  ["mexican_restaurant", "restaurant", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "elpatioaustin.com",
+    sourceTitle: "Authentic Mexican Restaurant in Austin, TX | El Patio",
+    sourceSnippet: "Welcome. Serving Austin since 1954. Order online, catering, menus, hours, and contact.",
+    queryVariant: "best mexican restaurant in austin"
+  }
+);
+assert.equal(genericOwnSiteFallback.eligible, false, "Own-site existence and generic marketing text must remain rejected");
+
+const untiedPositivePageFallback = localFallbackEvidenceEligibilityForRegression(
+  "best coffee shop in brooklyn",
+  "Washington Coffee & News",
+  ["coffee_shop", "cafe", "food", "point_of_interest", "establishment"],
+  {
+    sourceDomain: "coffee-guide.example",
+    sourceTitle: "Top 5 best coffee shops in Brooklyn",
+    sourceSnippet: "Devocion is excellent and highly recommended. Sey is a must-visit. Washington Coffee & News appears in a footer link.",
+    queryVariant: "best coffee shop in brooklyn"
+  }
+);
+assert.equal(untiedPositivePageFallback.eligible, false, "Source-wide positive framing must not validate an unrelated footer/cross-link candidate");
 
 const presenceOnlyWrongSubtypeFallback = localFallbackEvidenceEligibilityForRegression(
   "best seafood restaurant in miami",

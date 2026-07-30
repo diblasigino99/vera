@@ -5555,6 +5555,8 @@ function localFallbackPresenceEvidenceRejectionReason(query: string, signal: Sou
   const context = localCandidateSpecificSourceContext(signal.contenderName, source);
   const contextSupportsSubtype = intent.supportPattern.test(context);
   const contextConflicts = Boolean(intent.conflictPattern?.test(context));
+  const sourceContext = normalizeQuery([source.title, source.domain].join(" "));
+  const sourceContextSupportsSubtype = localSourceContextMatchesRequestedLocalIntent(query, sourceContext);
   const sourceHasCandidateRecommendation = localFallbackSourceHasRecommendationContextForCandidate(query, signal.contenderName, source);
 
   if (!sourceHasCandidateRecommendation) {
@@ -5565,7 +5567,7 @@ function localFallbackPresenceEvidenceRejectionReason(query: string, signal: Sou
     return null;
   }
 
-  if (contextSupportsSubtype && !contextConflicts) {
+  if ((contextSupportsSubtype || sourceContextSupportsSubtype) && !contextConflicts) {
     return null;
   }
 
@@ -5601,24 +5603,70 @@ function localTextReferencesCandidate(text: string, normalizedName: string, name
 
   if (!normalizedText || !normalizedName) return false;
   if (normalizedText.includes(normalizedName)) return true;
+  if (normalizedText.replace(/\s+/g, "").includes(normalizedName.replace(/\s+/g, ""))) return true;
 
   const distinctiveTokens = nameTokens.filter((token) => !/^(?:the|and|of|at|on|restaurant|cafe|coffee|shop|pizza|pizzeria|sushi|bar|grill|kitchen)$/.test(token));
   if (distinctiveTokens.length === 0) return false;
 
-  return distinctiveTokens.every((token) => normalizedText.includes(token));
+  if (distinctiveTokens.every((token) => normalizedText.includes(token))) return true;
+
+  const matchedTokens = distinctiveTokens.filter((token) => normalizedText.includes(token));
+  if (matchedTokens.length === 0) return false;
+
+  const firstToken = distinctiveTokens[0];
+  const firstTokenMatched = firstToken ? normalizedText.includes(firstToken) : false;
+  const requiredMatches = Math.max(1, Math.ceil(distinctiveTokens.length * 0.6));
+
+  if (distinctiveTokens.length <= 2 && firstTokenMatched && firstToken.length >= 5) return true;
+
+  return firstTokenMatched && matchedTokens.length >= requiredMatches;
 }
 
 function localFallbackSourceHasRecommendationContextForCandidate(query: string, contenderName: string, source: VeraSource) {
   const candidateContext = localCandidateSpecificSourceContext(contenderName, source);
   const sourceContext = normalizeQuery([source.title, source.domain].join(" "));
-  const recommendationPattern = /\b(best|top|favorite|favourite|recommended|recommendations?|must try|must-try|essential|where to eat|where to drink|where to go|hit list|guide|review|reviews|rated|stars?)\b/;
+  const bodyContext = normalizeQuery([source.snippet ?? "", source.enrichedBodyText ?? "", source.enrichedText ?? ""].join(" "));
+  const recommendationPattern =
+    /\b(best|top|favorite|favourite|recommended|recommendations?|must visit|must-visit|must try|must-try|essential|where to eat|where to drink|where to go|hit list|guide|review|reviews|rated|stars?|diners choice|great for)\b/;
+  const candidatePraisePattern =
+    /\b(highly recommend(?:ed)?|recommend(?:ed)?|favorite|favourite|best|must visit|must-visit|must try|must-try|excellent|delicious|amazing|great spot|great food|great service|five star|5\/5|institution|notable|legendary|worth|loved?|top notch|terrific)\b/;
 
   if (!candidateContext) return false;
+  if (localCandidateContextIsWeakAssociation(candidateContext)) return false;
   if (recommendationPattern.test(candidateContext)) return true;
+  if (localSourceContextMatchesRequestedLocalIntent(query, sourceContext) && recommendationPattern.test(sourceContext)) return true;
   if (recommendationPattern.test(sourceContext) && localLocationTokens(normalizeLocalQueryIntent(query)).some((location: string) => normalizeQuery(sourceContext).includes(location))) return true;
   if (/\b(yelp|tripadvisor|opentable|resy|healthgrades|zocdoc|angi|homeadvisor)\b/.test(normalizeQuery(source.domain)) && recommendationPattern.test(sourceContext)) return true;
+  if (sourceTitleReferencesCandidate(source, contenderName) && candidatePraisePattern.test(bodyContext)) return true;
+  if (sourceTitleReferencesCandidate(source, contenderName) && recommendationPattern.test(sourceContext) && candidatePraisePattern.test(bodyContext)) return true;
 
   return false;
+}
+
+function localSourceContextMatchesRequestedLocalIntent(query: string, sourceContext: string) {
+  const intent = localSpecificIntentForQuery(query);
+
+  if (intent?.supportPattern.test(sourceContext)) return true;
+
+  const normalizedQuery = normalizeLocalQueryIntent(query);
+  if (/\b(lunch|dinner|restaurant|restaurants|places to eat|food)\b/.test(normalizedQuery)) {
+    return /\b(lunch|dinner|restaurant|restaurants|places to eat|where to eat|food|dining)\b/.test(sourceContext);
+  }
+
+  return false;
+}
+
+function localCandidateContextIsWeakAssociation(candidateContext: string) {
+  return /\b(?:footer|sidebar|navigation|nav|related links?|nearby|also nearby|cross ?link|appears in|page footer|claim this place|directions call website|order online|hours|contact|menu)\b/.test(
+    candidateContext
+  );
+}
+
+function sourceTitleReferencesCandidate(source: VeraSource, contenderName: string) {
+  const normalizedName = normalizeQuery(contenderName);
+  const nameTokens = normalizedName.split(/\s+/).filter((token) => token.length >= 3);
+
+  return localTextReferencesCandidate(source.title, normalizedName, nameTokens);
 }
 
 function localThemesFromEvidence(value: string) {
