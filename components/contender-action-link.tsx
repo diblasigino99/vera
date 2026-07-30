@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { ExternalLink } from "lucide-react";
 import type { ContenderAction } from "@/lib/types";
 
@@ -30,6 +30,7 @@ export function ContenderActionLink({
   searchQuery
 }: ContenderActionLinkProps) {
   const impressionRecordedRef = useRef(false);
+  const [useDirectMobileMapsNavigation, setUseDirectMobileMapsNavigation] = useState(false);
 
   useEffect(() => {
     if (impressionRecordedRef.current) {
@@ -48,10 +49,25 @@ export function ContenderActionLink({
     });
   }, [action, category, consensusMode, contenderName, displayPosition, searchId, searchQuery]);
 
+  useEffect(() => {
+    if (action.type !== "maps" || !onPreviewAction) {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(hover: none), (pointer: coarse)");
+    const updateNavigationMode = () => setUseDirectMobileMapsNavigation(mediaQuery.matches);
+
+    updateNavigationMode();
+    mediaQuery.addEventListener("change", updateNavigationMode);
+
+    return () => mediaQuery.removeEventListener("change", updateNavigationMode);
+  }, [action.type, onPreviewAction]);
+
   const baseClassName =
     actionType === "link"
       ? "inline-flex items-center gap-1.5 text-sm font-medium text-[#4B4B52] transition hover:text-[#111114]"
       : "inline-flex items-center gap-2 rounded-full border border-[#E2E2E7] bg-white px-4 py-2.5 text-sm font-medium text-[#111114] transition hover:border-[#CFCFD6] hover:bg-[#F8F8FA]";
+  const shouldOpenPreview = Boolean(onPreviewAction && !useDirectMobileMapsNavigation);
 
   return (
     <a
@@ -68,13 +84,13 @@ export function ContenderActionLink({
           searchQuery
         });
 
-        if (onPreviewAction) {
+        if (shouldOpenPreview && onPreviewAction) {
           event.preventDefault();
           onPreviewAction(action);
         }
       }}
-      rel="noopener noreferrer"
-      target="_blank"
+      rel={useDirectMobileMapsNavigation ? undefined : "noopener noreferrer"}
+      target={useDirectMobileMapsNavigation ? undefined : "_blank"}
     >
       {action.label}
       <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
