@@ -36,6 +36,7 @@ const {
 const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
 const { inferQueryEvidenceType } = jiti("./lib/utils.ts");
 const { attachContenderActions, productAmazonDestinationAccepted, productOfficialDestinationAccepted } = jiti("./lib/action-links.ts");
+const { attachPostDecisionActionsWithBudget } = jiti("./lib/server/action-resolution.ts");
 
 const minimumSourceCount = 3;
 const minimumTopPositiveMentions = 3;
@@ -261,6 +262,105 @@ assert.deepEqual(
 );
 assert.equal(resolvedCarryOnActions.mode, editorialOnlyCarryOn.mode, "Independent action resolution must not change classification");
 
+const fastBudgetedActions = await attachPostDecisionActionsWithBudget(
+  editorialOnlyCarryOn,
+  async (result) =>
+    result.name === "Away Carry-On"
+      ? [source("The Carry-On suitcase", "https://www.awaytravel.com/suitcases/carry-on", "awaytravel.com", "Away The Carry-On suitcase.")]
+      : [
+          source(
+            "Platinum Elite Carry-On Expandable Spinner",
+            "https://travelpro.com/products/platinum-elite-21-expandable-carry-on-spinner",
+            "travelpro.com",
+            "Travelpro Platinum Elite carry-on spinner."
+          )
+        ],
+  50
+);
+assert.deepEqual(
+  fastBudgetedActions.results.map((item) => item.actions?.map((action) => action.label)),
+  [["View Product"], ["View Product"]],
+  "Fast post-decision action resolution should decorate the response"
+);
+
+let slowResolverAbortCount = 0;
+const slowBudgetStartedAt = Date.now();
+const slowBudgetedActions = await attachPostDecisionActionsWithBudget(
+  { ...editorialOnlyCarryOn, cached: true },
+  (_result, signal) =>
+    new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve([]), 80);
+      signal.addEventListener(
+        "abort",
+        () => {
+          slowResolverAbortCount += 1;
+          clearTimeout(timeout);
+          resolve([]);
+        },
+        { once: true }
+      );
+    }),
+  5
+);
+const slowBudgetElapsedMs = Date.now() - slowBudgetStartedAt;
+assert.ok(slowBudgetElapsedMs < 70, "Slow action resolution should not hold a cached consensus response past the global budget");
+assert.ok(slowResolverAbortCount > 0, "Global action budget should abort outstanding action lookups");
+assert.deepEqual(
+  slowBudgetedActions.results.map((item) => item.actions ?? []),
+  [[], []],
+  "Cached consensus should return undecorated when action resolution exceeds the global budget"
+);
+assert.equal(slowBudgetedActions.mode, editorialOnlyCarryOn.mode, "Action resolution timeout must not affect classification");
+assert.deepEqual(
+  slowBudgetedActions.results.map((item) => item.name),
+  editorialOnlyCarryOn.results.map((item) => item.name),
+  "Action resolution timeout must not affect contender order"
+);
+
+const mixedSlowStartedAt = Date.now();
+const mixedSlowActions = await attachPostDecisionActionsWithBudget(
+  editorialOnlyCarryOn,
+  (result, signal) =>
+    result.name === "Away Carry-On"
+      ? Promise.resolve([source("The Carry-On suitcase", "https://www.awaytravel.com/suitcases/carry-on", "awaytravel.com", "Away The Carry-On suitcase.")])
+      : new Promise((resolve) => {
+          const timeout = setTimeout(() => resolve([]), 80);
+          signal.addEventListener(
+            "abort",
+            () => {
+              clearTimeout(timeout);
+              resolve([]);
+            },
+            { once: true }
+          );
+        }),
+  5
+);
+assert.ok(Date.now() - mixedSlowStartedAt < 70, "One slow contender should not hold up the whole response");
+assert.deepEqual(
+  mixedSlowActions.results.map((item) => item.actions ?? []),
+  [[], []],
+  "If the global budget expires first, Vera should return the original undecorated consensus"
+);
+
+const failedLookupActions = await attachPostDecisionActionsWithBudget(
+  editorialOnlyCarryOn,
+  async (result) => {
+    if (result.name === "Travelpro Platinum Elite") {
+      throw new Error("simulated action lookup failure");
+    }
+
+    return [source("The Carry-On suitcase", "https://www.awaytravel.com/suitcases/carry-on", "awaytravel.com", "Away The Carry-On suitcase.")];
+  },
+  50
+);
+assert.equal(failedLookupActions.mode, editorialOnlyCarryOn.mode, "Failed action lookup must not fail or reclassify the result");
+assert.deepEqual(
+  failedLookupActions.results.map((item) => item.actions?.map((action) => action.label) ?? []),
+  [["View Product"], []],
+  "A failed action lookup should not prevent other fast valid actions from rendering"
+);
+
 const noClearProductActions = consensusFixture({
   mode: "no_reliable_consensus",
   query: "best water bottle brand",
@@ -394,6 +494,7 @@ assert.equal(attachContenderActions(destinationActions).results[0].action, undef
 
 const analyzeSource = fs.readFileSync(path.join(root, "lib/server/analyze.ts"), "utf8");
 assert.equal(analyzeSource.includes("attachContenderActions"), false, "Consensus analysis must not reference the action-link presentation layer");
+assert.equal(analyzeSource.includes("attachPostDecisionActions"), false, "Consensus analysis must not reference post-decision action resolution");
 
 console.log(
   JSON.stringify(
