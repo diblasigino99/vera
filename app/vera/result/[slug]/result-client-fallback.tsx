@@ -66,6 +66,7 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
   const sourceTypes = sourceDiversity(sources);
   const contenders = consensus.results.filter((item) => item.id !== result.id);
   const generatedLabel = resultGeneratedLabel(consensus);
+  const resultActions = result.actions?.length ? result.actions : result.action ? [result.action] : [];
 
   return (
     <main className="min-h-screen bg-white px-5 py-8 text-ink">
@@ -98,17 +99,20 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
             {consensus.mode !== "no_reliable_consensus" ? <span>{confidenceExplanationForMode(consensus.mode)}</span> : null}
             {generatedLabel ? <span>{generatedLabel}</span> : null}
           </div>
-          {result.action ? (
-            <div className="mt-7">
-              <ContenderActionLink
-                action={result.action}
-                category={consensus.structuredConsensus?.queryEvidenceType}
-                consensusMode={consensus.mode}
-                contenderName={result.name}
-                displayPosition={result.rank}
-                searchId={consensus.id}
-                searchQuery={consensus.query}
-              />
+          {resultActions.length ? (
+            <div className="mt-7 flex flex-wrap gap-3">
+              {resultActions.map((action) => (
+                <ContenderActionLink
+                  action={action}
+                  category={consensus.structuredConsensus?.queryEvidenceType}
+                  consensusMode={consensus.mode}
+                  contenderName={result.name}
+                  displayPosition={result.rank}
+                  key={`${action.type}:${action.url}`}
+                  searchId={consensus.id}
+                  searchQuery={consensus.query}
+                />
+              ))}
             </div>
           ) : null}
         </header>
@@ -229,6 +233,7 @@ function ComparisonRow({
   showConsensusScore: boolean;
 }) {
   const primaryReason = item.reasons[0]?.toLowerCase() ?? "its recurring strengths";
+  const actions = item.actions?.length ? item.actions : item.action ? [item.action] : [];
 
   return (
     <div className="border-b border-[#ECECF0] py-5">
@@ -242,18 +247,21 @@ function ComparisonRow({
             {selected ? `Choose ${item.name}` : `${item.name} is a stronger fit`} when {primaryReason} matters most.
           </p>
           <p className="mt-3 text-sm font-medium text-muted">Best fit: {item.summary}</p>
-          {item.action ? (
-            <div className="mt-4">
-              <ContenderActionLink
-                action={item.action}
-                actionType="link"
-                category={consensus.structuredConsensus?.queryEvidenceType}
-                consensusMode={consensus.mode}
-                contenderName={item.name}
-                displayPosition={item.rank}
-                searchId={consensus.id}
-                searchQuery={consensus.query}
-              />
+          {actions.length ? (
+            <div className="mt-4 flex flex-wrap gap-3">
+              {actions.map((action) => (
+                <ContenderActionLink
+                  action={action}
+                  actionType="link"
+                  category={consensus.structuredConsensus?.queryEvidenceType}
+                  consensusMode={consensus.mode}
+                  contenderName={item.name}
+                  displayPosition={item.rank}
+                  key={`${action.type}:${action.url}`}
+                  searchId={consensus.id}
+                  searchQuery={consensus.query}
+                />
+              ))}
             </div>
           ) : null}
         </div>

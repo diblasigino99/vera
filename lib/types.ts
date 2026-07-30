@@ -76,14 +76,14 @@ export type SourceSignal = {
   placesBusinessStatus?: string;
 };
 
-export type ContenderActionType = "view_product" | "visit_website" | "website" | "view_website";
+export type ContenderActionType = "official_product" | "amazon" | "visit_website" | "website" | "view_website";
 
 export type ContenderAction = {
   type: ContenderActionType;
-  label: "View Product" | "Visit Website" | "Website" | "View Website";
+  label: "View Product" | "Amazon" | "Visit Website" | "Website" | "View Website";
   url: string;
   domain: string;
-  source: "official_source" | "verified_local_source" | "trusted_retailer_source";
+  source: "official_source" | "verified_local_source" | "trusted_retailer_source" | "official_destination_resolution" | "amazon_destination_resolution";
 };
 
 export type ThemeMetric = {
@@ -201,6 +201,7 @@ export type ConsensusResult = {
   metrics?: ContenderMetrics;
   verifiedAddress?: string;
   action?: ContenderAction;
+  actions?: ContenderAction[];
 };
 
 export type ConsensusMode =

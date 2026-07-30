@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
-import { attachContenderActions } from "@/lib/action-links";
 import { getConsensusById } from "@/lib/server/cache";
+import { attachPostDecisionActions } from "@/lib/server/action-resolution";
 import { parseResultSlug } from "@/lib/result-slug";
 import { NO_RELIABLE_CONSENSUS_BODY, NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
@@ -40,7 +40,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
   });
 
   const storedConsensus = await getConsensusById(parsed.searchId);
-  const consensus = storedConsensus ? attachContenderActions(storedConsensus) : null;
+  const consensus = storedConsensus ? await attachPostDecisionActions(storedConsensus) : null;
   const result = consensus?.results.find((item) => item.id === parsed.resultId);
 
   if (!consensus || !result) {
@@ -59,6 +59,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
   const patternSummaries = buildPatternSummaries(result, sourceSet);
   const trustFacts = buildTrustFacts(result, sourceSet, sourceTypes, discussionSources, communities);
   const generatedLabel = resultGeneratedLabel(consensus);
+  const resultActions = result.actions?.length ? result.actions : result.action ? [result.action] : [];
 
   return (
     <main className="min-h-screen bg-white px-5 py-8 text-ink">
@@ -93,17 +94,20 @@ export default async function ResultPage({ params }: ResultPageProps) {
             {consensus.mode !== "no_reliable_consensus" ? <span>{confidenceExplanationForMode(consensus.mode)}</span> : null}
             {generatedLabel ? <span>{generatedLabel}</span> : null}
           </div>
-          {result.action ? (
-            <div className="mt-7">
-              <ContenderActionLink
-                action={result.action}
-                category={consensus.structuredConsensus?.queryEvidenceType}
-                consensusMode={consensus.mode}
-                contenderName={result.name}
-                displayPosition={result.rank}
-                searchId={consensus.id}
-                searchQuery={consensus.query}
-              />
+          {resultActions.length ? (
+            <div className="mt-7 flex flex-wrap gap-3">
+              {resultActions.map((action) => (
+                <ContenderActionLink
+                  action={action}
+                  category={consensus.structuredConsensus?.queryEvidenceType}
+                  consensusMode={consensus.mode}
+                  contenderName={result.name}
+                  displayPosition={result.rank}
+                  key={`${action.type}:${action.url}`}
+                  searchId={consensus.id}
+                  searchQuery={consensus.query}
+                />
+              ))}
             </div>
           ) : null}
         </header>
@@ -268,10 +272,13 @@ function ComparisonRow({
     tradeoff: string;
     bestFor: string;
     action?: ConsensusResult["action"];
+    actions?: ConsensusResult["actions"];
     rank: number;
   };
   consensus: ConsensusResponse;
 }) {
+  const actions = comparison.actions?.length ? comparison.actions : comparison.action ? [comparison.action] : [];
+
   return (
     <div className="border-b border-[#ECECF0] py-5">
       <div className="grid gap-3 sm:grid-cols-[0.38fr_0.62fr]">
@@ -283,18 +290,21 @@ function ComparisonRow({
           <p className="leading-7 text-graphite">{comparison.knownFor}</p>
           <p className="mt-3 leading-7 text-graphite">{comparison.tradeoff}</p>
           <p className="mt-3 text-sm font-medium text-muted">{comparison.bestFor}</p>
-          {comparison.action ? (
-            <div className="mt-4">
-              <ContenderActionLink
-                action={comparison.action}
-                actionType="link"
-                category={consensus.structuredConsensus?.queryEvidenceType}
-                consensusMode={consensus.mode}
-                contenderName={comparison.name}
-                displayPosition={comparison.rank}
-                searchId={consensus.id}
-                searchQuery={consensus.query}
-              />
+          {actions.length ? (
+            <div className="mt-4 flex flex-wrap gap-3">
+              {actions.map((action) => (
+                <ContenderActionLink
+                  action={action}
+                  actionType="link"
+                  category={consensus.structuredConsensus?.queryEvidenceType}
+                  consensusMode={consensus.mode}
+                  contenderName={comparison.name}
+                  displayPosition={comparison.rank}
+                  key={`${action.type}:${action.url}`}
+                  searchId={consensus.id}
+                  searchQuery={consensus.query}
+                />
+              ))}
             </div>
           ) : null}
         </div>
@@ -456,6 +466,7 @@ function buildComparisons(consensus: ConsensusResponse, result: ConsensusResult,
         : `Choose ${item.name} when you care more about ${primaryReason}${metricComparison(item)}${downside ? `, while accepting that ${downside}` : ""}.`,
       bestFor: `Best fit: ${item.summary}`,
       action: item.action,
+      actions: item.actions,
       rank: item.rank
     };
   });

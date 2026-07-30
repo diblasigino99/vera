@@ -2,8 +2,13 @@ import type { ConsensusResponse, ConsensusResult, ContenderAction, ContenderActi
 
 type ActionCategory = "product" | "software" | "local" | "provider" | "travel_business" | "none";
 
+export type ActionResolutionCandidate = VeraSource & {
+  resolutionType?: "official_product" | "amazon";
+};
+
+export type ResolvedActionCandidates = Record<string, ActionResolutionCandidate[]>;
+
 const aggregatorDomains = [
-  "amazon.com",
   "bonappetit.com",
   "cntraveler.com",
   "consumerreports.org",
@@ -27,23 +32,6 @@ const aggregatorDomains = [
   "zocdoc.com"
 ];
 
-const trustedRetailDomains = [
-  "amazon.com",
-  "backcountry.com",
-  "bestbuy.com",
-  "bloomingdales.com",
-  "costco.com",
-  "homedepot.com",
-  "lowes.com",
-  "macys.com",
-  "nordstrom.com",
-  "rei.com",
-  "target.com",
-  "walmart.com",
-  "wayfair.com",
-  "zappos.com"
-];
-
 const affiliateParamNames = [
   "affid",
   "affiliate",
@@ -55,16 +43,22 @@ const affiliateParamNames = [
   "utm_medium"
 ];
 
-export function attachContenderActions(consensus: ConsensusResponse): ConsensusResponse {
+export function attachContenderActions(consensus: ConsensusResponse, resolvedCandidates: ResolvedActionCandidates = {}): ConsensusResponse {
   if (!consensus.results.length) {
     return consensus;
   }
 
   const evidenceType = consensus.structuredConsensus?.queryEvidenceType;
   const results = consensus.results.map((result, index) => {
-    const action = resolveContenderAction(consensus, result);
+    const actions = resolveContenderActions(consensus, result, resolvedCandidates[result.id] ?? resolvedCandidates[result.name] ?? []);
+    const rank = result.rank || index + 1;
 
-    return action ? { ...result, rank: result.rank || index + 1, action } : { ...result, rank: result.rank || index + 1, action: undefined };
+    return {
+      ...result,
+      rank,
+      action: actions[0],
+      actions
+    };
   });
 
   return {
@@ -80,28 +74,120 @@ export function attachContenderActions(consensus: ConsensusResponse): ConsensusR
 }
 
 export function resolveContenderAction(consensus: ConsensusResponse, result: ConsensusResult): ContenderAction | undefined {
+  return resolveContenderActions(consensus, result)[0];
+}
+
+export function resolveContenderActions(
+  consensus: ConsensusResponse,
+  result: ConsensusResult,
+  resolvedCandidates: ActionResolutionCandidate[] = []
+): ContenderAction[] {
   const category = actionCategoryForResult(consensus, result);
 
   if (category === "none") {
-    return undefined;
+    return [];
+  }
+
+  if (category === "product") {
+    return resolveProductActions(consensus, result, resolvedCandidates);
   }
 
   const sources = candidateSources(consensus, result);
   const official = sources.find((source) => sourceLooksOfficialForContender(source, result.name));
+  const action = official ? buildAction(actionTypeForCategory(category), official, category === "local" ? "verified_local_source" : "official_source") : undefined;
 
-  if (official) {
-    return buildAction(category, official, category === "local" ? "verified_local_source" : "official_source");
+  return action ? [action] : [];
+}
+
+export function productOfficialDestinationAccepted(source: VeraSource, contenderName: string) {
+  if (!source.url || !isHttpUrl(source.url)) {
+    return { accepted: false, reason: "invalid_url" };
   }
 
-  if (category === "product") {
-    const retailer = sources.find((source) => sourceLooksLikeTrustedRetailerForContender(source, result.name));
+  if (genericOrSearchUrl(source.url)) {
+    return { accepted: false, reason: "generic_search_url" };
+  }
 
-    if (retailer) {
-      return buildAction(category, retailer, "trusted_retailer_source");
+  const domain = source.domain || domainFromUrl(source.url);
+
+  if (!domain) {
+    return { accepted: false, reason: "missing_domain" };
+  }
+
+  if (domainMatchesAny(domain, aggregatorDomains) || domainMatchesAny(domain, ["amazon.com"])) {
+    return { accepted: false, reason: "not_official_manufacturer_domain" };
+  }
+
+  if (!sourceLooksOfficialForContender(source, contenderName)) {
+    return { accepted: false, reason: "domain_does_not_match_brand" };
+  }
+
+  const textTokens = meaningfulTokens(`${source.title ?? ""} ${source.snippet ?? ""} ${source.url ?? ""}`);
+  const contenderTokens = meaningfulTokens(contenderName);
+  const overlap = tokenOverlapScore(contenderTokens, textTokens);
+
+  if (overlap < Math.min(2, contenderTokens.length)) {
+    return { accepted: false, reason: "page_does_not_match_product" };
+  }
+
+  return { accepted: true, reason: "official_domain_and_product_match" };
+}
+
+export function productAmazonDestinationAccepted(source: VeraSource, contenderName: string) {
+  if (!source.url || !isHttpUrl(source.url)) {
+    return { accepted: false, reason: "invalid_url" };
+  }
+
+  const domain = source.domain || domainFromUrl(source.url);
+
+  if (!domainMatchesAny(domain, ["amazon.com"])) {
+    return { accepted: false, reason: "not_amazon" };
+  }
+
+  if (genericOrSearchUrl(source.url)) {
+    return { accepted: false, reason: "generic_amazon_search_url" };
+  }
+
+  if (!amazonProductDetailUrl(source.url)) {
+    return { accepted: false, reason: "not_amazon_product_detail" };
+  }
+
+  const contenderTokens = meaningfulTokens(contenderName);
+  const textTokens = meaningfulTokens(`${source.title ?? ""} ${source.snippet ?? ""} ${source.url ?? ""}`);
+  const overlap = tokenOverlapScore(contenderTokens, textTokens);
+  const distinctiveTokens = contenderTokens.filter((token) => token.length >= 4);
+
+  if (overlap < Math.min(2, distinctiveTokens.length || contenderTokens.length)) {
+    return { accepted: false, reason: "amazon_product_not_confident_match" };
+  }
+
+  return { accepted: true, reason: "amazon_product_detail_match" };
+}
+
+function resolveProductActions(consensus: ConsensusResponse, result: ConsensusResult, resolvedCandidates: ActionResolutionCandidate[]) {
+  const sources = candidateSources(consensus, result);
+  const actionCandidates = uniqueSources([...resolvedCandidates, ...sources]);
+  const official = actionCandidates.find((source) => productOfficialDestinationAccepted(source, result.name).accepted);
+  const amazon = actionCandidates.find((source) => productAmazonDestinationAccepted(source, result.name).accepted);
+  const actions: ContenderAction[] = [];
+
+  if (official) {
+    const action = buildAction("official_product", official, resolvedCandidates.includes(official) ? "official_destination_resolution" : "official_source");
+
+    if (action) {
+      actions.push(action);
     }
   }
 
-  return undefined;
+  if (amazon) {
+    const action = buildAction("amazon", amazon, resolvedCandidates.includes(amazon) ? "amazon_destination_resolution" : "trusted_retailer_source");
+
+    if (action) {
+      actions.push(action);
+    }
+  }
+
+  return dedupeActions(actions);
 }
 
 function actionCategoryForResult(consensus: ConsensusResponse, result: ConsensusResult): ActionCategory {
@@ -140,7 +226,19 @@ function actionCategoryForResult(consensus: ConsensusResponse, result: Consensus
   return "none";
 }
 
-function buildAction(category: Exclude<ActionCategory, "none">, source: VeraSource, actionSource: ContenderAction["source"]): ContenderAction | undefined {
+function actionTypeForCategory(category: Exclude<ActionCategory, "none" | "product">): ContenderActionType {
+  if (category === "local") {
+    return "website";
+  }
+
+  if (category === "travel_business") {
+    return "view_website";
+  }
+
+  return "visit_website";
+}
+
+function buildAction(type: ContenderActionType, source: VeraSource, actionSource: ContenderAction["source"]): ContenderAction | undefined {
   const cleanedUrl = cleanOutboundUrl(source.url);
 
   if (!cleanedUrl) {
@@ -153,23 +251,16 @@ function buildAction(category: Exclude<ActionCategory, "none">, source: VeraSour
     return undefined;
   }
 
-  const type: ContenderActionType =
-    category === "product"
-      ? "view_product"
-      : category === "local"
-        ? "website"
-        : category === "travel_business"
-          ? "view_website"
-          : "visit_website";
-
   const label =
-    type === "view_product"
+    type === "official_product"
       ? "View Product"
-      : type === "website"
-        ? "Website"
-        : type === "view_website"
-          ? "View Website"
-          : "Visit Website";
+      : type === "amazon"
+        ? "Amazon"
+        : type === "website"
+          ? "Website"
+          : type === "view_website"
+            ? "View Website"
+            : "Visit Website";
 
   return {
     type,
@@ -181,7 +272,7 @@ function buildAction(category: Exclude<ActionCategory, "none">, source: VeraSour
 }
 
 function candidateSources(consensus: ConsensusResponse, result: ConsensusResult) {
-  const sources = uniqueSources([...result.sources, ...consensus.sources]);
+  const sources = uniqueSources([...consensus.sources, ...result.sources]);
   const resultTokens = meaningfulTokens(result.name);
 
   return sources.filter((source) => {
@@ -220,17 +311,14 @@ function sourceLooksOfficialForContender(source: VeraSource, contenderName: stri
   return nameTokens.some((token) => token.length >= 4 && compactDomain.includes(token));
 }
 
-function sourceLooksLikeTrustedRetailerForContender(source: VeraSource, contenderName: string) {
-  const domain = source.domain || domainFromUrl(source.url);
+function amazonProductDetailUrl(rawUrl: string) {
+  try {
+    const path = new URL(rawUrl).pathname.toLowerCase();
 
-  if (!domain || !domainMatchesAny(domain, trustedRetailDomains)) {
+    return /\/(?:dp|gp\/product)\//.test(path);
+  } catch {
     return false;
   }
-
-  const textTokens = meaningfulTokens(`${source.title ?? ""} ${source.snippet ?? ""} ${source.url ?? ""}`);
-  const contenderTokens = meaningfulTokens(contenderName);
-
-  return tokenOverlapScore(contenderTokens, textTokens) >= Math.min(2, contenderTokens.length);
 }
 
 function cleanOutboundUrl(rawUrl: string) {
@@ -263,7 +351,7 @@ function genericOrSearchUrl(rawUrl: string) {
     const url = new URL(rawUrl);
     const path = url.pathname.toLowerCase();
 
-    return /\/(search|s)\b/.test(path) || url.searchParams.has("q") || url.searchParams.has("query") || url.searchParams.has("keyword");
+    return /\/(search|s)\b/.test(path) || url.searchParams.has("q") || url.searchParams.has("query") || url.searchParams.has("keyword") || url.searchParams.has("k");
   } catch {
     return true;
   }
@@ -285,9 +373,9 @@ function domainMatchesAny(domain: string, domains: string[]) {
   return domains.some((candidate) => domain === candidate || domain.endsWith(`.${candidate}`));
 }
 
-function uniqueSources(sources: VeraSource[]) {
+function uniqueSources<TSource extends VeraSource>(sources: TSource[]) {
   const seen = new Set<string>();
-  const unique: VeraSource[] = [];
+  const unique: TSource[] = [];
 
   for (const source of sources) {
     const key = cleanOutboundUrl(source.url) ?? source.url;
@@ -298,6 +386,24 @@ function uniqueSources(sources: VeraSource[]) {
 
     seen.add(key);
     unique.push(source);
+  }
+
+  return unique;
+}
+
+function dedupeActions(actions: ContenderAction[]) {
+  const seen = new Set<string>();
+  const unique: ContenderAction[] = [];
+
+  for (const action of actions) {
+    const key = `${action.type}:${action.url}`;
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    unique.push(action);
   }
 
   return unique;

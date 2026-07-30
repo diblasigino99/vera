@@ -664,6 +664,7 @@ function ResultCard({
   useEffect(() => {
     console.log("RESULT_CARD_RENDER_NO_FETCH", { searchId, resultId: item.id });
   }, [item.id, searchId]);
+  const actions = item.actions?.length ? item.actions : item.action ? [item.action] : [];
 
   return (
     <article
@@ -706,17 +707,18 @@ function ResultCard({
         >
           Learn Why
         </Link>
-        {item.action ? (
+        {actions.map((action) => (
           <ContenderActionLink
-            action={item.action}
+            action={action}
             category={consensus.structuredConsensus?.queryEvidenceType}
             consensusMode={consensus.mode}
             contenderName={item.name}
             displayPosition={item.rank}
+            key={`${action.type}:${action.url}`}
             searchId={searchId}
             searchQuery={consensus.query}
           />
-        ) : null}
+        ))}
         <SaveResultButton initialSaved={initialSaved} resultId={item.id} searchId={searchId} />
       </div>
     </article>

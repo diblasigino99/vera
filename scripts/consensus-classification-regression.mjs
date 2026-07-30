@@ -35,7 +35,7 @@ const {
 } = jiti("./lib/server/analyze.ts");
 const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/search.ts");
 const { inferQueryEvidenceType } = jiti("./lib/utils.ts");
-const { attachContenderActions } = jiti("./lib/action-links.ts");
+const { attachContenderActions, productAmazonDestinationAccepted, productOfficialDestinationAccepted } = jiti("./lib/action-links.ts");
 
 const minimumSourceCount = 3;
 const minimumTopPositiveMentions = 3;
@@ -212,10 +212,54 @@ assert.deepEqual(
   "Action links must not change contender order"
 );
 assert.deepEqual(
-  decoratedSplitProductActions.results.map((item) => item.action?.label),
-  ["View Product", "View Product"],
+  decoratedSplitProductActions.results.map((item) => item.actions?.map((action) => action.label)),
+  [["View Product"], ["View Product"]],
   "Every displayed split-consensus product contender can independently receive View Product"
 );
+
+const editorialOnlyCarryOn = consensusFixture({
+  mode: "split_consensus",
+  query: "best carry on luggage",
+  contenders: [actionProductA, actionProductB],
+  results: [actionProductA, actionProductB].map(resultFromContender)
+});
+editorialOnlyCarryOn.structuredConsensus.queryEvidenceType = "product_recommendation";
+editorialOnlyCarryOn.sources = [
+  source("Away The Carry-On Luggage Review", "https://www.consumerreports.org/money/luggage/away-the-carry-on/m405005", "consumerreports.org", "Away Carry-On reviewed by Consumer Reports.", "Away Carry-On"),
+  source(
+    "NYT: The Best Carry-On Luggage. Do you agree?",
+    "https://www.reddit.com/r/ManyBaggers/comments/1b1fz1w/nyt_the_best_carryon_luggage_do_you_agree",
+    "reddit.com",
+    "TravelPros are solid bang-for-buck.",
+    "Travelpro Platinum Elite"
+  )
+];
+editorialOnlyCarryOn.results[0].sources = [editorialOnlyCarryOn.sources[0]];
+editorialOnlyCarryOn.results[1].sources = [editorialOnlyCarryOn.sources[1]];
+const resolvedCarryOnActions = attachContenderActions(editorialOnlyCarryOn, {
+  "away-carry-on-1": [
+    source("The Carry-On suitcase", "https://www.awaytravel.com/suitcases/carry-on", "awaytravel.com", "Away The Carry-On suitcase.")
+  ],
+  "travelpro-platinum-elite-2": [
+    source(
+      "Platinum Elite Carry-On Expandable Spinner",
+      "https://travelpro.com/products/platinum-elite-21-expandable-carry-on-spinner",
+      "travelpro.com",
+      "Travelpro Platinum Elite carry-on spinner."
+    )
+  ]
+});
+assert.deepEqual(
+  resolvedCarryOnActions.results.map((item) => item.actions?.map((action) => action.label)),
+  [["View Product"], ["View Product"]],
+  "Finalized product contenders can receive official actions from independent post-decision resolution"
+);
+assert.deepEqual(
+  resolvedCarryOnActions.results.map((item) => item.name),
+  editorialOnlyCarryOn.results.map((item) => item.name),
+  "Independent action resolution must not change contender order"
+);
+assert.equal(resolvedCarryOnActions.mode, editorialOnlyCarryOn.mode, "Independent action resolution must not change classification");
 
 const noClearProductActions = consensusFixture({
   mode: "no_reliable_consensus",
@@ -232,6 +276,18 @@ assert.equal(
   "No-clear evidence-backed contenders can receive product actions"
 );
 
+const officialPlusAmazon = attachContenderActions(noClearProductActions, {
+  "away-carry-on-1": [
+    source("Away The Carry-On suitcase", "https://www.awaytravel.com/suitcases/carry-on", "awaytravel.com", "Away The Carry-On suitcase."),
+    source("Away Carry-On suitcase", "https://www.amazon.com/Away-Carry-On-Suitcase/dp/B0REGRESSION", "amazon.com", "Away Carry-On suitcase.")
+  ]
+});
+assert.deepEqual(
+  officialPlusAmazon.results[0].actions?.map((action) => action.label),
+  ["View Product", "Amazon"],
+  "Product actions should list official View Product before Amazon"
+);
+
 const missingUrlActions = consensusFixture({
   mode: "strong_consensus",
   query: "best coffee machine",
@@ -245,6 +301,43 @@ assert.equal(
   attachContenderActions(missingUrlActions).results[0].action,
   undefined,
   "Missing or unverified URLs should not create an action"
+);
+assert.equal(
+  attachContenderActions(missingUrlActions, {
+    "away-carry-on-1": [source("Amazon search", "https://www.amazon.com/s?k=Away+Carry-On", "amazon.com", "Away Carry-On")]
+  }).results[0].actions?.length ?? 0,
+  0,
+  "Generic Amazon search URLs should be rejected"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source("Monos Carry-On", "https://www.amazon.com/Monos-Carry-On/dp/B0WRONG", "amazon.com", "Monos Carry-On luggage."),
+    "Away Carry-On"
+  ).accepted,
+  false,
+  "Wrong Amazon products should be rejected"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source("Away sale", "https://www.nytimes.com/wirecutter/reviews/best-carry-on-luggage", "nytimes.com", "Away Carry-On appears in an editorial review."),
+    "Away Carry-On"
+  ).accepted,
+  false,
+  "Editorial domains should not become official product actions"
+);
+assert.deepEqual(
+  attachContenderActions(missingUrlActions, {
+    "away-carry-on-1": [source("Away The Carry-On suitcase", "https://www.awaytravel.com/suitcases/carry-on", "awaytravel.com", "Away The Carry-On suitcase.")]
+  }).results[0].actions?.map((action) => action.label),
+  ["View Product"],
+  "Missing Amazon match must not remove a valid official action"
+);
+assert.deepEqual(
+  attachContenderActions(missingUrlActions, {
+    "away-carry-on-1": [source("Away Carry-On suitcase", "https://www.amazon.com/Away-Carry-On-Suitcase/dp/B0REGRESSION", "amazon.com", "Away Carry-On suitcase.")]
+  }).results[0].actions?.map((action) => action.label),
+  ["Amazon"],
+  "A highly confident Amazon match may appear without an official match"
 );
 
 const softwareActionContender = contender("HubSpot", { positives: 3, sourceUrls: ["https://www.hubspot.com/products/crm"] });

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { attachContenderActions } from "@/lib/action-links";
 import {
   analyzeConsensus,
   buildDestinationFallbackConsensus,
@@ -22,6 +21,7 @@ import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
 import { createSearchDiagnostics, recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
 import { recordSearchEvent } from "@/lib/server/search-events";
+import { attachPostDecisionActions } from "@/lib/server/action-resolution";
 import { canonicalizeQuery, inferQueryEvidenceType, inferQueryIntent, normalizeQuery } from "@/lib/utils";
 import { NO_RELIABLE_CONSENSUS_BODY } from "@/lib/types";
 import type { ConsensusResponse, ContenderMetrics } from "@/lib/types";
@@ -139,7 +139,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
       cacheMs: 0,
       cacheWriteMs: Date.now() - cacheWriteStartedAt
     });
-    return consensusJson(fakeResult);
+    return await consensusJson(fakeResult);
   }
 
   if (isUnsupportedAdultLocalCategory(body.data.query)) {
@@ -183,7 +183,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
       totalMs: totalElapsedMs,
       cacheMs: 0
     });
-    return consensusJson(consensus);
+    return await consensusJson(consensus);
   }
 
   if (queryIntent === "negative_avoidance" || queryIntent === "reliability_risk") {
@@ -227,7 +227,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
       totalMs: totalElapsedMs,
       cacheMs: 0
     });
-    return consensusJson(consensus);
+    return await consensusJson(consensus);
   }
 
   const vagueQueryExplanation = vagueRecommendationGuardExplanation(body.data.query, evidenceType);
@@ -272,7 +272,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
       totalMs: totalElapsedMs,
       cacheMs: 0
     });
-    return consensusJson(consensus);
+    return await consensusJson(consensus);
   }
 
   let cacheElapsedMs = 0;
@@ -340,7 +340,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
         totalMs: Date.now() - requestStartedAt,
         cacheMs: cacheElapsedMs
       });
-      return consensusJson(response);
+      return await consensusJson(response);
     }
   } catch (error) {
     console.error("[vera:search] cache lookup aborted live search", {
@@ -641,7 +641,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
           tavilyMs: tavilyElapsedMs,
           openAiMs: openAIElapsedMs
         });
-        return consensusJson(withHelpfulNoConsensusCopy(stale, body.data.query, evidenceType, queryIntent));
+        return await consensusJson(withHelpfulNoConsensusCopy(stale, body.data.query, evidenceType, queryIntent));
       }
     }
 
@@ -744,7 +744,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
       openAiMs: openAIElapsedMs,
       cacheWriteMs: cacheWriteElapsedMs
     });
-    return consensusJson(consensus);
+    return await consensusJson(consensus);
   } catch (error) {
     if (inferQueryEvidenceType(body.data.query) === "local_recommendation" && isTransientLiveSearchError(error)) {
       const stale = await getStaleCachedConsensus(body.data.query, externalCallCounts);
@@ -780,7 +780,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
           cacheMs: cacheElapsedMs,
           error: error instanceof Error ? error.message : String(error)
         });
-        return consensusJson(withHelpfulNoConsensusCopy(stale, body.data.query, evidenceType, queryIntent));
+        return await consensusJson(withHelpfulNoConsensusCopy(stale, body.data.query, evidenceType, queryIntent));
       }
     }
 
@@ -1423,6 +1423,6 @@ function baseSearchEvent(
   };
 }
 
-function consensusJson(consensus: ConsensusResponse) {
-  return NextResponse.json(attachContenderActions(consensus));
+async function consensusJson(consensus: ConsensusResponse) {
+  return NextResponse.json(await attachPostDecisionActions(consensus));
 }
