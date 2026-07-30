@@ -102,7 +102,7 @@ export function LocalMapPreviewSheet({
 
         <div className="flex flex-col gap-2.5 px-5 pb-5 pt-4 sm:flex-row sm:px-6 sm:pb-6">
           <a
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[#111114] px-4 text-sm font-medium text-white transition hover:bg-[#2C2C30]"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-[#111114] px-4 text-center text-sm font-medium text-white transition hover:bg-[#2C2C30]"
             href={mapsAction.url}
             rel="noopener noreferrer"
             target="_blank"
