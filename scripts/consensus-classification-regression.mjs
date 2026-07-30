@@ -22,6 +22,7 @@ const {
   enforceDisplayableSplitConsensusInvariant,
   filterCompatibleEntityNamesForRegression,
   filterCompatibleSoftwareSignalsForRegression,
+  localCategoryFilterForRegression,
   localFallbackEvidenceEligibilityForRegression,
   localSubtypeProofForRegression,
   productOpinionAggregationScopeForRegression,
@@ -1652,6 +1653,69 @@ const validDirtyMartiniFallback = localFallbackEvidenceEligibilityForRegression(
   }
 );
 assert.equal(validDirtyMartiniFallback.eligible, true, "Dirty-martini fallback should still admit real candidate-specific cocktail recommendation evidence");
+
+const lunchSpotsCategoryFilter = localCategoryFilterForRegression("best lunch spots brooklyn", {
+  name: "Cafe Bar J.F",
+  signalName: "Cafe Bar J.F.",
+  contenderCategory: "cafe",
+  categoryConfidence: "high",
+  sourceTitle: "The Brooklyn Hit List: The Best New Restaurants In Brooklyn",
+  extractedReason: "Cafe Bar J.F is recommended as a Brooklyn restaurant for lunch.",
+  themes: ["restaurant", "lunch", "dining"]
+});
+assert.deepEqual(
+  lunchSpotsCategoryFilter.keptNames,
+  ["Cafe Bar J.F"],
+  "Signal-aware category filtering should keep a cafe-like contender when its own evidence proves restaurant/food use"
+);
+assert.deepEqual(
+  lunchSpotsCategoryFilter.displayNames,
+  ["Cafe Bar J.F"],
+  "A single valid local contender should remain displayable under no reliable consensus fallback"
+);
+assert.equal(lunchSpotsCategoryFilter.displayKind, "fallback", "One local contender should not be treated as recurring consensus");
+
+const weakBarCategoryFilter = localCategoryFilterForRegression("best lunch spots brooklyn", {
+  name: "Generic Cocktail Bar",
+  contenderCategory: "bar",
+  categoryConfidence: "high",
+  sourceTitle: "Brooklyn nightlife guide",
+  extractedReason: "Generic Cocktail Bar is mentioned for cocktails.",
+  themes: ["cocktails", "drinks"]
+});
+assert.deepEqual(weakBarCategoryFilter.keptNames, [], "A bar without food/restaurant evidence should still be rejected for a restaurant query");
+assert.equal(
+  weakBarCategoryFilter.removed[0]?.reason,
+  "Removed because bar does not match requested restaurant.",
+  "Rejected bar-like local contenders should retain the existing category mismatch reason"
+);
+
+const hotelRestaurantCategoryFilter = localCategoryFilterForRegression("best lunch places east meadow", {
+  name: "Regression Hotel",
+  contenderCategory: "hotel",
+  categoryConfidence: "high",
+  sourceTitle: "East Meadow hotel guide",
+  extractedReason: "Regression Hotel is a hotel."
+});
+assert.deepEqual(hotelRestaurantCategoryFilter.keptNames, [], "Hotel contenders must remain rejected for restaurant queries");
+
+const restaurantDentistCategoryFilter = localCategoryFilterForRegression("best dentist in austin", {
+  name: "Regression Restaurant",
+  contenderCategory: "restaurant",
+  categoryConfidence: "high",
+  sourceTitle: "Austin restaurant guide",
+  extractedReason: "Regression Restaurant is recommended for dinner."
+});
+assert.deepEqual(restaurantDentistCategoryFilter.keptNames, [], "Restaurant contenders must remain rejected for dentist/service queries");
+
+const retailerRestaurantCategoryFilter = localCategoryFilterForRegression("best lunch places east meadow", {
+  name: "Regression Market",
+  contenderCategory: "retail",
+  categoryConfidence: "high",
+  sourceTitle: "East Meadow shopping guide",
+  extractedReason: "Regression Market is a local store."
+});
+assert.deepEqual(retailerRestaurantCategoryFilter.keptNames, [], "Retail contenders must remain rejected for restaurant queries");
 
 const operationalBusinessStatus = localSubtypeProofForRegression(
   "best italian restaurant in williamsburg",

@@ -640,7 +640,7 @@ export async function debugLocalCandidateDiscovery(query: string) {
     };
   });
   const discoveredCandidates = rawCandidates.filter((candidate) => localCandidatePassesDiscovery(query, candidate, byName.get(candidate.name) ?? []));
-  const { contenders } = filterContendersByCategory(discoveredCandidates, intendedCategory);
+  const { contenders } = filterContendersByCategory(discoveredCandidates, intendedCategory, byName);
   const structuredConsensus = await aggregateSignals(signals, sources, query);
   const finalResult = buildConsensus(query, sources, intentFromQuery(query), structuredConsensus);
   const thinSignals = signals.filter((signal) => !["TO GO AND DELIVERY", "Keens Steakhouse"].includes(signal.contenderName)).slice(0, 2);
@@ -2105,6 +2105,42 @@ export function localFallbackEvidenceEligibilityForRegression(
   };
 }
 
+export function localCategoryFilterForRegression(
+  query: string,
+  item: {
+    name: string;
+    contenderCategory: VeraEntityCategory;
+    categoryConfidence?: ContenderMetrics["categoryConfidence"];
+    signalName?: string;
+    sourceTitle?: string;
+    extractedReason?: string;
+    themes?: string[];
+  }
+) {
+  const signal: SourceSignal = {
+    ...regressionSourceSignal(item.signalName ?? item.name, 0, "local_recommendation"),
+    sourceTitle: item.sourceTitle ?? "Regression source",
+    extractedReason: item.extractedReason ?? "Regression evidence",
+    positiveMention: item.extractedReason ?? "Regression evidence",
+    themes: item.themes ?? ["regression"]
+  };
+  const metrics: ContenderMetrics = {
+    ...buildContenderMetrics(item.name, [signal], "local_recommendation"),
+    contenderCategory: item.contenderCategory,
+    categoryConfidence: item.categoryConfidence ?? "high"
+  };
+  const signalsByName = new Map([[signal.contenderName, [signal]]]);
+  const filtered = filterContendersByCategory([metrics], inferIntendedCategory(query), signalsByName);
+  const display = noClearConsensusDisplayContenders(filtered.contenders);
+
+  return {
+    keptNames: filtered.contenders.map((contender) => contender.name),
+    removed: filtered.removed,
+    displayKind: display.kind,
+    displayNames: display.contenders.map((contender) => contender.name)
+  };
+}
+
 function regressionSourceSignal(name: string, index: number, evidenceType: QueryEvidenceType): SourceSignal {
   return {
     sourceUrl: `regression://${index + 1}`,
@@ -3194,7 +3230,7 @@ async function aggregateSignals(
   const { contenders, removed } =
     queryEvidenceType === "destination_recommendation" || queryEvidenceType === "provider_or_brand_recommendation"
       ? { contenders: qualityFilteredContenders, removed: [] }
-      : filterContendersByCategory(qualityFilteredContenders, intendedCategory);
+      : filterContendersByCategory(qualityFilteredContenders, intendedCategory, byName);
   recordCategoryCleanupDiagnostics(diagnostics, removed);
   const contenderNames = new Set(contenders.map((contender) => contender.name));
   const filteredSignals = aggregationSignals.filter((signal) => contenderNames.has(signal.contenderName));
@@ -3448,7 +3484,7 @@ function rankedLocalCandidateNamesForPlaces(
     )
     .filter((contender) => !localCandidateDiscoveryRejectionReason(query, contender, byName.get(contender.name) ?? []))
     .sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount);
-  const { contenders } = filterContendersByCategory(rankedCandidates, intendedCategory);
+  const { contenders } = filterContendersByCategory(rankedCandidates, intendedCategory, byName);
 
   return contenders.map((contender) => contender.name);
 }
@@ -7296,7 +7332,11 @@ function isGenericDominantPlatformContender(name: string) {
   );
 }
 
-function filterContendersByCategory(contenders: ContenderMetrics[], intendedCategory: VeraEntityCategory) {
+function filterContendersByCategory(
+  contenders: ContenderMetrics[],
+  intendedCategory: VeraEntityCategory,
+  signalsByName: Map<string, SourceSignal[]> = new Map()
+) {
   const removed: Array<{
     name: string;
     contenderCategory: VeraEntityCategory;
@@ -7304,7 +7344,9 @@ function filterContendersByCategory(contenders: ContenderMetrics[], intendedCate
     reason: string;
   }> = [];
   const kept = contenders.filter((contender) => {
-    if (intendedCategory === "other" || isAllowedCategory(intendedCategory, contender.contenderCategory)) {
+    const contenderSignals = signalsForCategoryFilter(contender.name, signalsByName);
+
+    if (intendedCategory === "other" || isAllowedCategory(intendedCategory, contender.contenderCategory, contenderSignals)) {
       return true;
     }
 
@@ -7325,6 +7367,22 @@ function filterContendersByCategory(contenders: ContenderMetrics[], intendedCate
     contenders: kept.sort((a, b) => b.netWeightedScore - a.netWeightedScore || b.positiveMentionCount - a.positiveMentionCount || b.sourceCount - a.sourceCount),
     removed
   };
+}
+
+function signalsForCategoryFilter(contenderName: string, signalsByName: Map<string, SourceSignal[]>) {
+  const exact = signalsByName.get(contenderName);
+  if (exact) return exact;
+
+  const normalized = normalizeQuery(contenderName);
+  const cleaned = normalizeQuery(cleanName(contenderName));
+
+  for (const [signalName, signals] of signalsByName.entries()) {
+    if (normalizeQuery(signalName) === normalized || normalizeQuery(cleanName(signalName)) === cleaned) {
+      return signals;
+    }
+  }
+
+  return [];
 }
 
 function isRejectableContenderName(
@@ -7481,10 +7539,10 @@ function isAllowedCategory(intendedCategory: VeraEntityCategory, contenderCatego
   if (intendedCategory === "other") return true;
   if (intendedCategory === contenderCategory) return true;
 
-  const signalText = normalizeQuery(signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.themes.join(" ")}`).join(" "));
+  const signalText = normalizeQuery(signals.map((signal) => `${signal.sourceTitle} ${signal.extractedReason} ${signal.positiveMention ?? ""} ${signal.themes.join(" ")}`).join(" "));
 
   if (intendedCategory === "restaurant") {
-    return contenderCategory === "bar" && /\b(food|menu|dining|restaurant|kitchen|grill|pizza|dinner|brunch)\b/.test(signalText);
+    return (contenderCategory === "bar" || contenderCategory === "cafe") && /\b(food|menu|dining|restaurant|kitchen|grill|pizza|dinner|brunch)\b/.test(signalText);
   }
 
   if (intendedCategory === "bar") {
