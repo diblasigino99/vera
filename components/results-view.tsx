@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { VeraThinking } from "@/components/vera-thinking";
 import { SearchExperience } from "@/components/search-experience";
 import { FeedbackWidget } from "@/components/feedback-widget";
-import { ContenderActionLink } from "@/components/contender-action-link";
+import { ContenderActionsWithMapPreview } from "@/components/contender-actions-with-map-preview";
 import { buildResultSlug } from "@/lib/result-slug";
 import { getAnonymousId } from "@/lib/client/anonymous-id";
 import { confidenceExplanationForMode, editorializeTrustCopy, resultGeneratedLabel } from "@/lib/trust-copy";
@@ -707,18 +707,16 @@ function ResultCard({
         >
           Learn Why
         </Link>
-        {actions.map((action) => (
-          <ContenderActionLink
-            action={action}
-            category={consensus.structuredConsensus?.queryEvidenceType}
-            consensusMode={consensus.mode}
-            contenderName={item.name}
-            displayPosition={item.rank}
-            key={`${action.type}:${action.url}`}
-            searchId={searchId}
-            searchQuery={consensus.query}
-          />
-        ))}
+        <ContenderActionsWithMapPreview
+          actions={actions}
+          category={consensus.structuredConsensus?.queryEvidenceType}
+          consensusMode={consensus.mode}
+          contenderName={item.name}
+          displayPosition={item.rank}
+          searchId={searchId}
+          searchQuery={consensus.query}
+          verifiedAddress={item.verifiedAddress}
+        />
         <SaveResultButton initialSaved={initialSaved} resultId={item.id} searchId={searchId} />
       </div>
     </article>

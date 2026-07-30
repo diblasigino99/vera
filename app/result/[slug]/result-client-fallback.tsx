@@ -6,7 +6,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 import { attachContenderActions } from "@/lib/action-links";
 import { NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
-import { ContenderActionLink } from "@/components/contender-action-link";
+import { ContenderActionsWithMapPreview } from "@/components/contender-actions-with-map-preview";
 import { confidenceExplanationForMode, editorializeTrustCopy, resultGeneratedLabel } from "@/lib/trust-copy";
 
 type ResultClientFallbackProps = {
@@ -101,18 +101,16 @@ export function ResultClientFallback({ searchId, resultId }: ResultClientFallbac
           </div>
           {resultActions.length ? (
             <div className="mt-7 flex flex-wrap gap-3">
-              {resultActions.map((action) => (
-                <ContenderActionLink
-                  action={action}
-                  category={consensus.structuredConsensus?.queryEvidenceType}
-                  consensusMode={consensus.mode}
-                  contenderName={result.name}
-                  displayPosition={result.rank}
-                  key={`${action.type}:${action.url}`}
-                  searchId={consensus.id}
-                  searchQuery={consensus.query}
-                />
-              ))}
+              <ContenderActionsWithMapPreview
+                actions={resultActions}
+                category={consensus.structuredConsensus?.queryEvidenceType}
+                consensusMode={consensus.mode}
+                contenderName={result.name}
+                displayPosition={result.rank}
+                searchId={consensus.id}
+                searchQuery={consensus.query}
+                verifiedAddress={result.verifiedAddress}
+              />
             </div>
           ) : null}
         </header>
@@ -249,19 +247,17 @@ function ComparisonRow({
           <p className="mt-3 text-sm font-medium text-muted">Best fit: {item.summary}</p>
           {actions.length ? (
             <div className="mt-4 flex flex-wrap gap-3">
-              {actions.map((action) => (
-                <ContenderActionLink
-                  action={action}
-                  actionType="link"
-                  category={consensus.structuredConsensus?.queryEvidenceType}
-                  consensusMode={consensus.mode}
-                  contenderName={item.name}
-                  displayPosition={item.rank}
-                  key={`${action.type}:${action.url}`}
-                  searchId={consensus.id}
-                  searchQuery={consensus.query}
-                />
-              ))}
+              <ContenderActionsWithMapPreview
+                actions={actions}
+                actionType="link"
+                category={consensus.structuredConsensus?.queryEvidenceType}
+                consensusMode={consensus.mode}
+                contenderName={item.name}
+                displayPosition={item.rank}
+                searchId={consensus.id}
+                searchQuery={consensus.query}
+                verifiedAddress={item.verifiedAddress}
+              />
             </div>
           ) : null}
         </div>

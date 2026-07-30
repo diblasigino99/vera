@@ -7,7 +7,7 @@ import { attachPostDecisionActions } from "@/lib/server/action-resolution";
 import { parseResultSlug } from "@/lib/result-slug";
 import { NO_RELIABLE_CONSENSUS_BODY, NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
 import type { ConsensusResponse, ConsensusResult, VeraSource } from "@/lib/types";
-import { ContenderActionLink } from "@/components/contender-action-link";
+import { ContenderActionsWithMapPreview } from "@/components/contender-actions-with-map-preview";
 import { ResultClientFallback } from "./result-client-fallback";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { confidenceExplanationForMode, editorializeTrustCopy, resultGeneratedLabel } from "@/lib/trust-copy";
@@ -96,18 +96,16 @@ export default async function ResultPage({ params }: ResultPageProps) {
           </div>
           {resultActions.length ? (
             <div className="mt-7 flex flex-wrap gap-3">
-              {resultActions.map((action) => (
-                <ContenderActionLink
-                  action={action}
-                  category={consensus.structuredConsensus?.queryEvidenceType}
-                  consensusMode={consensus.mode}
-                  contenderName={result.name}
-                  displayPosition={result.rank}
-                  key={`${action.type}:${action.url}`}
-                  searchId={consensus.id}
-                  searchQuery={consensus.query}
-                />
-              ))}
+              <ContenderActionsWithMapPreview
+                actions={resultActions}
+                category={consensus.structuredConsensus?.queryEvidenceType}
+                consensusMode={consensus.mode}
+                contenderName={result.name}
+                displayPosition={result.rank}
+                searchId={consensus.id}
+                searchQuery={consensus.query}
+                verifiedAddress={result.verifiedAddress}
+              />
             </div>
           ) : null}
         </header>
@@ -274,6 +272,7 @@ function ComparisonRow({
     action?: ConsensusResult["action"];
     actions?: ConsensusResult["actions"];
     rank: number;
+    verifiedAddress?: string;
   };
   consensus: ConsensusResponse;
 }) {
@@ -292,19 +291,17 @@ function ComparisonRow({
           <p className="mt-3 text-sm font-medium text-muted">{comparison.bestFor}</p>
           {actions.length ? (
             <div className="mt-4 flex flex-wrap gap-3">
-              {actions.map((action) => (
-                <ContenderActionLink
-                  action={action}
-                  actionType="link"
-                  category={consensus.structuredConsensus?.queryEvidenceType}
-                  consensusMode={consensus.mode}
-                  contenderName={comparison.name}
-                  displayPosition={comparison.rank}
-                  key={`${action.type}:${action.url}`}
-                  searchId={consensus.id}
-                  searchQuery={consensus.query}
-                />
-              ))}
+              <ContenderActionsWithMapPreview
+                actions={actions}
+                actionType="link"
+                category={consensus.structuredConsensus?.queryEvidenceType}
+                consensusMode={consensus.mode}
+                contenderName={comparison.name}
+                displayPosition={comparison.rank}
+                searchId={consensus.id}
+                searchQuery={consensus.query}
+                verifiedAddress={comparison.verifiedAddress}
+              />
             </div>
           ) : null}
         </div>
@@ -467,7 +464,8 @@ function buildComparisons(consensus: ConsensusResponse, result: ConsensusResult,
       bestFor: `Best fit: ${item.summary}`,
       action: item.action,
       actions: item.actions,
-      rank: item.rank
+      rank: item.rank,
+      verifiedAddress: item.verifiedAddress
     };
   });
 }

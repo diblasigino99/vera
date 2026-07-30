@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 import { ExternalLink } from "lucide-react";
 import type { ContenderAction } from "@/lib/types";
 
@@ -12,6 +12,7 @@ type ContenderActionLinkProps = {
   consensusMode?: string | null;
   contenderName: string;
   displayPosition: number;
+  onPreviewAction?: (action: ContenderAction) => void;
   searchId?: string | null;
   searchQuery?: string | null;
 };
@@ -24,6 +25,7 @@ export function ContenderActionLink({
   consensusMode,
   contenderName,
   displayPosition,
+  onPreviewAction,
   searchId,
   searchQuery
 }: ContenderActionLinkProps) {
@@ -55,7 +57,7 @@ export function ContenderActionLink({
     <a
       className={className ?? baseClassName}
       href={action.url}
-      onClick={() =>
+      onClick={(event: MouseEvent<HTMLAnchorElement>) => {
         recordContenderActionEvent("contender_action_click", {
           action,
           category,
@@ -64,8 +66,13 @@ export function ContenderActionLink({
           displayPosition,
           searchId,
           searchQuery
-        })
-      }
+        });
+
+        if (onPreviewAction) {
+          event.preventDefault();
+          onPreviewAction(action);
+        }
+      }}
       rel="noopener noreferrer"
       target="_blank"
     >
