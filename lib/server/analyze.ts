@@ -2141,6 +2141,70 @@ export function localCategoryFilterForRegression(
   };
 }
 
+export function localSplitEligibilityForRegression(
+  query: string,
+  items: Array<{
+    name: string;
+    sourceUrl?: string;
+    sourceTitle?: string;
+    positiveMention?: string;
+    extractedReason?: string;
+    mentionStrength?: SourceSignal["mentionStrength"];
+    sourceType?: SourceSignal["sourceType"];
+    sourceQuality?: SourceSignal["sourceQuality"];
+    sourceQualityWeight?: number;
+    netWeightedScore?: number;
+  }>
+) {
+  const signals = items.map((item, index) => {
+    const sourceType = item.sourceType ?? "editorial";
+    const sourceQuality = item.sourceQuality ?? "high";
+
+    return {
+      ...regressionSourceSignal(item.name, index, "local_recommendation"),
+      sourceUrl: item.sourceUrl ?? `regression://${index + 1}`,
+      sourceTitle: item.sourceTitle ?? `Best local recommendations ${index + 1}`,
+      sourceType,
+      sourceWeight: sourceTypeWeight(sourceType, "local_recommendation"),
+      sourceQuality,
+      sourceQualityWeight: item.sourceQualityWeight ?? sourceQualityWeightFor(sourceQuality),
+      mentionStrength: item.mentionStrength ?? "moderate",
+      positiveMention: item.positiveMention ?? "Recommended in local editorial evidence.",
+      extractedReason: item.extractedReason ?? "Recommended in local editorial evidence.",
+      verifiedAddress: "284 Grand St, Brooklyn, NY 11211, USA",
+      placesTypes: ["restaurant", "food", "point_of_interest", "establishment"],
+      placesCategoryConfidence: 1,
+      placesLocationConfidence: 1,
+      placesVerified: true
+    } satisfies SourceSignal;
+  });
+  const signalsByName = groupSignalsByContender(signals);
+  const contenders = Array.from(signalsByName.entries()).map(([name, contenderSignals]) => {
+    const metrics = buildContenderMetrics(name, contenderSignals, "local_recommendation");
+
+    return itemNetOverride(metrics, items.find((item) => item.name === name)?.netWeightedScore);
+  });
+  const classification = classifyFromMetrics(contenders, 3, "local_recommendation", query, signalsByName);
+  const display = noClearConsensusDisplayContenders(contenders);
+
+  return {
+    classification,
+    eligibleNames: localSplitEligibleContenders(contenders, signalsByName).map((contender) => contender.name),
+    displayKind: display.kind,
+    displayNames: display.contenders.map((contender) => contender.name),
+    contenders: contenders.map((contender) => ({
+      name: contender.name,
+      positiveMentionCount: contender.positiveMentionCount,
+      sourceCount: contender.sourceCount,
+      netWeightedScore: contender.netWeightedScore
+    }))
+  };
+}
+
+function itemNetOverride(metrics: ContenderMetrics, netWeightedScore?: number) {
+  return netWeightedScore === undefined ? metrics : { ...metrics, netWeightedScore };
+}
+
 function regressionSourceSignal(name: string, index: number, evidenceType: QueryEvidenceType): SourceSignal {
   return {
     sourceUrl: `regression://${index + 1}`,
@@ -3303,18 +3367,21 @@ async function aggregateSignals(
 
   const themeCounts = aggregateThemeCounts(filteredSignals);
   const sourceBreakdown = aggregateSourceBreakdown(sources, filteredSignals);
-  const initialConsensusClassification = preservationFallbackApplied ? "no_reliable_consensus" : classifyFromMetrics(contenders, sources.length, queryEvidenceType, query);
+  const initialConsensusClassification = preservationFallbackApplied ? "no_reliable_consensus" : classifyFromMetrics(contenders, sources.length, queryEvidenceType, query, byName);
   const verifiedLocalContenders =
     queryEvidenceType === "local_recommendation"
       ? contenders.filter((contender) => localCandidateHasVerifiedPlacesEvidence(query, byName.get(contender.name) ?? []))
       : [];
   const specificLocalIntent = queryEvidenceType === "local_recommendation" ? localSpecificIntentForQuery(query) : null;
+  const splitEligibleLocalContenders =
+    queryEvidenceType === "local_recommendation" ? localSplitEligibleContenders(contenders, byName) : [];
 	  const hasValidCuisineSpecificLocalContenders =
-	    Boolean(specificLocalIntent && localSpecificIntentRequiresBusinessSpecificEvidence(specificLocalIntent)) && contenders.length >= 2;
+	    Boolean(specificLocalIntent && localSpecificIntentRequiresBusinessSpecificEvidence(specificLocalIntent)) && splitEligibleLocalContenders.length >= 2;
 	  const consensusClassification =
 	    queryEvidenceType === "local_recommendation" &&
 	    initialConsensusClassification === "no_reliable_consensus" &&
-	    (verifiedLocalContenders.length >= 2 || hasValidCuisineSpecificLocalContenders)
+	    splitEligibleLocalContenders.length >= 2 &&
+	    (verifiedLocalContenders.filter((contender) => splitEligibleLocalContenders.includes(contender)).length >= 2 || hasValidCuisineSpecificLocalContenders)
 	      ? "split_consensus"
 	      : initialConsensusClassification;
   if (diagnostics) {
@@ -5416,6 +5483,62 @@ function filterLocalFallbackPresenceSignalsByEvidence(query: string, signals: So
 
 function isLocalFallbackPresenceSignal(signal: SourceSignal) {
   return /^(?:Business name appears in retrieved local evidence|Appears in local source results)$/i.test(signal.positiveMention ?? "");
+}
+
+function localPositiveSignalHasRecommendationContext(signal: SourceSignal) {
+  if (signal.sentiment !== "positive") return false;
+  if (isLocalFallbackPresenceSignal(signal)) return false;
+
+  const text = normalizeQuery(
+    [
+      signal.sourceTitle,
+      signal.extractedReason,
+      signal.positiveMention ?? "",
+      signal.themes.join(" ")
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  return /\b(best|top|favorite|favourite|recommended|recommendations?|must try|must-try|essential|where to eat|where to drink|where to go|hit list|guide|review|reviews|rated|stars?|ranked|pick|worth)\b/.test(
+    text
+  );
+}
+
+function localContenderEligibleForSplit(contender: ContenderMetrics, signals: SourceSignal[]) {
+  if (contender.positiveMentionCount <= 0) return false;
+  if (contender.netWeightedScore <= 0) return false;
+  if (contender.sourceCount <= 0 || contender.sourceUrls.length === 0) return false;
+  if (contender.negativeMentionCount > contender.positiveMentionCount) return false;
+
+  const positiveSignals = signals.filter((signal) => signal.sentiment === "positive");
+  const meaningfulSignals = positiveSignals.filter(localPositiveSignalHasRecommendationContext);
+  const meaningfulSourceUrls = new Set(meaningfulSignals.map((signal) => signal.sourceUrl).filter(isValidAttributableSourceUrl));
+
+  if (meaningfulSourceUrls.size >= 2 || meaningfulSignals.length >= 2) return true;
+
+  return meaningfulSignals.some(
+    (signal) =>
+      (signal.mentionStrength === "strong" || signal.mentionStrength === "moderate") &&
+      signal.sourceQuality !== "low" &&
+      isValidAttributableSourceUrl(signal.sourceUrl)
+  );
+}
+
+function localSplitEligibleContenders(contenders: ContenderMetrics[], signalsByName: Map<string, SourceSignal[]>) {
+  return contenders.filter((contender) => localContenderEligibleForSplit(contender, signalsByName.get(contender.name) ?? []));
+}
+
+function groupSignalsByContender(signals: SourceSignal[]) {
+  const byName = new Map<string, SourceSignal[]>();
+
+  for (const signal of signals) {
+    const existing = byName.get(signal.contenderName) ?? [];
+    existing.push(signal);
+    byName.set(signal.contenderName, existing);
+  }
+
+  return byName;
 }
 
 function localFallbackPresenceEvidenceRejectionReason(query: string, signal: SourceSignal, source?: VeraSource) {
@@ -7753,18 +7876,24 @@ function sanitizeLiveLocalGeographyStructuredConsensus(query: string, structured
   });
   const validNames = new Set(validContenders.map((contender) => contender.name));
   const signals = structuredConsensus.signals.filter((signal) => validNames.has(signal.contenderName));
+  const signalsByName = groupSignalsByContender(signals);
+  const splitEligibleContenders = localSplitEligibleContenders(validContenders, signalsByName);
   const consensusClassification =
     validContenders.length === 0
       ? "no_reliable_consensus"
-      : structuredConsensus.consensusClassification === "no_reliable_consensus" && validContenders.length >= 2
+      : structuredConsensus.consensusClassification === "no_reliable_consensus" && splitEligibleContenders.length >= 2
         ? "split_consensus"
+        : structuredConsensus.consensusClassification === "split_consensus" && splitEligibleContenders.length < 2
+          ? "no_reliable_consensus"
         : structuredConsensus.consensusClassification;
+  const contenders = consensusClassification === "split_consensus" ? splitEligibleContenders : validContenders;
+  const contenderNames = new Set(contenders.map((contender) => contender.name));
 
   return {
     ...structuredConsensus,
-    contenders: validContenders,
-    signals,
-    winner: consensusClassification === "no_reliable_consensus" ? undefined : validContenders[0]?.name,
+    contenders,
+    signals: signals.filter((signal) => contenderNames.has(signal.contenderName)),
+    winner: consensusClassification === "no_reliable_consensus" ? undefined : contenders[0]?.name,
     consensusClassification
   };
 }
@@ -7808,16 +7937,22 @@ function sanitizeLiveLocalCuisineStructuredConsensus(query: string, sources: Ver
   });
   const validNames = new Set(validContenders.map((contender) => contender.name));
   const signals = structuredConsensus.signals.filter((signal) => validNames.has(signal.contenderName));
+  const signalsByName = groupSignalsByContender(signals);
+  const splitEligibleContenders = localSplitEligibleContenders(validContenders, signalsByName);
   const consensusClassification =
     validContenders.length === 0
       ? "no_reliable_consensus"
-      : structuredConsensus.consensusClassification === "no_reliable_consensus" && validContenders.length >= 2
+      : structuredConsensus.consensusClassification === "no_reliable_consensus" && splitEligibleContenders.length >= 2
         ? "split_consensus"
+        : structuredConsensus.consensusClassification === "split_consensus" && splitEligibleContenders.length < 2
+          ? "no_reliable_consensus"
         : structuredConsensus.consensusClassification;
+  const contenders = consensusClassification === "split_consensus" ? splitEligibleContenders : validContenders;
+  const contenderNames = new Set(contenders.map((contender) => contender.name));
 
   console.log(
     "LOCAL_FINAL_CUISINE_CONTENDERS",
-    validContenders.map((contender) => ({
+    contenders.map((contender) => ({
       name: contender.name,
       intent: intent.key,
       sourceCount: contender.sourceCount,
@@ -7827,9 +7962,9 @@ function sanitizeLiveLocalCuisineStructuredConsensus(query: string, sources: Ver
 
   return {
     ...structuredConsensus,
-    contenders: validContenders,
-    signals,
-    winner: consensusClassification === "no_reliable_consensus" ? undefined : validContenders[0]?.name,
+    contenders,
+    signals: signals.filter((signal) => contenderNames.has(signal.contenderName)),
+    winner: consensusClassification === "no_reliable_consensus" ? undefined : contenders[0]?.name,
     consensusClassification
   };
 }
@@ -7907,8 +8042,10 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
     }));
 
   const specificLocalIntent = localSpecificIntentForQuery(consensus.query);
+  const signalsByName = groupSignalsByContender(consensus.structuredConsensus?.signals ?? []);
+  const splitEligibleResults = cleanResults.filter((result) => result.metrics && localContenderEligibleForSplit(result.metrics, signalsByName.get(result.name) ?? []));
   const hasValidCuisineSpecificLocalResults =
-    Boolean(specificLocalIntent && localSpecificIntentRequiresBusinessSpecificEvidence(specificLocalIntent)) && cleanResults.length >= 2;
+    Boolean(specificLocalIntent && localSpecificIntentRequiresBusinessSpecificEvidence(specificLocalIntent)) && splitEligibleResults.length >= 2;
   const hasEvidenceBackedLocalResult = cleanResults.some(cachedLocalResultHasPositiveAttributedEvidence);
 
   if (cleanResults.length < 3 && !cleanResults.some((result) => Boolean(result.verifiedAddress)) && !hasValidCuisineSpecificLocalResults && !hasEvidenceBackedLocalResult) {
@@ -7929,7 +8066,13 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
     };
   }
 
-  const sanitizedMode = consensus.mode === "no_reliable_consensus" && hasValidCuisineSpecificLocalResults ? "split_consensus" : consensus.mode;
+  const sanitizedMode =
+    (consensus.mode === "no_reliable_consensus" && hasValidCuisineSpecificLocalResults) || (consensus.mode === "split_consensus" && splitEligibleResults.length >= 2)
+      ? "split_consensus"
+      : consensus.mode === "split_consensus"
+        ? "no_reliable_consensus"
+        : consensus.mode;
+  const sanitizedResults = sanitizedMode === "split_consensus" ? splitEligibleResults : cleanResults.filter(cachedLocalResultHasPositiveAttributedEvidence);
 
   return enforceDisplayableSplitConsensusInvariant({
     ...consensus,
@@ -7939,12 +8082,16 @@ export function sanitizeCachedLocalConsensus(consensus: ConsensusResponse): Cons
       sanitizedMode !== consensus.mode
         ? "Several local businesses have credible category and location support, but Vera did not find one clear favorite."
         : cleanCachedLocalExplanation(consensus.explanation),
-    results: cleanResults,
+    results: sanitizedResults.map((result, index) => ({ ...result, rank: index + 1 })),
     structuredConsensus: consensus.structuredConsensus
       ? {
           ...consensus.structuredConsensus,
-          contenders: consensus.structuredConsensus.contenders.filter((contender) => !localUniversalEntityRejectionReason(consensus.query, contender.name)),
-          winner: cleanResults[0]?.name ?? consensus.structuredConsensus.winner
+          contenders:
+            sanitizedMode === "split_consensus"
+              ? splitEligibleResults.map((result) => result.metrics).filter((metrics): metrics is ContenderMetrics => Boolean(metrics))
+              : consensus.structuredConsensus.contenders.filter((contender) => !localUniversalEntityRejectionReason(consensus.query, contender.name)),
+          winner: sanitizedMode === "no_reliable_consensus" ? undefined : sanitizedResults[0]?.name ?? consensus.structuredConsensus.winner,
+          consensusClassification: sanitizedMode
         }
       : consensus.structuredConsensus
   });
@@ -8346,13 +8493,19 @@ function notEnoughData(query: string, sources: VeraSource[], explanation: string
   };
 }
 
-function classifyFromMetrics(contenders: ContenderMetrics[], sourceCount: number, evidenceType: QueryEvidenceType, query = ""): ConsensusMode {
+function classifyFromMetrics(
+  contenders: ContenderMetrics[],
+  sourceCount: number,
+  evidenceType: QueryEvidenceType,
+  query = "",
+  signalsByName = new Map<string, SourceSignal[]>()
+): ConsensusMode {
   if (sourceCount < classificationThresholds.minimumSourceCount || contenders.length === 0) {
     return "no_reliable_consensus";
   }
 
   if (evidenceType === "local_recommendation") {
-    return classifyLocalConsensus(contenders);
+    return classifyLocalConsensus(contenders, signalsByName);
   }
 
   if (evidenceType === "product_recommendation" && isAutomotiveAvoidanceQuery(query)) {
@@ -8514,11 +8667,12 @@ function matureCategoryEvidenceSupportsConsensus(
   return topScore >= 60 && weightedGap >= 3;
 }
 
-function classifyLocalConsensus(contenders: ContenderMetrics[]): ConsensusMode {
-  const top = contenders[0];
-  const second = contenders[1];
+function classifyLocalConsensus(contenders: ContenderMetrics[], signalsByName: Map<string, SourceSignal[]>): ConsensusMode {
+  const splitEligibleContenders = localSplitEligibleContenders(contenders, signalsByName);
+  const top = splitEligibleContenders[0];
+  const second = splitEligibleContenders[1];
 
-  if (contenders.length < 3) {
+  if (splitEligibleContenders.length < 2) {
     return "no_reliable_consensus";
   }
 

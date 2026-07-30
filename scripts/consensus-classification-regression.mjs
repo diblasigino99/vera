@@ -24,6 +24,7 @@ const {
   filterCompatibleSoftwareSignalsForRegression,
   localCategoryFilterForRegression,
   localFallbackEvidenceEligibilityForRegression,
+  localSplitEligibilityForRegression,
   localSubtypeProofForRegression,
   productOpinionAggregationScopeForRegression,
   preserveEvidenceBackedProductContendersForRegression,
@@ -1401,6 +1402,215 @@ console.log(
         cachedOneResultMode: cachedSingleSplit.mode,
         cachedDentistNames: cachedSingleDentistNoReliable.results.map((result) => result.name),
         unsupportedDentistCount: cachedUnsupportedDentistNoReliable.results.length
+      }
+    },
+    null,
+    2
+  )
+);
+
+const eastMeadowWeakSplit = localSplitEligibilityForRegression("best lunch places east meadow", [
+  {
+    name: "Azerbaijan Grill",
+    sourceUrl: "https://www.yelp.com/biz/azerbaijan-grill-east-meadow-4",
+    sourceTitle: "AZERBAIJAN GRILL - Reviews - East Meadow, NY",
+    positiveMention: "Business name appears in retrieved local evidence",
+    extractedReason: "Business name appears in title evidence; candidate confidence high",
+    sourceType: "review_site",
+    netWeightedScore: 20.4
+  },
+  {
+    name: "Kensington Pies",
+    sourceUrl: "https://www.yelp.com/biz/kensington-pies-east-meadow-2",
+    sourceTitle: "KENSINGTON PIES - Reviews - East Meadow, NY",
+    positiveMention: "Business name appears in retrieved local evidence",
+    extractedReason: "Business name appears in title evidence; candidate confidence high",
+    sourceType: "review_site",
+    netWeightedScore: 18.2
+  },
+  {
+    name: "NK",
+    sourceUrl: "https://www.yelp.com/biz/nk-restaurant-east-meadow",
+    sourceTitle: "NK RESTAURANT - Reviews - East Meadow, NY",
+    positiveMention: "Business name appears in retrieved local evidence",
+    extractedReason: "Business name appears in snippet evidence; candidate confidence medium",
+    sourceType: "review_site",
+    netWeightedScore: 13.5
+  }
+]);
+assert.equal(eastMeadowWeakSplit.classification, "no_reliable_consensus", "Weak one-source local presence contenders must not produce split consensus");
+assert.deepEqual(eastMeadowWeakSplit.eligibleNames, [], "Presence-only generated local signals should not be split eligible");
+assert.deepEqual(
+  eastMeadowWeakSplit.displayNames,
+  ["Azerbaijan Grill", "Kensington Pies", "NK"],
+  "Weak but net-positive local contenders should remain available to ADV fallback"
+);
+
+const austinNetNegativeSplit = localSplitEligibilityForRegression("best dentist in austin", [
+  {
+    name: "Wellness Dental",
+    sourceUrl: "https://wdaustin.com/",
+    sourceTitle: "Wellness Dental Austin",
+    positiveMention: "Business name appears in retrieved local evidence",
+    extractedReason: "Business name appears in title evidence; candidate confidence medium",
+    sourceType: "other",
+    netWeightedScore: -4.2
+  },
+  {
+    name: "38th Street Dental",
+    sourceUrl: "https://www.cascadelocalseo.com/austin-dentists",
+    sourceTitle: "Austin dentist source results",
+    positiveMention: "Appears in local source results",
+    extractedReason: "Appears in local source results",
+    sourceType: "review_site",
+    netWeightedScore: -5.7
+  },
+  {
+    name: "Advanced Dental Care of Austin",
+    sourceUrl: "https://advanceddentalcareofaustin.com/",
+    sourceTitle: "Advanced Dental Care of Austin",
+    positiveMention: "Business name appears in retrieved local evidence",
+    extractedReason: "Business name appears in title evidence; candidate confidence medium",
+    sourceType: "other",
+    netWeightedScore: -10.8
+  }
+]);
+assert.equal(austinNetNegativeSplit.classification, "no_reliable_consensus", "Net-negative local contenders must not produce split consensus");
+assert.deepEqual(austinNetNegativeSplit.displayNames, [], "Net-negative local contenders should not display through ADV fallback");
+
+const weakSingleLocal = localSplitEligibilityForRegression("best lunch spots brooklyn", [
+  {
+    name: "Gigi's",
+    sourceUrl: "https://m.yelp.com/biz/gigis-brooklyn",
+    sourceTitle: "Gigi's - Brooklyn lunch source",
+    positiveMention: "Business name appears in retrieved local evidence",
+    extractedReason: "Business name appears in snippet evidence; candidate confidence medium",
+    sourceType: "review_site",
+    netWeightedScore: 6.4
+  }
+]);
+assert.equal(weakSingleLocal.classification, "no_reliable_consensus", "One weak local contender must not produce split consensus");
+assert.deepEqual(weakSingleLocal.displayNames, ["Gigi's"], "One weak but valid net-positive local contender remains displayable under ADV");
+
+const twoRecommendationSupportedLocal = localSplitEligibilityForRegression("best restaurant in brooklyn", [
+  {
+    name: "Restaurant One",
+    sourceUrl: "https://local.test/restaurant-one",
+    sourceTitle: "Best restaurants in Brooklyn",
+    positiveMention: "Restaurant One is recommended as a top Brooklyn restaurant.",
+    extractedReason: "Recommended in a ranked Brooklyn restaurant guide.",
+    sourceType: "editorial",
+    netWeightedScore: 12
+  },
+  {
+    name: "Restaurant Two",
+    sourceUrl: "https://community.test/restaurant-two",
+    sourceTitle: "Brooklyn restaurant recommendations",
+    positiveMention: "Restaurant Two is a favorite local recommendation.",
+    extractedReason: "Recommended by local community evidence.",
+    sourceType: "forum",
+    netWeightedScore: 11
+  }
+]);
+assert.equal(twoRecommendationSupportedLocal.classification, "split_consensus", "Two genuinely recommendation-supported local contenders can still produce split consensus");
+assert.deepEqual(twoRecommendationSupportedLocal.eligibleNames, ["Restaurant One", "Restaurant Two"], "Two supported local contenders should be split eligible");
+
+const threeRecommendationSupportedLocal = localSplitEligibilityForRegression("best restaurant in brooklyn", [
+  {
+    name: "Restaurant One",
+    sourceUrl: "https://local.test/restaurant-one",
+    sourceTitle: "Best restaurants in Brooklyn",
+    positiveMention: "Restaurant One is recommended as a top Brooklyn restaurant.",
+    extractedReason: "Recommended in a ranked Brooklyn restaurant guide.",
+    sourceType: "editorial",
+    netWeightedScore: 14
+  },
+  {
+    name: "Restaurant Two",
+    sourceUrl: "https://community.test/restaurant-two",
+    sourceTitle: "Brooklyn restaurant recommendations",
+    positiveMention: "Restaurant Two is a favorite local recommendation.",
+    extractedReason: "Recommended by local community evidence.",
+    sourceType: "forum",
+    netWeightedScore: 12
+  },
+  {
+    name: "Restaurant Three",
+    sourceUrl: "https://guide.test/restaurant-three",
+    sourceTitle: "Brooklyn dining guide",
+    positiveMention: "Restaurant Three is a recommended pick.",
+    extractedReason: "Recommended in guide evidence.",
+    sourceType: "editorial",
+    netWeightedScore: 10
+  }
+]);
+assert.equal(threeRecommendationSupportedLocal.classification, "split_consensus", "Three genuinely recommendation-supported local contenders can still produce split consensus");
+assert.deepEqual(threeRecommendationSupportedLocal.eligibleNames, ["Restaurant One", "Restaurant Two", "Restaurant Three"], "Three supported local contenders should be split eligible");
+
+const weakCachedAzerbaijan = contender("Azerbaijan Grill", { sourceUrls: ["https://www.yelp.com/biz/azerbaijan-grill-east-meadow-4"], score: 20.4 });
+const weakCachedKensington = contender("Kensington Pies", { sourceUrls: ["https://www.yelp.com/biz/kensington-pies-east-meadow-2"], score: 18.2 });
+const weakCachedSanitized = sanitizeCachedLocalConsensus(
+  consensusFixture({
+    query: "best lunch places east meadow",
+    mode: "no_reliable_consensus",
+    results: [resultFromContender(weakCachedAzerbaijan), resultFromContender(weakCachedKensington, 1)],
+    contenders: [weakCachedAzerbaijan, weakCachedKensington],
+    signals: [
+      {
+        sourceUrl: "https://www.yelp.com/biz/azerbaijan-grill-east-meadow-4",
+        sourceTitle: "AZERBAIJAN GRILL - Reviews - East Meadow, NY",
+        domain: "yelp.com",
+        sourceType: "review_site",
+        sourceWeight: 1,
+        sourceQuality: "medium",
+        sourceQualityWeight: 1,
+        contenderName: "Azerbaijan Grill",
+        sentiment: "positive",
+        mentionStrength: "moderate",
+        positiveMention: "Business name appears in retrieved local evidence",
+        extractedReason: "Business name appears in title evidence; candidate confidence high",
+        themes: ["local source support"],
+        verifiedAddress: "2366 Hempstead Tpke, East Meadow, NY 11554, USA"
+      },
+      {
+        sourceUrl: "https://www.yelp.com/biz/kensington-pies-east-meadow-2",
+        sourceTitle: "KENSINGTON PIES - Reviews - East Meadow, NY",
+        domain: "yelp.com",
+        sourceType: "review_site",
+        sourceWeight: 1,
+        sourceQuality: "medium",
+        sourceQualityWeight: 1,
+        contenderName: "Kensington Pies",
+        sentiment: "positive",
+        mentionStrength: "moderate",
+        positiveMention: "Business name appears in retrieved local evidence",
+        extractedReason: "Business name appears in title evidence; candidate confidence high",
+        themes: ["local source support"],
+        verifiedAddress: "548 E Meadow Ave, East Meadow, NY 11554, USA"
+      }
+    ]
+  })
+);
+assert.equal(weakCachedSanitized.mode, "no_reliable_consensus", "Post-cleanup cached sanitizer must not upgrade weak local presence contenders to split");
+assert.deepEqual(
+  weakCachedSanitized.results.map((result) => result.name),
+  ["Azerbaijan Grill", "Kensington Pies"],
+  "Post-cleanup sanitizer should preserve weak net-positive contenders for no-consensus display"
+);
+
+console.log(
+  JSON.stringify(
+    {
+      localSplitEligibilityRegression: {
+        eastMeadowMode: eastMeadowWeakSplit.classification,
+        eastMeadowDisplayNames: eastMeadowWeakSplit.displayNames,
+        austinMode: austinNetNegativeSplit.classification,
+        austinDisplayNames: austinNetNegativeSplit.displayNames,
+        weakSingleMode: weakSingleLocal.classification,
+        weakSingleDisplayNames: weakSingleLocal.displayNames,
+        twoSupportedMode: twoRecommendationSupportedLocal.classification,
+        threeSupportedMode: threeRecommendationSupportedLocal.classification,
+        weakCachedMode: weakCachedSanitized.mode
       }
     },
     null,
