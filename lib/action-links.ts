@@ -122,6 +122,10 @@ export function productOfficialDestinationAccepted(source: VeraSource, contender
     return { accepted: false, reason: "not_official_manufacturer_domain" };
   }
 
+  if (officialProductUrlLooksInformational(source.url)) {
+    return { accepted: false, reason: "official_url_not_product_destination" };
+  }
+
   if (!sourceLooksOfficialForContender(source, contenderName)) {
     return { accepted: false, reason: "domain_does_not_match_brand" };
   }
@@ -130,7 +134,7 @@ export function productOfficialDestinationAccepted(source: VeraSource, contender
   const contenderTokens = meaningfulTokens(contenderName);
   const overlap = tokenOverlapScore(contenderTokens, textTokens);
 
-  if (overlap < Math.min(2, contenderTokens.length)) {
+  if (overlap < Math.min(2, contenderTokens.length) && !officialDomainAndProductLineMatch(domain, contenderTokens, textTokens)) {
     return { accepted: false, reason: "page_does_not_match_product" };
   }
 
@@ -353,7 +357,11 @@ function sourceLooksOfficialForContender(source: VeraSource, contenderName: stri
     return false;
   }
 
-  const compactDomain = compact(domain.replace(/^www\./, "").split(".")[0] ?? "");
+  const hostLabels = domain
+    .replace(/^www\./, "")
+    .split(".")
+    .filter((label) => label && !/^(?:com|net|org|co|us|ca|uk|au|store|shop|www)$/.test(label));
+  const compactDomain = compact(hostLabels.join(" "));
   const compactName = compact(contenderName);
   const nameTokens = meaningfulTokens(contenderName);
 
@@ -362,6 +370,41 @@ function sourceLooksOfficialForContender(source: VeraSource, contenderName: stri
   }
 
   return nameTokens.some((token) => token.length >= 4 && compactDomain.includes(token));
+}
+
+function officialProductUrlLooksInformational(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    const path = url.pathname.toLowerCase();
+
+    return /\/(?:about|article|articles|blog|blogs|journal|magazine|manual|manuals|news|newsroom|press|press-release|press-releases|review|reviews|support|video|videos)\b/.test(
+      path
+    );
+  } catch {
+    return true;
+  }
+}
+
+function officialDomainAndProductLineMatch(domain: string, contenderTokens: string[], textTokens: string[]) {
+  if (contenderTokens.length < 2) {
+    return false;
+  }
+
+  const compactDomain = compact(
+    domain
+      .replace(/^www\./, "")
+      .split(".")
+      .filter((label) => label && !/^(?:com|net|org|co|us|ca|uk|au|store|shop|www)$/.test(label))
+      .join(" ")
+  );
+  const domainMatchedTokens = contenderTokens.filter((token) => token.length >= 4 && compactDomain.includes(token));
+
+  if (!domainMatchedTokens.length) {
+    return false;
+  }
+
+  const textTokenSet = new Set(textTokens);
+  return contenderTokens.some((token) => !domainMatchedTokens.includes(token) && token.length >= 4 && textTokenSet.has(token));
 }
 
 function amazonProductDetailUrl(rawUrl: string) {

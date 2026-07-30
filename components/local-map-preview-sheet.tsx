@@ -33,15 +33,13 @@ export function LocalMapPreviewSheet({
       overflow: document.body.style.overflow,
       position: document.body.style.position,
       top: document.body.style.top,
-      width: document.body.style.width,
-      touchAction: document.body.style.touchAction
+      width: document.body.style.width
     };
 
     document.body.style.overflow = "hidden";
     document.body.style.position = "fixed";
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = "100%";
-    document.body.style.touchAction = "none";
     const focusTimer = window.setTimeout(() => closeButtonRef.current?.focus(), 0);
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -59,7 +57,6 @@ export function LocalMapPreviewSheet({
       document.body.style.position = previousBodyStyles.position;
       document.body.style.top = previousBodyStyles.top;
       document.body.style.width = previousBodyStyles.width;
-      document.body.style.touchAction = previousBodyStyles.touchAction;
       window.scrollTo(0, scrollY);
       previousFocusRef.current?.focus();
     };

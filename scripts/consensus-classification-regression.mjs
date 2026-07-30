@@ -515,6 +515,72 @@ assert.equal(
   false,
   "Editorial domains should not become official product actions"
 );
+assert.equal(
+  productOfficialDestinationAccepted(
+    source("Nike Pegasus Running Shoes. Nike.com", "https://www.nike.com/w/pegasus-running-shoes-37v7jz8nexhzy7ok", "nike.com", "Nike Pegasus running shoes."),
+    "Nike Pegasus"
+  ).accepted,
+  true,
+  "Official product-family pages should be accepted for model/family contenders"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source("Ghost Series | Ghost 18, Ghost Max 3 & More", "https://www.brooksrunning.com/en_us/featured/ghost", "brooksrunning.com", "Brooks Ghost running shoes."),
+    "Brooks Ghost"
+  ).accepted,
+  true,
+  "Official brand family collection pages should be accepted when they match the contender"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source("GEL-NIMBUS Running Shoes", "https://www.asics.com/us/en-us/gel-nimbus/c/aa50102000", "asics.com", "ASICS GEL-NIMBUS running shoes."),
+    "ASICS Gel-Nimbus"
+  ).accepted,
+  true,
+  "Official model-line pages should be accepted for ASICS-style product families"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source("Clifton Cushioned Running & Walking Shoes", "https://www.hoka.com/en/us/clifton", "hoka.com", "HOKA Clifton running and walking shoes."),
+    "Hoka Clifton"
+  ).accepted,
+  true,
+  "Official short family pages should be accepted for product-family contenders"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source(
+      "Sony WH-1000XM5 Premium Wireless Noise Canceling Headphones",
+      "https://electronics.sony.com/audio/headphones/headband/p/wh1000xm5-b",
+      "electronics.sony.com",
+      "Sony WH-1000XM5 headphones."
+    ),
+    "Sony WH-1000XM5"
+  ).accepted,
+  true,
+  "Official product pages on brand subdomains should be accepted"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source("Nike Running Shoes", "https://www.nike.com/w/running-shoes", "nike.com", "Nike running shoes."),
+    "Nike Pegasus"
+  ).accepted,
+  false,
+  "Broad manufacturer category pages should stay rejected when they do not match the product family"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source(
+      "Nike Debuts the Pegasus 42",
+      "https://about.nike.com/en/newsroom/releases/nike-pegasus-42-official-images",
+      "about.nike.com",
+      "Nike Pegasus 42 official images."
+    ),
+    "Nike Pegasus"
+  ).accepted,
+  false,
+  "Official newsroom/editorial pages should not become product actions"
+);
 assert.deepEqual(
   attachContenderActions(missingUrlActions, {
     "away-carry-on-1": [source("Away The Carry-On suitcase", "https://www.awaytravel.com/suitcases/carry-on", "awaytravel.com", "Away The Carry-On suitcase.")]

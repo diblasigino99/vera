@@ -14,8 +14,8 @@ type TavilyActionResult = {
 };
 
 const actionResolutionTimeoutMs = 3500;
-const actionResolutionGlobalBudgetMs = 800;
-const actionResolutionMaxResults = 8;
+const actionResolutionGlobalBudgetMs = 1000;
+const actionResolutionMaxResults = 5;
 const actionResolutionCacheTtlMs = 1000 * 60 * 60 * 12;
 const actionResolutionCache = new Map<string, { expiresAt: number; candidates: ActionResolutionCandidate[] }>();
 
