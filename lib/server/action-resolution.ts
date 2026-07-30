@@ -40,39 +40,13 @@ export async function attachPostDecisionActionsWithBudget(
     return sourceDecorated;
   }
 
-  const controller = new AbortController();
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  let completed = false;
-
-  const resolved = resolveProductActionsWithinBudget(consensus, sourceDecorated.results, resolveCandidates, controller.signal)
-    .then((decorated) => {
-      completed = true;
-      return decorated;
-    })
-    .catch((error) => {
-      completed = true;
-      console.warn("[vera:action-resolution] post-decision decoration failed open", {
-        error: error instanceof Error ? error.message : String(error)
-      });
-      return sourceDecorated;
-    });
-
-  const timedOut = new Promise<ConsensusResponse>((resolve) => {
-    timeout = setTimeout(() => {
-      if (!completed) {
-        controller.abort();
-      }
-
-      resolve(sourceDecorated);
-    }, Math.max(0, budgetMs));
-  });
-
   try {
-    return await Promise.race([resolved, timedOut]);
-  } finally {
-    if (timeout) {
-      clearTimeout(timeout);
-    }
+    return await resolveProductActionsWithinBudget(consensus, sourceDecorated.results, resolveCandidates, budgetMs);
+  } catch (error) {
+    console.warn("[vera:action-resolution] post-decision decoration failed open", {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return sourceDecorated;
   }
 }
 
@@ -80,23 +54,59 @@ async function resolveProductActionsWithinBudget(
   consensus: ConsensusResponse,
   productResults: ConsensusResult[],
   resolveCandidates: (result: ConsensusResult, signal: AbortSignal) => Promise<ActionResolutionCandidate[]>,
-  signal: AbortSignal
+  budgetMs: number
 ) {
-  const candidatesByResult: ResolvedActionCandidates = {};
-  const settled = await Promise.allSettled(productResults.map((result) => resolveCandidates(result, signal)));
-
-  for (let index = 0; index < settled.length; index += 1) {
-    const response = settled[index];
-    const result = productResults[index];
-
-    if (!result || response.status !== "fulfilled" || !response.value.length) {
-      continue;
+  return new Promise<ConsensusResponse>((resolve) => {
+    if (!productResults.length) {
+      resolve(attachContenderActions(consensus));
+      return;
     }
 
-    candidatesByResult[result.id] = response.value;
-  }
+    const controller = new AbortController();
+    const candidatesByResult: ResolvedActionCandidates = {};
+    let settledCount = 0;
+    let finished = false;
 
-  return attachContenderActions(consensus, candidatesByResult);
+    const timeout = setTimeout(() => {
+      controller.abort();
+      finish();
+    }, Math.max(0, budgetMs));
+
+    function finish() {
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+      clearTimeout(timeout);
+      resolve(attachContenderActions(consensus, candidatesByResult));
+    }
+
+    productResults.forEach((result) => {
+      Promise.resolve()
+        .then(() => resolveCandidates(result, controller.signal))
+        .then((candidates) => {
+          if (!controller.signal.aborted && candidates.length) {
+            candidatesByResult[result.id] = candidates;
+          }
+        })
+        .catch((error) => {
+          if (!controller.signal.aborted) {
+            console.warn("[vera:action-resolution] contender decoration failed open", {
+              contender: result.name,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        })
+        .finally(() => {
+          settledCount += 1;
+
+          if (settledCount >= productResults.length) {
+            finish();
+          }
+        });
+    });
+  });
 }
 
 async function resolveProductActionCandidates(result: ConsensusResult, apiKey: string, signal: AbortSignal): Promise<ActionResolutionCandidate[]> {

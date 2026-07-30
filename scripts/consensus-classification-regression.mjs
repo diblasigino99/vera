@@ -338,9 +338,9 @@ const mixedSlowActions = await attachPostDecisionActionsWithBudget(
 );
 assert.ok(Date.now() - mixedSlowStartedAt < 70, "One slow contender should not hold up the whole response");
 assert.deepEqual(
-  mixedSlowActions.results.map((item) => item.actions ?? []),
-  [[], []],
-  "If the global budget expires first, Vera should return the original undecorated consensus"
+  mixedSlowActions.results.map((item) => item.actions?.map((action) => action.label) ?? []),
+  [["View Product"], []],
+  "If the global budget expires first, Vera should keep actions that resolved before the deadline"
 );
 
 const failedLookupActions = await attachPostDecisionActionsWithBudget(
@@ -360,6 +360,93 @@ assert.deepEqual(
   [["View Product"], []],
   "A failed action lookup should not prevent other fast valid actions from rendering"
 );
+
+const runningShoeProducts = [
+  contender("Brooks Ghost", { positives: 3, sourceUrls: ["https://www.nytimes.com/wirecutter/reviews/best-running-shoes"] }),
+  contender("Nike Pegasus", { positives: 3, sourceUrls: ["https://www.rtings.com/running-shoes/reviews/best/running"] }),
+  contender("Asics Gel-Nimbus", { positives: 2, sourceUrls: ["https://www.rtings.com/running-shoes/reviews/best/running"] }),
+  contender("Hoka Clifton", { positives: 1, sourceUrls: ["https://www.fleetfeet.com/running-shoe-buyers-guide"] })
+];
+runningShoeProducts.forEach((item) => {
+  item.contenderCategory = "product";
+});
+const runningShoeActions = consensusFixture({
+  mode: "split_consensus",
+  query: "best running shoes",
+  contenders: runningShoeProducts,
+  results: runningShoeProducts.map(resultFromContender)
+});
+runningShoeActions.structuredConsensus.queryEvidenceType = "product_recommendation";
+runningShoeActions.sources = [
+  source("Best Running Shoes", "https://www.nytimes.com/wirecutter/reviews/best-running-shoes", "nytimes.com", "Brooks Ghost and Nike Pegasus were discussed.", "Brooks Ghost"),
+  source("Running shoe reviews", "https://www.rtings.com/running-shoes/reviews/best/running", "rtings.com", "Nike Pegasus and Asics Gel-Nimbus were discussed.", "Nike Pegasus"),
+  source("Running shoe buyer guide", "https://www.fleetfeet.com/running-shoe-buyers-guide", "fleetfeet.com", "Hoka Clifton was discussed.", "Hoka Clifton")
+];
+runningShoeActions.results.forEach((result, index) => {
+  result.sources = [runningShoeActions.sources[Math.min(index, runningShoeActions.sources.length - 1)]];
+});
+let runningShoeAbortCount = 0;
+const runningShoeStartedAt = Date.now();
+const partialRunningShoeActions = await attachPostDecisionActionsWithBudget(
+  { ...runningShoeActions, cached: true },
+  (result, signal) => {
+    if (result.name === "Brooks Ghost") {
+      return Promise.resolve([
+        source(
+          "Amazon.com | Brooks Men's Ghost 16 Neutral Running Shoe",
+          "https://www.amazon.com/Brooks-Mens-Ghost-Neutral-Running/dp/B0D43J3N8B",
+          "amazon.com",
+          "Brooks Ghost neutral running shoe."
+        )
+      ]);
+    }
+
+    if (result.name === "Nike Pegasus") {
+      return Promise.resolve([
+        source("Nike Pegasus Running Shoes. Nike.com", "https://www.nike.com/w/pegasus-running-shoes-37v7jz8nexhzy7ok", "nike.com", "Nike Pegasus running shoes.")
+      ]);
+    }
+
+    if (result.name === "Asics Gel-Nimbus") {
+      return Promise.resolve([
+        source(
+          "GEL-NIMBUS Running Shoes",
+          "https://www.asics.com/us/en-us/gel-nimbus/c/aa50102000",
+          "asics.com",
+          "ASICS GEL-NIMBUS running shoes."
+        )
+      ]);
+    }
+
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve([]), 80);
+      signal.addEventListener(
+        "abort",
+        () => {
+          runningShoeAbortCount += 1;
+          clearTimeout(timeout);
+          resolve([]);
+        },
+        { once: true }
+      );
+    });
+  },
+  5
+);
+assert.ok(Date.now() - runningShoeStartedAt < 70, "Running-shoe style action decoration should return within the global budget");
+assert.ok(runningShoeAbortCount > 0, "Running-shoe style unresolved contenders should be aborted at the global deadline");
+assert.deepEqual(
+  partialRunningShoeActions.results.map((item) => item.actions?.map((action) => action.label) ?? []),
+  [["Amazon"], ["View Product"], ["View Product"], []],
+  "Running-shoe style fixture should keep resolved actions while unresolved Hoka remains actionless"
+);
+assert.equal(partialRunningShoeActions.mode, runningShoeActions.mode, "Partial running-shoe action resolution must not change classification");
+assert.deepEqual(
+  partialRunningShoeActions.results.map((item) => item.name),
+  runningShoeActions.results.map((item) => item.name),
+  "Partial running-shoe action resolution must not change contender order"
+);
+assert.equal(partialRunningShoeActions.results.length, runningShoeActions.results.length, "Partial running-shoe action resolution must not change result count");
 
 const noClearProductActions = consensusFixture({
   mode: "no_reliable_consensus",
