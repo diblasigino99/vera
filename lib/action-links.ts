@@ -92,9 +92,13 @@ export function resolveContenderActions(
     return resolveProductActions(consensus, result, resolvedCandidates);
   }
 
+  if (category === "local") {
+    return resolveLocalActions(consensus, result);
+  }
+
   const sources = candidateSources(consensus, result);
   const official = sources.find((source) => sourceLooksOfficialForContender(source, result.name));
-  const action = official ? buildAction(actionTypeForCategory(category), official, category === "local" ? "verified_local_source" : "official_source") : undefined;
+  const action = official ? buildAction(actionTypeForCategory(category), official, "official_source") : undefined;
 
   return action ? [action] : [];
 }
@@ -190,6 +194,24 @@ function resolveProductActions(consensus: ConsensusResponse, result: ConsensusRe
   return dedupeActions(actions);
 }
 
+function resolveLocalActions(consensus: ConsensusResponse, result: ConsensusResult) {
+  const sources = candidateSources(consensus, result);
+  const official = sources.find((source) => sourceLooksOfficialForContender(source, result.name));
+  const actions: ContenderAction[] = [];
+  const website = official ? buildAction("website", official, "verified_local_source") : undefined;
+  const maps = buildMapsAction(localPlaceIdForResult(consensus, result));
+
+  if (website) {
+    actions.push(website);
+  }
+
+  if (maps) {
+    actions.push(maps);
+  }
+
+  return dedupeActions(actions);
+}
+
 function actionCategoryForResult(consensus: ConsensusResponse, result: ConsensusResult): ActionCategory {
   const evidenceType = consensus.structuredConsensus?.queryEvidenceType;
   const candidateCategory = result.metrics?.contenderCategory;
@@ -256,11 +278,13 @@ function buildAction(type: ContenderActionType, source: VeraSource, actionSource
       ? "View Product"
       : type === "amazon"
         ? "Amazon"
-        : type === "website"
-          ? "Website"
-          : type === "view_website"
-            ? "View Website"
-            : "Visit Website";
+        : type === "maps"
+          ? "View on Maps"
+          : type === "website"
+            ? "Website"
+            : type === "view_website"
+              ? "View Website"
+              : "Visit Website";
 
   return {
     type,
@@ -269,6 +293,35 @@ function buildAction(type: ContenderActionType, source: VeraSource, actionSource
     domain,
     source: actionSource
   };
+}
+
+function buildMapsAction(placeId?: string): ContenderAction | undefined {
+  const cleanPlaceId = placeId?.trim();
+
+  if (!cleanPlaceId || !/^[A-Za-z0-9_-]+$/.test(cleanPlaceId)) {
+    return undefined;
+  }
+
+  return {
+    type: "maps",
+    label: "View on Maps",
+    url: `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(cleanPlaceId)}`,
+    domain: "google.com",
+    source: "google_places"
+  };
+}
+
+function localPlaceIdForResult(consensus: ConsensusResponse, result: ConsensusResult) {
+  const resultPlaceId = result.placesPlaceId?.trim();
+
+  if (resultPlaceId) {
+    return resultPlaceId;
+  }
+
+  return consensus.structuredConsensus?.signals
+    .filter((signal) => signal.contenderName === result.name && signal.placesVerified)
+    .map((signal) => signal.placesPlaceId?.trim())
+    .find((placeId): placeId is string => Boolean(placeId));
 }
 
 function candidateSources(consensus: ConsensusResponse, result: ConsensusResult) {

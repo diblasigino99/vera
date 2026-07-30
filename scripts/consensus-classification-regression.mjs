@@ -556,6 +556,113 @@ localActions.sources = [source("Oregano", "https://www.oreganobk.com", "oreganob
 localActions.results[0].sources = localActions.sources;
 assert.equal(attachContenderActions(localActions).results[0].action?.label, "Website", "Local actions use Website");
 
+const localMapsContender = contender("Azerbaijan Grill", { positives: 2, sourceUrls: ["https://www.yelp.com/biz/azerbaijan-grill-east-meadow-4"] });
+localMapsContender.contenderCategory = "restaurant";
+const localMapsActions = consensusFixture({
+  mode: "no_reliable_consensus",
+  query: "best lunch places east meadow",
+  contenders: [localMapsContender],
+  results: [resultFromContender(localMapsContender)]
+});
+localMapsActions.structuredConsensus.queryEvidenceType = "local_recommendation";
+localMapsActions.sources = [
+  source(
+    "AZERBAIJAN GRILL - Reviews - East Meadow, NY",
+    "https://www.yelp.com/biz/azerbaijan-grill-east-meadow-4",
+    "yelp.com",
+    "Azerbaijan Grill review profile.",
+    "Azerbaijan Grill"
+  )
+];
+localMapsActions.results[0].sources = localMapsActions.sources;
+localMapsActions.results[0].placesPlaceId = "ChIJRegressionAzerbaijan";
+localMapsActions.structuredConsensus.signals = [
+  {
+    sourceUrl: "https://www.yelp.com/biz/azerbaijan-grill-east-meadow-4",
+    sourceTitle: "AZERBAIJAN GRILL - Reviews - East Meadow, NY",
+    domain: "yelp.com",
+    sourceType: "review_site",
+    sourceWeight: 1,
+    sourceQuality: "medium",
+    sourceQualityWeight: 1,
+    contenderName: "Azerbaijan Grill",
+    sentiment: "positive",
+    mentionStrength: "moderate",
+    positiveMention: "Positive attributed evidence.",
+    extractedReason: "Regression",
+    themes: ["verified business"],
+    verifiedAddress: "2366 Hempstead Tpke, East Meadow, NY 11554, USA",
+    placesVerified: true,
+    placesPlaceId: "ChIJRegressionAzerbaijan"
+  }
+];
+const decoratedLocalMapsActions = attachContenderActions(localMapsActions);
+assert.deepEqual(
+  decoratedLocalMapsActions.results[0].actions?.map((action) => action.label),
+  ["View on Maps"],
+  "Verified local contenders with a placeId should receive View on Maps"
+);
+assert.equal(
+  decoratedLocalMapsActions.results[0].actions?.[0]?.url,
+  "https://www.google.com/maps/place/?q=place_id:ChIJRegressionAzerbaijan",
+  "Local maps action should use the verified Google Places ID"
+);
+assert.equal(decoratedLocalMapsActions.mode, localMapsActions.mode, "Local maps action must not change mode");
+assert.deepEqual(
+  decoratedLocalMapsActions.results.map((item) => item.name),
+  localMapsActions.results.map((item) => item.name),
+  "Local maps action must not change order"
+);
+assert.equal(decoratedLocalMapsActions.results.length, localMapsActions.results.length, "Local maps action must not change result count");
+assert.equal(
+  decoratedLocalMapsActions.results[0].metrics?.netWeightedScore,
+  localMapsActions.results[0].metrics?.netWeightedScore,
+  "Local maps action must not change score"
+);
+
+const localWebsiteAndMapsActions = consensusFixture({
+  mode: "moderate_consensus",
+  query: "best dentist in austin",
+  contenders: [localActionContender],
+  results: [resultFromContender(localActionContender)]
+});
+localWebsiteAndMapsActions.structuredConsensus.queryEvidenceType = "local_recommendation";
+localWebsiteAndMapsActions.sources = [source("Oregano", "https://www.oreganobk.com", "oreganobk.com", "Oregano official website.", "Oregano")];
+localWebsiteAndMapsActions.results[0].sources = localWebsiteAndMapsActions.sources;
+localWebsiteAndMapsActions.results[0].placesPlaceId = "ChIJRegressionOregano";
+assert.deepEqual(
+  attachContenderActions(localWebsiteAndMapsActions).results[0].actions?.map((action) => action.label),
+  ["Website", "View on Maps"],
+  "Verified local contender with official URL and placeId should preserve Website and add View on Maps"
+);
+
+const localCachedSignalMapsActions = consensusFixture({
+  mode: "no_reliable_consensus",
+  query: "best lunch spots brooklyn",
+  contenders: [localMapsContender],
+  results: [resultFromContender(localMapsContender)]
+});
+localCachedSignalMapsActions.structuredConsensus.queryEvidenceType = "local_recommendation";
+localCachedSignalMapsActions.results[0].sources = localMapsActions.sources;
+localCachedSignalMapsActions.structuredConsensus.signals = localMapsActions.structuredConsensus.signals;
+assert.deepEqual(
+  attachContenderActions(localCachedSignalMapsActions).results[0].actions?.map((action) => action.label),
+  ["View on Maps"],
+  "Cached local results can be decorated from structured signal placeId when present"
+);
+
+const unverifiedLocalActions = consensusFixture({
+  mode: "no_reliable_consensus",
+  query: "best lunch spots brooklyn",
+  contenders: [localMapsContender],
+  results: [resultFromContender(localMapsContender)]
+});
+unverifiedLocalActions.structuredConsensus.queryEvidenceType = "local_recommendation";
+unverifiedLocalActions.sources = localMapsActions.sources;
+unverifiedLocalActions.results[0].sources = localMapsActions.sources;
+assert.equal(attachContenderActions(unverifiedLocalActions).results[0].actions?.length ?? 0, 0, "Unverified local contenders should not receive fabricated Maps actions");
+assert.equal(attachContenderActions(unverifiedLocalActions).results[0].action, undefined, "Review/listing URLs should not become Website actions");
+
 const providerActionContender = contender("Verizon Fios", { positives: 2, sourceUrls: ["https://www.verizon.com/home/internet/fios"] });
 providerActionContender.contenderCategory = "service";
 const providerActions = consensusFixture({

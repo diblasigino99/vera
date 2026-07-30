@@ -266,6 +266,7 @@ export async function validateLocalSignalsWithPlaces(
       placesCategoryConfidence: validation.categoryConfidence,
       placesLocationConfidence: validation.locationConfidence,
       placesVerified: true,
+      ...(validation.placeId ? { placesPlaceId: validation.placeId } : {}),
       ...(validation.businessStatus ? { placesBusinessStatus: validation.businessStatus } : {})
     };
 

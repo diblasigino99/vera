@@ -7804,6 +7804,7 @@ function buildResult(
     .filter((item): item is string => Boolean(item))
     .slice(0, 5);
   const verifiedAddress = structuredConsensus.queryEvidenceType === "local_recommendation" ? firstVerifiedAddress(contenderSignals) : undefined;
+  const placesPlaceId = structuredConsensus.queryEvidenceType === "local_recommendation" ? firstVerifiedPlaceId(contenderSignals) : undefined;
 
   return {
     id: `${slugify(contender.name)}-${index + 1}`,
@@ -7816,12 +7817,17 @@ function buildResult(
     evidence,
     sources: resultSources.length ? resultSources : sources.slice(0, 3),
     metrics: contender,
-    ...(verifiedAddress ? { verifiedAddress } : {})
+    ...(verifiedAddress ? { verifiedAddress } : {}),
+    ...(placesPlaceId ? { placesPlaceId } : {})
   };
 }
 
 function firstVerifiedAddress(signals: SourceSignal[]) {
   return signals.map((signal) => signal.verifiedAddress?.trim()).find((address): address is string => Boolean(address));
+}
+
+function firstVerifiedPlaceId(signals: SourceSignal[]) {
+  return signals.map((signal) => signal.placesPlaceId?.trim()).find((placeId): placeId is string => Boolean(placeId));
 }
 
 function sanitizeLiveLocalGeographyStructuredConsensus(query: string, structuredConsensus: StructuredConsensus, diagnostics?: AnalyzeDiagnostics): StructuredConsensus {
