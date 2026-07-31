@@ -5,6 +5,7 @@ import type { DiscardReasonCode, EntityValidationDiagnostic } from "@/lib/server
 import { normalizeLocalQueryIntent, normalizeQuery, parseLocalIntent } from "@/lib/utils";
 import { getSupabaseAdmin } from "@/lib/server/supabase";
 import type { ExternalCallCounts } from "@/lib/server/external-call-counts";
+import { localGeographyContainment, localRegionLocationTerms } from "@/lib/server/local-geography";
 
 type PlacesValidationStatus = "verified" | "downgraded" | "rejected";
 
@@ -607,6 +608,10 @@ function localPlacesPositiveLocationTerms(location: string) {
     ].forEach(add);
   }
 
+  for (const term of localRegionLocationTerms(location)) {
+    add(term);
+  }
+
   return Array.from(terms);
 }
 
@@ -648,11 +653,6 @@ function isLongIslandAreaRequest(value: string) {
   return /\blong island\b/.test(normalized) && !/\b(long island city|lic)\b/.test(normalized);
 }
 
-function hasLongIslandIncompatibleLocation(value: string) {
-  const normalized = normalizeQuery(value);
-  return /\b(long island city|lic|queens|astoria|flushing|jackson heights|brooklyn|manhattan|bronx|staten island|new york city|nyc)\b/.test(normalized);
-}
-
 function recordPlacesSummary(
   callCounts: ExternalCallCounts | undefined,
   attempted: number,
@@ -681,55 +681,63 @@ async function validateCandidateWithPlaces(query: string, inputName: string, api
   const memoryHit = memoryPlacesCache.get(cacheKey);
 
   if (memoryHit && new Date(memoryHit.expiresAt).getTime() > Date.now()) {
+    const effectiveMemoryHit = refreshStaleLocationRejectionFromContainment(query, memoryHit);
+    if (effectiveMemoryHit !== memoryHit) {
+      memoryPlacesCache.set(cacheKey, effectiveMemoryHit);
+    }
     console.log("PLACES_CACHE_HIT", {
       candidate: inputName,
       cache: "memory",
-      status: memoryHit.status
+      status: effectiveMemoryHit.status
     });
     console.log("PLACES_VALIDATION_RESULT", {
       query,
       candidate: inputName,
       textQuery,
-      status: memoryHit.status,
-      canonicalName: memoryHit.canonicalName ?? null,
-      rejectionReason: memoryHit.rejectionReason ?? null,
-      verifiedAddress: memoryHit.formattedAddress ?? null,
-      types: memoryHit.types ?? [],
-	      categoryConfidence: memoryHit.categoryConfidence,
-	      locationConfidence: memoryHit.locationConfidence,
-	      overallConfidence: memoryHit.overallConfidence,
-	      businessStatus: memoryHit.businessStatus ?? null,
+      status: effectiveMemoryHit.status,
+      canonicalName: effectiveMemoryHit.canonicalName ?? null,
+      rejectionReason: effectiveMemoryHit.rejectionReason ?? null,
+      verifiedAddress: effectiveMemoryHit.formattedAddress ?? null,
+      types: effectiveMemoryHit.types ?? [],
+	      categoryConfidence: effectiveMemoryHit.categoryConfidence,
+	      locationConfidence: effectiveMemoryHit.locationConfidence,
+	      overallConfidence: effectiveMemoryHit.overallConfidence,
+	      businessStatus: effectiveMemoryHit.businessStatus ?? null,
 	      cache: "memory"
 	    });
     if (callCounts) callCounts.placesCacheHits += 1;
-    return memoryHit;
+    return effectiveMemoryHit;
   }
 
   const cached = await readPlacesCache(cacheKey);
   if (cached && new Date(cached.expiresAt).getTime() > Date.now()) {
-    memoryPlacesCache.set(cacheKey, cached);
+    const effectiveCached = refreshStaleLocationRejectionFromContainment(query, cached);
+    memoryPlacesCache.set(cacheKey, effectiveCached);
+    if (effectiveCached !== cached) {
+      await writePlacesCache(effectiveCached);
+    }
     console.log("PLACES_CACHE_HIT", {
       candidate: inputName,
       cache: "persistent",
-      status: cached.status
+      status: effectiveCached.status
     });
     console.log("PLACES_VALIDATION_RESULT", {
       query,
       candidate: inputName,
       textQuery,
-      status: cached.status,
-      canonicalName: cached.canonicalName ?? null,
-      rejectionReason: cached.rejectionReason ?? null,
-      verifiedAddress: cached.formattedAddress ?? null,
-      types: cached.types ?? [],
-	      categoryConfidence: cached.categoryConfidence,
-	      locationConfidence: cached.locationConfidence,
-	      overallConfidence: cached.overallConfidence,
-	      businessStatus: cached.businessStatus ?? null,
+      status: effectiveCached.status,
+      canonicalName: effectiveCached.canonicalName ?? null,
+      rejectionReason: effectiveCached.rejectionReason ?? null,
+      verifiedAddress: effectiveCached.formattedAddress ?? null,
+      types: effectiveCached.types ?? [],
+	      categoryConfidence: effectiveCached.categoryConfidence,
+	      locationConfidence: effectiveCached.locationConfidence,
+	      overallConfidence: effectiveCached.overallConfidence,
+	      businessStatus: effectiveCached.businessStatus ?? null,
 	      cache: "persistent"
 	    });
     if (callCounts) callCounts.placesCacheHits += 1;
-    return cached;
+    return effectiveCached;
   }
 
   const validation = await fetchPlacesValidation(query, inputName, apiKey, cacheKey, callCounts);
@@ -760,6 +768,53 @@ export function getCachedPlacesValidationSnapshot(query: string, inputName: stri
     nameConfidence: validation.nameConfidence,
     overallConfidence: validation.overallConfidence,
     rejectionReason: validation.rejectionReason
+  };
+}
+
+function refreshStaleLocationRejectionFromContainment(query: string, validation: PlacesValidation): PlacesValidation {
+  if (validation.status !== "rejected" || validation.rejectionReason !== "weak_location_match" || !validation.formattedAddress) {
+    return validation;
+  }
+
+  const updatedLocationConfidence = scoreLocationMatch(query, validation.formattedAddress);
+
+  if (updatedLocationConfidence < 0.25) {
+    return validation;
+  }
+
+  const overallConfidence = clamp01(
+    validation.nameConfidence * 0.45 +
+      updatedLocationConfidence * 0.3 +
+      validation.categoryConfidence * 0.25 -
+      (placesBusinessStatusRejectsActiveRecommendation(validation.businessStatus) ? 0.45 : 0)
+  );
+  const status: PlacesValidationStatus = overallConfidence >= 0.78 ? "verified" : overallConfidence >= 0.55 ? "downgraded" : "rejected";
+
+  if (status === "rejected") {
+    return {
+      ...validation,
+      locationConfidence: round2(updatedLocationConfidence),
+      overallConfidence: round2(overallConfidence),
+      rejectionReason: "low_overall_confidence"
+    };
+  }
+
+  console.log("PLACES_CACHE_LOCATION_RECHECK_ACCEPTED", {
+    candidate: validation.inputName,
+    canonicalName: validation.canonicalName ?? null,
+    formattedAddress: validation.formattedAddress,
+    previousReason: validation.rejectionReason,
+    locationConfidence: round2(updatedLocationConfidence),
+    status
+  });
+
+  return {
+    ...validation,
+    status,
+    locationConfidence: round2(updatedLocationConfidence),
+    overallConfidence: round2(overallConfidence),
+    rejectionReason: undefined,
+    expiresAt: new Date(Date.now() + (status === "verified" ? verifiedCacheTtlMs : downgradedCacheTtlMs)).toISOString()
   };
 }
 
@@ -1260,16 +1315,18 @@ function scoreLocationMatch(query: string, formattedAddress: string) {
   if (!tokens.length) return 0.65;
 
   const address = normalizeQuery(formattedAddress);
-  if (isLongIslandAreaRequest(query) && hasLongIslandIncompatibleLocation(address)) {
-    console.log("PLACES_LONG_ISLAND_LOCATION_REJECTED", {
+  const containment = localGeographyContainment(query, address);
+
+  if (containment.status === "outside") {
+    console.log("PLACES_REGION_LOCATION_REJECTED", {
       query,
       formattedAddress,
-      reason: "long_island_city_or_nyc_borough"
+      reason: containment.outsideTerm ? `outside_requested_region:${containment.outsideTerm}` : "outside_requested_region"
     });
     return 0.05;
   }
 
-  if (isLongIslandAreaRequest(query) && isNassauOrSuffolkAddress(address)) {
+  if (containment.status === "inside") {
     return 0.86;
   }
 
@@ -1295,18 +1352,6 @@ function scoreLocationMatch(query: string, formattedAddress: string) {
   if (matched > 0) return 0.72;
   if (/\bnew york\b/.test(address) && tokens.some((token) => ["nyc", "manhattan", "brooklyn", "williamsburg"].includes(token))) return 0.78;
   return 0.12;
-}
-
-function isNassauOrSuffolkAddress(address: string) {
-  const zip = address.match(/\b(\d{5})(?:-\d{4})?\b/)?.[1];
-
-  if (zip && /^(?:110|115|117|118|119)\d{2}$/.test(zip)) {
-    return true;
-  }
-
-  return /\b(?:nassau|suffolk|hempstead|west hempstead|north hempstead|garden city|mineola|rockville centre|levittown|wantagh|seaford|massapequa|farmingdale|huntington|smithtown|bay shore|patchogue|medford|yaphank|west islip|lindenhurst|northport|melville|jericho|syosset|roslyn|great neck|east williston|manhasset|bethpage|hewlett|woodmere|herricks|bellmore|merrick|half hollow hills|three village|harborfields|commack)\b/.test(
-    address
-  );
 }
 
 function isManhattanAreaRequest(query: string) {

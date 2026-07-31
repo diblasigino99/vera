@@ -34,6 +34,7 @@ import {
   isGenericDestinationContenderName
 } from "@/lib/server/destination-rules";
 import { getCachedPlacesValidationSnapshot, validateLocalSignalsWithPlaces } from "@/lib/server/places";
+import { localGeographyContainment, localRegionLocationTerms } from "@/lib/server/local-geography";
 import type { PlacesValidationDiagnostics } from "@/lib/server/places";
 import type { ClassificationDecisionTrace, EntityResolutionDiagnostic, EntityValidationDiagnostic, FinalCleanupDiagnostic } from "@/lib/server/consensus-engine";
 import type { QueryEvidenceType } from "@/lib/utils";
@@ -4571,6 +4572,19 @@ function localCandidateHasLocationEvidence(query: string, contenderName: string,
 
   if (!terms.length) return true;
 
+  const verifiedAddressContainment = signals
+    .filter((signal) => Boolean(signal.verifiedAddress))
+    .map((signal) => localGeographyContainment(query, signal.verifiedAddress))
+    .filter((containment) => containment.requestedRegion);
+
+  if (verifiedAddressContainment.some((containment) => containment.status === "inside")) {
+    return true;
+  }
+
+  if (verifiedAddressContainment.length > 0 && verifiedAddressContainment.every((containment) => containment.status === "outside")) {
+    return false;
+  }
+
   return signals.some((signal) => {
     const text = normalizeQuery(
       [contenderName, signal.sourceTitle, signal.domain, signal.extractedReason, signal.positiveMention ?? "", signal.negativeMention ?? "", signal.verifiedAddress ?? ""].join(" ")
@@ -4642,6 +4656,9 @@ function localRequestedLocationTerms(query: string) {
     add("bay shore");
     add("patchogue");
     add("smithtown");
+  }
+  for (const term of localRegionLocationTerms(normalized)) {
+    add(term);
   }
 
   return Array.from(terms);

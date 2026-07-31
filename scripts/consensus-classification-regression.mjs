@@ -1855,6 +1855,96 @@ const longIslandLeakageProtection = localSubtypeProofForRegression(
 );
 assert.equal(longIslandLeakageProtection.discoveryPasses, false, "Long Island local queries should still reject Brooklyn/Long Island City leakage");
 
+function placesRegressionPlace(name, address, types = ["restaurant", "food", "point_of_interest", "establishment"]) {
+  return {
+    id: `regression-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    displayName: { text: name },
+    formattedAddress: address,
+    types,
+    primaryType: types[0],
+    businessStatus: "OPERATIONAL"
+  };
+}
+
+for (const [town, address] of [
+  ["Garden City", "910 Franklin Ave, Garden City, NY 11530, USA"],
+  ["Westbury", "725 Merrick Ave, Westbury, NY 11590, USA"],
+  ["Roslyn", "1362 Old Northern Blvd, Roslyn, NY 11576, USA"],
+  ["Mineola", "47 Mineola Blvd, Mineola, NY 11501, USA"],
+  ["Massapequa", "23 Broadway, Massapequa, NY 11758, USA"],
+  ["Franklin Square", "1039 Hempstead Turnpike, Franklin Square, NY 11010, USA"],
+  ["Elmont", "1343 Hempstead Turnpike, Elmont, NY 11003, USA"],
+  ["Syosset", "352 Jericho Tpke, Syosset, NY 11791, USA"]
+]) {
+  const scored = scorePlacesResultForRegression("best italian restaurant in Nassau County", "Regression Italian", placesRegressionPlace("Regression Italian", address, [
+    "italian_restaurant",
+    "restaurant",
+    "food",
+    "point_of_interest",
+    "establishment"
+  ]));
+  assert.notEqual(scored.rejectionReason, "weak_location_match", `Nassau County should contain ${town}`);
+  assert.ok(scored.locationConfidence >= 0.25, `Nassau County geography confidence should pass for ${town}`);
+
+  const discovery = localSubtypeProofForRegression("best italian restaurant in Nassau County", "Regression Italian", [
+    "italian_restaurant",
+    "restaurant",
+    "food",
+    "point_of_interest",
+    "establishment"
+  ], {
+    verifiedAddress: address,
+    sourceTitle: "Nassau County Italian restaurant recommendations",
+    sourceSnippet: "Regression Italian is recommended in a local Italian restaurant guide."
+  });
+  assert.equal(discovery.discoveryPasses, true, `Nassau County local discovery should contain ${town}`);
+}
+
+for (const [outside, address] of [
+  ["Huntington", "12 Main St, Huntington, NY 11743, USA"],
+  ["Brooklyn", "284 Grand St, Brooklyn, NY 11211, USA"],
+  ["Queens", "25-22 Astoria Blvd, Astoria, NY 11102, USA"],
+  ["Manhattan", "3 E 41st St, New York, NY 10017, USA"],
+  ["Long Island City", "47-10 Center Blvd, Long Island City, NY 11109, USA"]
+]) {
+  const scored = scorePlacesResultForRegression("best restaurant in Nassau County", "Regression Restaurant", placesRegressionPlace("Regression Restaurant", address));
+  assert.equal(scored.rejectionReason, "weak_location_match", `Nassau County should reject ${outside}`);
+}
+
+for (const [town, address] of [
+  ["Scarsdale", "185 Summerfield St, Scarsdale, NY 10583, USA"],
+  ["Mamaroneck", "213 Halstead Ave, Mamaroneck, NY 10543, USA"],
+  ["Hastings-on-Hudson", "549 Warburton Ave, Hastings-On-Hudson, NY 10706, USA"],
+  ["Irvington", "75 Main St, Irvington, NY 10533, USA"],
+  ["Armonk", "450 Main St, Armonk, NY 10504, USA"],
+  ["Pound Ridge", "258 Westchester Ave, Pound Ridge, NY 10576, USA"]
+]) {
+  const scored = scorePlacesResultForRegression("best restaurant in Westchester County", "Regression Restaurant", placesRegressionPlace("Regression Restaurant", address));
+  assert.notEqual(scored.rejectionReason, "weak_location_match", `Westchester County should contain ${town}`);
+  assert.ok(scored.locationConfidence >= 0.25, `Westchester County geography confidence should pass for ${town}`);
+}
+
+const longIslandStillAcceptsNassauTown = scorePlacesResultForRegression(
+  "best restaurant on Long Island",
+  "Regression Restaurant",
+  placesRegressionPlace("Regression Restaurant", "725 Merrick Ave, Westbury, NY 11590, USA")
+);
+assert.notEqual(longIslandStillAcceptsNassauTown.rejectionReason, "weak_location_match", "Long Island should still accept Nassau County town addresses");
+
+const longIslandStillAcceptsSuffolkTown = scorePlacesResultForRegression(
+  "best restaurant on Long Island",
+  "Regression Restaurant",
+  placesRegressionPlace("Regression Restaurant", "52 Old Dock Rd, Yaphank, NY 11980, USA")
+);
+assert.notEqual(longIslandStillAcceptsSuffolkTown.rejectionReason, "weak_location_match", "Long Island should still accept Suffolk County town addresses");
+
+const longIslandStillRejectsLongIslandCity = scorePlacesResultForRegression(
+  "best restaurant on Long Island",
+  "Regression Restaurant",
+  placesRegressionPlace("Regression Restaurant", "47-10 Center Blvd, Long Island City, NY 11109, USA")
+);
+assert.equal(longIslandStillRejectsLongIslandCity.rejectionReason, "weak_location_match", "Long Island should still reject Long Island City");
+
 const noPositiveEvidenceSubtypeProof = localSubtypeProofForRegression(
   "best italian restaurant in williamsburg",
   "Oregano",
