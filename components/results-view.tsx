@@ -367,26 +367,14 @@ function FactualAnswerView({ factualAnswer, query }: { factualAnswer: FactualAns
         <SearchExperience initialQuery={query} compact />
         <section className="mt-14 animate-result-enter">
           <div className="border-b border-[#ECECF0] pb-12">
-            <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Direct Answer</p>
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">DIRECT ANSWER</p>
             <p className="mt-3 max-w-3xl text-lg leading-8 text-[#62626A]">{factualAnswer.query}</p>
-            {factualAnswer.personalityLine ? (
-              <p className="mt-8 max-w-3xl text-2xl font-semibold tracking-[-0.015em] text-[#111114] sm:text-3xl">
-                {factualAnswer.personalityLine}
-              </p>
-            ) : null}
-            <p className="mt-5 max-w-3xl text-base leading-7 text-[#73737C]">{factualAnswer.boundaryMessage}</p>
             <h1 className="mt-7 max-w-4xl text-4xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-5xl">
               {factualAnswer.answer}
             </h1>
           </div>
 
           <div className="mt-12 grid gap-12">
-            <section className="border-t border-[#ECECF0] pt-10">
-              <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Why This Is Not Consensus</p>
-              <p className="mt-5 max-w-2xl text-[15px] leading-7 text-[#4B4B52]">
-                Vera identified this as a direct factual question, so it did not run recommendation consensus, rankings, or contender scoring.
-              </p>
-            </section>
             <SourcesSection sources={responseSources(factualAnswer)} />
           </div>
         </section>
