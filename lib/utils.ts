@@ -258,7 +258,7 @@ export function parseLocalQueryConstraints(query: string): LocalQueryConstraint[
 }
 
 export function canonicalizeQuery(query: string) {
-  const normalized = normalizeQuery(query)
+  const normalized = canonicalizeCompoundProductQuery(normalizeQuery(query))
     .replace(/\b(highest rated|most recommended|recommended|recommendations|recommendation|best|top|great|good)\b/g, " ")
     .replace(/\b(lunch places?|lunch spots?|dinner places?|dinner spots?|places to eat|place to eat|spots to eat|spot to eat|places for lunch|place for lunch|spots for lunch|spot for lunch|places for dinner|place for dinner|spots for dinner|spot for dinner|places for food|food places)\b/g, " restaurant ")
     .replace(/\b(new york|n y)\b/g, "ny")
@@ -270,6 +270,28 @@ export function canonicalizeQuery(query: string) {
     .map(singularizeCanonicalToken);
 
   return singularized.join(" ").replace(/\s+/g, " ").trim();
+}
+
+function canonicalizeCompoundProductQuery(normalized: string) {
+  if (isBabyMonitorProductQuery(normalized)) {
+    return normalized
+      .replace(/\bvideo baby monitors?\b/g, "baby monitor")
+      .replace(/\bnursery monitors?\b/g, "baby monitor")
+      .replace(/\binfant monitors?\b/g, "baby monitor")
+      .replace(/\bbaby cameras?\b/g, "baby monitor")
+      .replace(/\bbaby monitor cameras?\b/g, "baby monitor")
+      .replace(/\bcameras?\s+for\s+monitoring\s+(?:a\s+)?bab(?:y|ies)\b/g, "baby monitor")
+      .replace(/\bmonitoring\s+(?:a\s+)?bab(?:y|ies)\s+cameras?\b/g, "baby monitor");
+  }
+
+  return normalized;
+}
+
+function isBabyMonitorProductQuery(normalized: string) {
+  return (
+    /\b(?:baby|babies|infant|nursery)\b/.test(normalized) &&
+    /\b(?:monitor|monitors|camera|cameras)\b/.test(normalized)
+  ) || /\bcameras?\s+for\s+monitoring\s+(?:a\s+)?bab(?:y|ies)\b/.test(normalized);
 }
 
 export type QueryEvidenceType =
@@ -299,7 +321,8 @@ export type ConsensusEligibility =
         | "what_year"
         | "capital_question"
         | "release_date_question"
-        | "where_located";
+        | "where_located"
+        | "medical_fact_question";
     };
 
 export function classifyConsensusEligibility(query: string): ConsensusEligibility {
@@ -339,6 +362,10 @@ export function classifyConsensusEligibility(query: string): ConsensusEligibilit
 
   if (/^where\s+(?:is|was|are|were)\b.+\blocated\b/.test(normalized)) {
     return { eligible: false, kind: "objective_factual", reason: "where_located" };
+  }
+
+  if (/^what\s+(?:are|re|is|s)\s+(?:the\s+)?(?:symptoms?|signs?)\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "medical_fact_question" };
   }
 
   return { eligible: true, kind: "consensus", reason: "no_objective_factual_pattern" };
@@ -435,7 +462,7 @@ function hasExplicitProductSubject(normalized: string) {
     return false;
   }
 
-  return /\b(water bottle|bottle brand|bottle brands|coffee machine|coffee maker|espresso machine|machine|maker|appliance|appliances|mattress|mattresses|carry-on|carry on|luggage|suitcase|suitcases|running shoes?|sneakers?|shoe brand|shoe brands|router|wi-fi|wifi|headphones|earbuds|laptop|notebook|phone|smartphone|keyboard|mouse|office chair|desk chair|robot vacuum|vacuum|camera|monitor|backpack|television|tv|external ssd|portable ssd|air purifier)\b/.test(
+  return /\b(baby monitor|video baby monitor|baby cameras?|nursery monitor|infant monitor|water bottle|bottle brand|bottle brands|coffee machine|coffee maker|espresso machine|machine|maker|appliance|appliances|mattress|mattresses|carry-on|carry on|luggage|suitcase|suitcases|running shoes?|sneakers?|shoe brand|shoe brands|router|wi-fi|wifi|headphones|earbuds|laptop|notebook|phone|smartphone|keyboard|mouse|office chair|desk chair|robot vacuum|vacuum|camera|monitor|backpack|television|tv|external ssd|portable ssd|air purifier)\b/.test(
     normalized
   );
 }

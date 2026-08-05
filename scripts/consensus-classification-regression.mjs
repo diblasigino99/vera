@@ -21,6 +21,7 @@ const {
   buildProductFallbackConsensus,
   enforceDisplayableSplitConsensusInvariant,
   filterCompatibleEntityNamesForRegression,
+  filterCompatibleProductSignalsForRegression,
   filterCompatibleSoftwareSignalsForRegression,
   localCategoryFilterForRegression,
   localFallbackEvidenceEligibilityForRegression,
@@ -40,6 +41,7 @@ const { scorePlacesResultForRegression } = jiti("./lib/server/places.ts");
 const { canonicalizeQuery, classifyConsensusEligibility, inferQueryEvidenceType, parseLocalIntent } = jiti("./lib/utils.ts");
 const { attachContenderActions, productAmazonDestinationAccepted, productOfficialDestinationAccepted } = jiti("./lib/action-links.ts");
 const { attachPostDecisionActionsWithBudget } = jiti("./lib/server/action-resolution.ts");
+const { buildFactualAnswerResponseForRegression, isSensitiveFactualQuestion } = jiti("./lib/server/factual-answer.ts");
 
 const minimumSourceCount = 3;
 const minimumTopPositiveMentions = 3;
@@ -183,6 +185,46 @@ assertOpenAITrimSafe("plain ascii text that is long", 12, "plain ascii...", "Lon
 assertOpenAITrimSafe(`abc${String.fromCharCode(0xd83c)}def`, 20, "abcdef", "Already malformed high surrogate should be removed without corrupting surrounding text");
 assertOpenAITrimSafe(`abc${String.fromCharCode(0xdc00)}def`, 20, "abcdef", "Already malformed low surrogate should be removed without corrupting surrounding text");
 assertOpenAITrimSafe(`Brevo G2: 4.5 ${String.fromCodePoint(0x1f4a1)} reviews`, 15, "Brevo G2: 4.5...", "Mailtrap-style emoji boundary should not produce invalid JSON");
+
+const factualNBAEligibility = classifyConsensusEligibility("who won the nba finals this year");
+assert.equal(factualNBAEligibility.eligible, false, "Objective factual sports result should bypass consensus eligibility");
+const factualNBAAnswer = buildFactualAnswerResponseForRegression({
+  query: "who won the nba finals this year",
+  answer: "The regression champion won the NBA Finals."
+});
+assert.equal(factualNBAAnswer.type, "factual_answer", "Objective factual response should use the factual_answer shape");
+assert.equal("mode" in factualNBAAnswer, false, "Factual answers must not expose a consensus mode");
+assert.equal("results" in factualNBAAnswer, false, "Factual answers must not expose contender results");
+assert.equal(Boolean(factualNBAAnswer.personalityLine), true, "Non-sensitive factual answers may include deterministic Vera personality");
+assert.equal(factualNBAAnswer.boundaryMessage, "But since you asked...", "Non-sensitive factual answers should use the factual transition");
+assert.equal(factualNBAAnswer.cached, false, "Factual answers should not use consensus cache");
+
+const sensitiveFactualEligibility = classifyConsensusEligibility("what are the symptoms of a heart attack");
+assert.equal(sensitiveFactualEligibility.eligible, false, "Sensitive objective medical question should bypass consensus eligibility");
+assert.equal(isSensitiveFactualQuestion("what are the symptoms of a heart attack"), true, "Medical factual question should be treated as sensitive");
+const sensitiveFactualAnswer = buildFactualAnswerResponseForRegression({
+  query: "what are the symptoms of a heart attack",
+  answer: "Regression sensitive answer."
+});
+assert.equal(sensitiveFactualAnswer.type, "factual_answer", "Sensitive factual response should use the factual_answer shape");
+assert.equal(sensitiveFactualAnswer.isSensitive, true, "Sensitive factual response should be marked sensitive");
+assert.equal(sensitiveFactualAnswer.personalityLine, undefined, "Sensitive factual answers must not include humor/personality");
+assert.equal(
+  sensitiveFactualAnswer.boundaryMessage,
+  "This is a direct factual question, so Vera is answering it directly.",
+  "Sensitive factual answers should use a neutral direct boundary message"
+);
+
+for (const consensusControl of [
+  "best running shoes",
+  "best lunch places east meadow",
+  "best restaurant in Nassau County",
+  "Rome vs Florence",
+  "is Hydro Flask worth it",
+  "is Rome overrated"
+]) {
+  assert.equal(classifyConsensusEligibility(consensusControl).eligible, true, `${consensusControl} should remain consensus eligible`);
+}
 
 const actionProductA = contender("Away Carry-On", {
   positives: 3,
@@ -1348,6 +1390,101 @@ const mattressPreserved = preserveEvidenceBackedProductContendersForRegression("
 assert.deepEqual(mattressPreserved, ["Helix Midnight Luxe"], "Broad-product preservation should retain a valid mattress contender when cleanup would empty the set");
 
 console.log(JSON.stringify({ broadProductPreservation: { waterBottlePreserved, mattressPreserved } }, null, 2));
+
+const babyMonitorParaphrases = [
+  "best baby monitor",
+  "best baby monitor camera",
+  "best baby camera",
+  "best baby cameras",
+  "best video baby monitor",
+  "best nursery monitor",
+  "best camera for monitoring a baby"
+];
+const babyMonitorCompatibleFixtures = [
+  {
+    name: "Nanit Pro",
+    reason: "recommended as a video baby monitor for nursery sleep tracking",
+    sourceTitle: "Best Baby Monitors"
+  },
+  {
+    name: "Infant Optics DXR-8",
+    reason: "recommended as a dedicated baby monitor with parent unit",
+    sourceTitle: "Best Video Baby Monitors"
+  },
+  {
+    name: "Eufy SpaceView",
+    reason: "recommended for nursery monitoring and baby sleep",
+    sourceTitle: "Baby monitor reviews"
+  },
+  {
+    name: "Dell Alienware AW3423DWF",
+    reason: "recommended as a QD-OLED gaming monitor with high refresh rate",
+    sourceTitle: "Best Gaming Monitors"
+  },
+  {
+    name: "LG UltraGear OLED",
+    reason: "recommended as an OLED computer display for gaming",
+    sourceTitle: "Best Gaming Monitors"
+  },
+  {
+    name: "Sony A7 IV",
+    reason: "recommended as a full-frame mirrorless photography camera",
+    sourceTitle: "Best Mirrorless Cameras"
+  },
+  {
+    name: "Canon EOS R6 Mark II",
+    reason: "recommended as a mirrorless camera for photography and video",
+    sourceTitle: "Best Cameras"
+  },
+  {
+    name: "Fujifilm X-T5",
+    reason: "recommended as an APS-C photography camera",
+    sourceTitle: "Best Cameras"
+  },
+  {
+    name: "Sony FE 35mm Lens",
+    reason: "recommended as a camera lens accessory",
+    sourceTitle: "Best Camera Lenses"
+  },
+  {
+    name: "TP-Link Tapo C210",
+    reason: "recommended as an indoor security camera for home surveillance",
+    sourceTitle: "Best Security Cameras"
+  },
+  {
+    name: "TP-Link Tapo C210",
+    reason: "recommended as an affordable nursery camera for monitoring a baby",
+    sourceTitle: "Best Baby Monitor Cameras",
+    sourceUrl: "regression://tapo-baby"
+  }
+];
+const babyMonitorRegression = babyMonitorParaphrases.map((query) => {
+  assert.equal(inferQueryEvidenceType(query), "product_recommendation", `${query} should route as product recommendation`);
+  assert.equal(canonicalizeQuery(query), "baby monitor", `${query} should canonicalize to baby monitor`);
+  const compatibility = filterCompatibleProductSignalsForRegression(query, babyMonitorCompatibleFixtures);
+  assert.equal(compatibility.category, "baby monitor", `${query} should use baby monitor product category`);
+  assert.ok(compatibility.compatibleNames.includes("Nanit Pro"), `${query} should retain Nanit Pro`);
+  assert.ok(compatibility.compatibleNames.includes("Infant Optics DXR-8"), `${query} should retain Infant Optics DXR-8`);
+  assert.ok(compatibility.compatibleNames.includes("Eufy SpaceView"), `${query} should retain Eufy SpaceView`);
+  assert.ok(compatibility.compatibleNames.includes("TP-Link Tapo C210"), `${query} should allow a security camera only with nursery/baby-monitor evidence`);
+  for (const invalid of ["Dell Alienware AW3423DWF", "LG UltraGear OLED", "Sony A7 IV", "Canon EOS R6 Mark II", "Fujifilm X-T5", "Sony FE 35mm Lens"]) {
+    assert.equal(compatibility.compatibleNames.includes(invalid), false, `${query} should reject ${invalid}`);
+  }
+
+  return {
+    query,
+    canonical: canonicalizeQuery(query),
+    category: compatibility.category,
+    compatibleNames: compatibility.compatibleNames
+  };
+});
+
+assert.equal(filterCompatibleProductSignalsForRegression("best gaming monitor", babyMonitorCompatibleFixtures).category, "monitor", "Gaming monitor should remain distinct from baby monitor");
+assert.equal(filterCompatibleProductSignalsForRegression("best security camera", babyMonitorCompatibleFixtures).category, "security camera", "Security camera should remain distinct from baby monitor");
+assert.equal(filterCompatibleProductSignalsForRegression("best digital camera", babyMonitorCompatibleFixtures).category, "camera", "Digital camera should remain distinct from baby monitor");
+assert.equal(filterCompatibleProductSignalsForRegression("best baby monitor", babyMonitorCompatibleFixtures).category, "baby monitor", "Baby monitor should remain its own compound category");
+
+console.log(JSON.stringify({ babyMonitorProductCompatibility: babyMonitorRegression }, null, 2));
 
 const aiCodingCompatibility = filterCompatibleSoftwareSignalsForRegression("best ai coding assistant", [
   { name: "Honda Pilot", reason: "listed as an SUV in an automotive comparison", sourceTitle: "Best vehicles tested" },

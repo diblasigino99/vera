@@ -1157,11 +1157,19 @@ function buildLocalNamedCandidateVariants(query: string) {
 function normalizeProductSearchQuery(query: string) {
   const normalized = query.toLowerCase();
 
+  if (isBabyMonitorProductQuery(normalized)) {
+    return "best baby monitor video baby monitor nursery camera product reviews";
+  }
+
+  if (/\bsecurity camera|surveillance camera|doorbell camera|indoor camera|outdoor camera\b/.test(normalized)) {
+    return "best security camera product reviews";
+  }
+
   if (/\bbest television\b|\bbest tv\b/.test(normalized)) {
     return "best TV television product";
   }
 
-  if (/\bbest camera\b/.test(normalized)) {
+  if (/\bbest camera\b/.test(normalized) || /\bdigital camera\b|\bmirrorless camera\b|\bdslr\b/.test(normalized)) {
     return "best mirrorless camera product";
   }
 
@@ -1170,6 +1178,13 @@ function normalizeProductSearchQuery(query: string) {
   }
 
   return query;
+}
+
+function isBabyMonitorProductQuery(normalized: string) {
+  return (
+    /\b(?:baby|babies|infant|nursery)\b/.test(normalized) &&
+    /\b(?:monitor|monitors|camera|cameras)\b/.test(normalized)
+  ) || /\bcameras?\s+for\s+monitoring\s+(?:a\s+)?bab(?:y|ies)\b/.test(normalized);
 }
 
 function dedupeSources(sources: VeraSource[], diagnostics?: SearchDiagnostics) {

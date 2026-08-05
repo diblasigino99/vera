@@ -1971,6 +1971,31 @@ export function filterCompatibleSoftwareSignalsForRegression(
   };
 }
 
+export function filterCompatibleProductSignalsForRegression(
+  query: string,
+  items: Array<{ name: string; reason?: string; sourceTitle?: string; sourceUrl?: string; sentiment?: SourceSignal["sentiment"] }>
+) {
+  const diagnostics = createAnalyzeDiagnostics();
+  const signals = items.map((item, index) => ({
+    ...regressionSourceSignal(item.name, index, "product_recommendation"),
+    sourceUrl: item.sourceUrl ?? `regression://${index + 1}`,
+    sourceTitle: item.sourceTitle ?? `Regression product source ${index + 1}`,
+    sentiment: item.sentiment ?? "positive",
+    mentionStrength: inferMentionStrength(item.reason ?? "Regression product evidence"),
+    positiveMention: item.sentiment === "negative" ? undefined : (item.reason ?? "Regression product evidence"),
+    negativeMention: item.sentiment === "negative" ? (item.reason ?? "Regression product evidence") : undefined,
+    extractedReason: item.reason ?? "Regression product evidence"
+  }));
+  const resolved = resolveSignalsForRequestedEntityLevel(query, "product_recommendation", signals, diagnostics);
+  const compatible = filterSignalsByRequestedEntityCompatibility(query, "product_recommendation", resolved, diagnostics);
+
+  return {
+    category: productCategoryForQuery(query)?.key ?? null,
+    compatibleNames: Array.from(new Set(compatible.map((signal) => signal.contenderName))),
+    diagnostics: diagnostics.entityValidationDiagnostics
+  };
+}
+
 export async function productOpinionAggregationScopeForRegression(
   query: string,
   items: Array<{ name: string; reason?: string; sourceTitle?: string; sourceUrl?: string }>
@@ -2869,6 +2894,10 @@ function requestedEntityCompatibilityRejectionReason(
     if (looksLikeRetailerEntity(normalizedName, combined) && !/\b(retailer|retailers|store|stores|shop|shops|where to buy)\b/.test(queryNormalized)) {
       return { reasonCode: "wrong_entity_type", inferredCandidateType: "retailer", reason: "Product query cannot aggregate retailers unless retailers are requested." };
     }
+    const productFunctionRejection = productFunctionCompatibilityRejectionReason(query, name, combined);
+    if (productFunctionRejection) {
+      return productFunctionRejection;
+    }
   }
 
   if (evidenceType === "destination_recommendation") {
@@ -2887,6 +2916,52 @@ function requestedEntityCompatibilityRejectionReason(
         reason: `Destination query cannot aggregate ${detectedCategory.contenderCategory} entities.`
       };
     }
+  }
+
+  return null;
+}
+
+function productFunctionCompatibilityRejectionReason(
+  query: string,
+  name: string,
+  combinedEvidence: string
+): { reasonCode: EntityValidationDiagnostic["reasonCode"]; inferredCandidateType: string; reason: string } | null {
+  const category = productCategoryForQuery(query)?.key ?? "";
+
+  if (category !== "baby monitor") {
+    return null;
+  }
+
+  const normalizedName = normalizeQuery(name.replace(/([a-z])([A-Z])/g, "$1 $2"));
+  const evidence = normalizeQuery(combinedEvidence);
+  const babyMonitorEvidence = /\b(?:baby|babies|infant|nursery|crib|parent unit|video baby monitor|baby monitor|monitoring a baby)\b/.test(evidence);
+
+  if (babyMonitorEvidence) {
+    return null;
+  }
+
+  if (/\b(?:alienware|ultragear|odyssey|gaming monitor|computer monitor|oled monitor|display|curved monitor|refresh rate|hdr|g-sync|freesync)\b/.test(evidence)) {
+    return { reasonCode: "category_mismatch", inferredCandidateType: "computer_monitor", reason: "Baby-monitor query cannot aggregate computer or gaming display contenders." };
+  }
+
+  if (/\b(?:sony a7|canon eos|fujifilm x|nikon z|lumix|mirrorless|dslr|full frame|aps-c|photography camera|camera lens|lens|tripod)\b/.test(evidence)) {
+    return {
+      reasonCode: "category_mismatch",
+      inferredCandidateType: "general_purpose_camera",
+      reason: "Baby-monitor query cannot aggregate photography cameras, lenses, or accessories."
+    };
+  }
+
+  if (/\b(?:security camera|surveillance camera|doorbell camera|outdoor camera|indoor camera|wireless camera|ip camera|tapo|arlo|wyze|eufy cam|ring camera)\b/.test(evidence)) {
+    return {
+      reasonCode: "category_mismatch",
+      inferredCandidateType: "security_camera_without_baby_monitor_evidence",
+      reason: "Generic security cameras need explicit baby or nursery monitoring evidence for a baby-monitor query."
+    };
+  }
+
+  if (/\b(?:monitor|camera|lens|display)\b/.test(normalizedName)) {
+    return { reasonCode: "category_mismatch", inferredCandidateType: "wrong_product_function", reason: "Candidate does not show baby-monitor product-function evidence." };
   }
 
   return null;
@@ -7160,6 +7235,14 @@ function productCategoryForQuery(query: string): ProductCategoryPrior | null {
     return productCategory("carry-on luggage", ["Away Carry-On", "Travelpro Platinum Elite", "Monos Carry-On"]);
   }
 
+  if (isBabyMonitorProductQuery(normalized)) {
+    return productCategory("baby monitor", ["Nanit Pro", "Infant Optics DXR-8", "Eufy SpaceView", "VTech VM819", "Babysense MaxView"]);
+  }
+
+  if (/\bsecurity camera|surveillance camera|doorbell camera|indoor camera|outdoor camera\b/.test(normalized)) {
+    return productCategory("security camera", ["Arlo Pro", "TP-Link Tapo", "Wyze Cam", "EufyCam", "Ring Stick Up Cam"]);
+  }
+
   if (/\bgaming monitor|monitor\b/.test(normalized)) {
     return productCategory("monitor", ["Dell Alienware AW3423DWF", "LG UltraGear OLED", "Gigabyte M27Q"]);
   }
@@ -7185,6 +7268,13 @@ function productCategoryForQuery(query: string): ProductCategoryPrior | null {
   }
 
   return null;
+}
+
+function isBabyMonitorProductQuery(normalized: string) {
+  return (
+    /\b(?:baby|babies|infant|nursery)\b/.test(normalized) &&
+    /\b(?:monitor|monitors|camera|cameras)\b/.test(normalized)
+  ) || /\bcameras?\s+for\s+monitoring\s+(?:a\s+)?bab(?:y|ies)\b/.test(normalized);
 }
 
 function isAutomotiveQuery(query: string) {
@@ -7261,6 +7351,16 @@ function productLeaderAliases(label: string) {
   if (normalized === "hyundai sonata") aliases.add("sonata");
   if (normalized === "kia k5") aliases.add("k5");
   if (normalized === "subaru legacy") aliases.add("legacy");
+  if (normalized === "nanit pro") ["nanit", "nanit pro camera", "nanit pro baby monitor"].forEach((alias) => aliases.add(alias));
+  if (normalized === "infant optics dxr-8") ["infant optics", "dxr-8", "dxr 8", "infant optics dxr 8"].forEach((alias) => aliases.add(alias));
+  if (normalized === "eufy spaceview") ["eufy spaceview pro", "spaceview", "eufy baby monitor"].forEach((alias) => aliases.add(alias));
+  if (normalized === "vtech vm819") ["vtech", "vm819", "vtech baby monitor"].forEach((alias) => aliases.add(alias));
+  if (normalized === "babysense maxview") ["babysense", "maxview", "babysense baby monitor"].forEach((alias) => aliases.add(alias));
+  if (normalized === "arlo pro") ["arlo", "arlo pro 5", "arlo pro 4"].forEach((alias) => aliases.add(alias));
+  if (normalized === "tp-link tapo") ["tp link tapo", "tapo", "tapo c210", "tp-link tapo c210"].forEach((alias) => aliases.add(alias));
+  if (normalized === "wyze cam") ["wyze", "wyze camera"].forEach((alias) => aliases.add(alias));
+  if (normalized === "eufycam") ["eufy cam", "eufy camera"].forEach((alias) => aliases.add(alias));
+  if (normalized === "ring stick up cam") ["ring camera", "stick up cam"].forEach((alias) => aliases.add(alias));
 
   return Array.from(aliases);
 }
