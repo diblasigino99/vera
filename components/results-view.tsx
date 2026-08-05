@@ -360,6 +360,14 @@ function SearchResultsNav() {
 }
 
 function FactualAnswerView({ factualAnswer, query }: { factualAnswer: FactualAnswerResponse; query: string }) {
+  const isLongForm = isLongFormFactualAnswer(factualAnswer);
+  const showEmergencyAlert = factualAnswer.urgency === "emergency" && Boolean(factualAnswer.urgentGuidance);
+  const displayHeading = factualAnswer.heading ?? (isLongForm ? undefined : factualAnswer.answer);
+  const shouldRenderAnswerBody =
+    isLongForm &&
+    (!factualAnswer.items?.length || (!factualAnswer.summary && factualAnswer.answer !== factualAnswer.heading)) &&
+    factualAnswer.answer !== factualAnswer.summary;
+
   return (
     <>
       <SearchResultsNav />
@@ -369,9 +377,32 @@ function FactualAnswerView({ factualAnswer, query }: { factualAnswer: FactualAns
           <div className="border-b border-[#ECECF0] pb-12">
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">DIRECT ANSWER</p>
             <p className="mt-3 max-w-3xl text-lg leading-8 text-[#62626A]">{factualAnswer.query}</p>
-            <h1 className="mt-7 max-w-4xl text-4xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-5xl">
-              {factualAnswer.answer}
-            </h1>
+            {showEmergencyAlert ? (
+              <div className="mt-7 max-w-3xl rounded-[1rem] border border-[#E8C8BF] bg-[#FFF7F4] px-5 py-4 text-[15px] font-medium leading-7 text-[#7A2E20]">
+                {factualAnswer.urgentGuidance}
+              </div>
+            ) : null}
+            {isLongForm ? (
+              <div className="mt-8 max-w-3xl">
+                {displayHeading ? <h1 className="text-3xl font-semibold tracking-[-0.02em] text-[#111114] sm:text-4xl">{displayHeading}</h1> : null}
+                {factualAnswer.items?.length ? (
+                  <ul className="mt-6 space-y-3 text-base leading-7 text-[#303036]">
+                    {factualAnswer.items.map((item) => (
+                      <li className="flex gap-3" key={item}>
+                        <span className="mt-[0.7em] h-1.5 w-1.5 shrink-0 rounded-full bg-[#8A8A92]" aria-hidden />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {factualAnswer.summary ? <p className="mt-6 text-base leading-8 text-[#4B4B52]">{factualAnswer.summary}</p> : null}
+                {shouldRenderAnswerBody ? <p className="mt-6 whitespace-pre-line text-base leading-8 text-[#4B4B52]">{factualAnswer.answer}</p> : null}
+              </div>
+            ) : (
+              <h1 className="mt-7 max-w-4xl text-4xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-5xl">
+                {factualAnswer.answer}
+              </h1>
+            )}
           </div>
 
           <div className="mt-12 grid gap-12">
@@ -381,6 +412,17 @@ function FactualAnswerView({ factualAnswer, query }: { factualAnswer: FactualAns
       </section>
     </>
   );
+}
+
+function isLongFormFactualAnswer(factualAnswer: FactualAnswerResponse) {
+  if (factualAnswer.presentation === "explanatory_fact" || factualAnswer.presentation === "sensitive_fact") return true;
+  if (factualAnswer.isSensitive || factualAnswer.urgency === "emergency" || factualAnswer.urgentGuidance || factualAnswer.items?.length) return true;
+
+  const answer = factualAnswer.answer.trim();
+  const sentenceCount = answer.match(/[.!?](?:\s|$)/g)?.length ?? 0;
+  const wordCount = answer.split(/\s+/).filter(Boolean).length;
+
+  return answer.length > 180 || wordCount > 28 || sentenceCount > 1 || /\n|^\s*[-*]/m.test(answer);
 }
 
 function resultStorageKey(searchId: string) {

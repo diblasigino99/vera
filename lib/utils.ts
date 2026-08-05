@@ -378,6 +378,13 @@ export function classifyConsensusEligibility(query: string): ConsensusEligibilit
     return { eligible: false, kind: "objective_factual", reason: "medical_fact_question" };
   }
 
+  if (
+    /^(?:can|could|is|are|does|do)\b/.test(normalized) &&
+    /\b(?:symptoms?|signs?|dangerous|safe|unsafe|risk|risks|side effects?|interactions?|mixing|combine|combined|alcohol|acetaminophen|ibuprofen|medication|medicine|dose|dosage)\b/.test(normalized)
+  ) {
+    return { eligible: false, kind: "objective_factual", reason: "medical_fact_question" };
+  }
+
   return { eligible: true, kind: "consensus", reason: "no_objective_factual_pattern" };
 }
 

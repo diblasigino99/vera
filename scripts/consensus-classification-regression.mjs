@@ -41,7 +41,7 @@ const { scorePlacesResultForRegression } = jiti("./lib/server/places.ts");
 const { canonicalizeQuery, classifyConsensusEligibility, inferQueryEvidenceType, parseLocalIntent } = jiti("./lib/utils.ts");
 const { attachContenderActions, productAmazonDestinationAccepted, productOfficialDestinationAccepted } = jiti("./lib/action-links.ts");
 const { attachPostDecisionActionsWithBudget, productActionLookupQueryForRegression, verifiedOfficialProductCandidateUrlsForRegression } = jiti("./lib/server/action-resolution.ts");
-const { buildFactualAnswerResponseForRegression, isSensitiveFactualQuestion } = jiti("./lib/server/factual-answer.ts");
+const { buildFactualAnswerResponseForRegression, classifyFactualUrgency, isSensitiveFactualQuestion } = jiti("./lib/server/factual-answer.ts");
 const { isConsensusResponse, isFactualAnswerResponse, responseRenderBranchForRegression, responseSources } = jiti("./lib/search-response.ts");
 
 const minimumSourceCount = 3;
@@ -229,7 +229,13 @@ assert.equal(sensitiveFactualEligibility.eligible, false, "Sensitive objective m
 assert.equal(isSensitiveFactualQuestion("what are the symptoms of a heart attack"), true, "Medical factual question should be treated as sensitive");
 const sensitiveFactualAnswer = buildFactualAnswerResponseForRegression({
   query: "what are the symptoms of a heart attack",
-  answer: "Regression sensitive answer."
+  answer: "Heart attack warning signs can include chest discomfort, shortness of breath, and other symptoms.",
+  heading: "Heart attack warning signs",
+  items: ["Chest pressure, squeezing, fullness, pain, or other discomfort", "Shortness of breath"],
+  summary: "Symptoms can vary and may be less obvious in some people.",
+  urgentGuidance: "If you or someone else may be having these symptoms now, call 911 immediately.",
+  urgency: "emergency",
+  presentation: "sensitive_fact"
 });
 assert.equal(sensitiveFactualAnswer.type, "factual_answer", "Sensitive factual response should use the factual_answer shape");
 assert.equal(sensitiveFactualAnswer.isSensitive, true, "Sensitive factual response should be marked sensitive");
@@ -239,6 +245,59 @@ assert.equal(
   "This is a direct factual question, so Vera is answering it directly.",
   "Sensitive factual answers should use a neutral direct boundary message"
 );
+assert.equal(sensitiveFactualAnswer.heading, "Heart attack warning signs", "Structured medical factual answers may include a heading");
+assert.deepEqual(
+  sensitiveFactualAnswer.items,
+  ["Chest pressure, squeezing, fullness, pain, or other discomfort", "Shortness of breath"],
+  "Structured factual bullets must come from the factual payload"
+);
+assert.equal(sensitiveFactualAnswer.urgency, "emergency", "Heart attack symptom queries should carry emergency urgency metadata");
+assert.match(
+  sensitiveFactualAnswer.urgentGuidance ?? "",
+  /call 911 immediately/i,
+  "Emergency guidance should tell users to call 911 immediately when symptoms may be happening now"
+);
+assert.equal(sensitiveFactualAnswer.presentation, "sensitive_fact", "Sensitive factual answers should render with body-safe typography");
+
+const strokeFactualAnswer = buildFactualAnswerResponseForRegression({
+  query: "what are the signs of a stroke",
+  answer: "Stroke warning signs can include face drooping, arm weakness, speech trouble, vision trouble, dizziness, or sudden severe headache.",
+  items: ["Face drooping", "Arm weakness", "Speech trouble"],
+  urgentGuidance: "If you or someone else may be having these symptoms now, call 911 immediately."
+});
+assert.equal(strokeFactualAnswer.urgency, "emergency", "Stroke sign queries should carry emergency urgency metadata");
+assert.match(strokeFactualAnswer.urgentGuidance ?? "", /call 911 immediately/i, "Stroke emergency guidance should remain explicit");
+assert.equal(classifyFactualUrgency("what are the signs of a stroke"), "emergency", "Stroke sign queries should be classified as emergency urgency");
+
+const routineMedicalAnswer = buildFactualAnswerResponseForRegression({
+  query: "can mixing alcohol and acetaminophen be dangerous",
+  answer: "Yes. Mixing alcohol and acetaminophen can increase the risk of liver damage.",
+  presentation: "sensitive_fact"
+});
+assert.equal(routineMedicalAnswer.urgency, "prompt_care", "Routine medical safety facts should not receive emergency urgency");
+assert.equal(routineMedicalAnswer.urgentGuidance, undefined, "Routine medical safety facts should not render an emergency block");
+assert.equal(
+  classifyConsensusEligibility("can mixing alcohol and acetaminophen be dangerous").kind,
+  "objective_factual",
+  "Medication safety questions should bypass consensus as factual medical questions"
+);
+assert.equal(
+  classifyFactualUrgency("can mixing alcohol and acetaminophen be dangerous"),
+  "prompt_care",
+  "Routine medication safety questions should use prompt-care urgency, not emergency"
+);
+
+const shortCapitalAnswer = buildFactualAnswerResponseForRegression({
+  query: "what is the capital of new york",
+  answer: "The capital of New York is Albany."
+});
+assert.equal(shortCapitalAnswer.presentation, "short_fact", "Short factual answers should remain visually prominent");
+
+const skyExplanationAnswer = buildFactualAnswerResponseForRegression({
+  query: "why is the sky blue",
+  answer: "The sky appears blue because molecules in the atmosphere scatter shorter blue wavelengths of sunlight more than longer wavelengths. This scattering sends blue light toward your eyes from many directions."
+});
+assert.equal(skyExplanationAnswer.presentation, "explanatory_fact", "Long explanatory factual answers should use readable body typography");
 
 for (const consensusControl of [
   "best running shoes",
@@ -1419,7 +1478,9 @@ const factualEligibilityCases = [
   "what year did apple release the iphone",
   "who founded microsoft",
   "who wrote the great gatsby",
-  "why is the sky blue"
+  "why is the sky blue",
+  "what are the signs of a stroke",
+  "can mixing alcohol and acetaminophen be dangerous"
 ];
 
 for (const query of factualEligibilityCases) {

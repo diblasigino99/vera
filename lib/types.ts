@@ -249,6 +249,12 @@ export type FactualAnswerResponse = {
   isSensitive: boolean;
   personalityLine?: string;
   boundaryMessage: string;
+  heading?: string;
+  summary?: string;
+  items?: string[];
+  urgentGuidance?: string;
+  urgency?: "none" | "prompt_care" | "emergency";
+  presentation?: "short_fact" | "explanatory_fact" | "sensitive_fact";
   answer: string;
   sources: VeraSource[];
   createdAt: string;
