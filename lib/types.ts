@@ -240,6 +240,26 @@ export type ConsensusResponse = {
   cached: boolean;
 };
 
+export type FactualAnswerResponse = {
+  type: "factual_answer";
+  id: string;
+  query: string;
+  normalizedQuery: string;
+  canonicalQuery?: string;
+  isSensitive: boolean;
+  personalityLine?: string;
+  boundaryMessage: string;
+  answer: string;
+  sources: VeraSource[];
+  createdAt: string;
+  generated_at?: string;
+  cached: false;
+  factualAnswerVerified: boolean;
+  unsupportedReason?: string;
+};
+
+export type SearchResponse = ConsensusResponse | FactualAnswerResponse;
+
 export type ProfileSnapshot = {
   recentSearches: Array<Pick<ConsensusResponse, "id" | "query" | "headline" | "createdAt">>;
   savedSearches: Array<Pick<ConsensusResponse, "id" | "query" | "headline" | "createdAt">>;
