@@ -42,6 +42,7 @@ const { canonicalizeQuery, classifyConsensusEligibility, inferQueryEvidenceType,
 const { attachContenderActions, productAmazonDestinationAccepted, productOfficialDestinationAccepted } = jiti("./lib/action-links.ts");
 const { attachPostDecisionActionsWithBudget, productActionLookupQueryForRegression, verifiedOfficialProductCandidateUrlsForRegression } = jiti("./lib/server/action-resolution.ts");
 const { buildFactualAnswerResponseForRegression, isSensitiveFactualQuestion } = jiti("./lib/server/factual-answer.ts");
+const { isConsensusResponse, isFactualAnswerResponse, responseRenderBranchForRegression, responseSources } = jiti("./lib/search-response.ts");
 
 const minimumSourceCount = 3;
 const minimumTopPositiveMentions = 3;
@@ -198,6 +199,30 @@ assert.equal("results" in factualNBAAnswer, false, "Factual answers must not exp
 assert.equal(Boolean(factualNBAAnswer.personalityLine), true, "Non-sensitive factual answers may include deterministic Vera personality");
 assert.equal(factualNBAAnswer.boundaryMessage, "But since you asked...", "Non-sensitive factual answers should use the factual transition");
 assert.equal(factualNBAAnswer.cached, false, "Factual answers should not use consensus cache");
+assert.equal(isFactualAnswerResponse(factualNBAAnswer), true, "Factual answers should be recognized by the response discriminator");
+assert.equal(isConsensusResponse(factualNBAAnswer), false, "Factual answers must not enter consensus rendering");
+assert.equal(responseRenderBranchForRegression(factualNBAAnswer), "factual_answer", "Factual answers should render the factual branch");
+
+for (const factualQuery of ["What is the capital of Australia?", "Who wrote The Great Gatsby?", "Why is the sky blue?"]) {
+  const factualResponse = buildFactualAnswerResponseForRegression({
+    query: factualQuery,
+    answer: "Regression factual answer."
+  });
+
+  assert.equal(responseRenderBranchForRegression(factualResponse), "factual_answer", `${factualQuery} should render the factual branch`);
+  assert.doesNotThrow(() => responseSources(factualResponse).map((item) => item.url), `${factualQuery} factual sources should be safe to iterate`);
+}
+
+const legacyFactualShapeWithoutDiscriminator = {
+  id: "legacy-factual-regression",
+  query: "What is the capital of Australia?",
+  normalizedQuery: "what is the capital of australia",
+  answer: "Canberra.",
+  sources: undefined,
+  cached: false
+};
+assert.equal(responseRenderBranchForRegression(legacyFactualShapeWithoutDiscriminator), "factual_answer", "Legacy factual-like payloads without mode must not fall into consensus rendering");
+assert.doesNotThrow(() => responseSources(legacyFactualShapeWithoutDiscriminator).map((item) => item.url), "Missing factual sources must not crash rendering");
 
 const sensitiveFactualEligibility = classifyConsensusEligibility("what are the symptoms of a heart attack");
 assert.equal(sensitiveFactualEligibility.eligible, false, "Sensitive objective medical question should bypass consensus eligibility");
@@ -217,6 +242,8 @@ assert.equal(
 
 for (const consensusControl of [
   "best running shoes",
+  "What is the best baby monitor?",
+  "Best CRM software",
   "best lunch places east meadow",
   "best restaurant in Nassau County",
   "Rome vs Florence",
@@ -242,6 +269,7 @@ const splitProductActions = consensusFixture({
   contenders: [actionProductA, actionProductB],
   results: [actionProductA, actionProductB].map(resultFromContender)
 });
+assert.equal(responseRenderBranchForRegression(splitProductActions), "consensus", "Recommendation consensus responses should render the consensus branch");
 splitProductActions.structuredConsensus.queryEvidenceType = "product_recommendation";
 splitProductActions.sources = [
   source("Away Carry-On", "https://www.awaytravel.com/suitcases/carry-on", "awaytravel.com", "Away Carry-On product page.", "Away Carry-On"),
@@ -1389,7 +1417,9 @@ const factualEligibilityCases = [
   "when did the iphone launch",
   "what is the capital of italy",
   "what year did apple release the iphone",
-  "who founded microsoft"
+  "who founded microsoft",
+  "who wrote the great gatsby",
+  "why is the sky blue"
 ];
 
 for (const query of factualEligibilityCases) {

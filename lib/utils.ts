@@ -317,11 +317,13 @@ export type ConsensusEligibility =
         | "who_won"
         | "who_is_role"
         | "who_founded"
+        | "who_wrote"
         | "when_did"
         | "what_year"
         | "capital_question"
         | "release_date_question"
         | "where_located"
+        | "why_explanation"
         | "medical_fact_question";
     };
 
@@ -344,6 +346,10 @@ export function classifyConsensusEligibility(query: string): ConsensusEligibilit
     return { eligible: false, kind: "objective_factual", reason: "who_founded" };
   }
 
+  if (/^who\s+(?:wrote|authored|created|composed|directed|painted|invented)\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "who_wrote" };
+  }
+
   if (/^when\s+(?:did|was|were)\b/.test(normalized)) {
     return { eligible: false, kind: "objective_factual", reason: "when_did" };
   }
@@ -362,6 +368,10 @@ export function classifyConsensusEligibility(query: string): ConsensusEligibilit
 
   if (/^where\s+(?:is|was|are|were)\b.+\blocated\b/.test(normalized)) {
     return { eligible: false, kind: "objective_factual", reason: "where_located" };
+  }
+
+  if (/^why\s+(?:is|are|was|were|do|does|did)\b/.test(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "why_explanation" };
   }
 
   if (/^what\s+(?:are|re|is|s)\s+(?:the\s+)?(?:symptoms?|signs?)\b/.test(normalized)) {

@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { Bookmark } from "lucide-react";
 import { NO_RELIABLE_CONSENSUS_BODY, NO_RELIABLE_CONSENSUS_TITLE } from "@/lib/types";
-import type { ConsensusResponse } from "@/lib/types";
+import type { ConsensusResponse, FactualAnswerResponse, SearchResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { VeraThinking } from "@/components/vera-thinking";
 import { SearchExperience } from "@/components/search-experience";
@@ -13,11 +13,12 @@ import { FeedbackWidget } from "@/components/feedback-widget";
 import { ContenderActionsWithMapPreview } from "@/components/contender-actions-with-map-preview";
 import { buildResultSlug } from "@/lib/result-slug";
 import { getAnonymousId } from "@/lib/client/anonymous-id";
+import { isConsensusResponse, isFactualAnswerResponse, responseSources } from "@/lib/search-response";
 import { confidenceExplanationForMode, editorializeTrustCopy, resultGeneratedLabel } from "@/lib/trust-copy";
 
 type ResultsViewProps = {
   query: string;
-  initialResult: ConsensusResponse | null;
+  initialResult: SearchResponse | null;
   showThinking?: boolean;
 };
 
@@ -55,28 +56,30 @@ const modeCopy = {
 };
 
 export function ResultsView({ query, initialResult, showThinking = false }: ResultsViewProps) {
-  const [result, setResult] = useState<ConsensusResponse | null>(initialResult);
+  const [result, setResult] = useState<SearchResponse | null>(initialResult);
   const [requestLoading, setRequestLoading] = useState(Boolean(query && !initialResult));
   const [minimumThinking, setMinimumThinking] = useState(Boolean(query && showThinking));
   const [error, setError] = useState<string | null>(null);
   const [savedState, setSavedState] = useState<SavedState>(emptySavedState);
   const fetchedQueryRef = useRef<string | null>(initialResult?.query ?? null);
+  const consensusResult = isConsensusResponse(result) ? result : null;
+  const factualResult = isFactualAnswerResponse(result) ? result : null;
 
   useEffect(() => {
     if (initialResult?.query === query) {
       console.log("showing results", {
         query,
         cached: initialResult.cached,
-        mode: initialResult.mode
+        mode: isFactualAnswerResponse(initialResult) ? "factual_answer" : initialResult.mode
       });
     }
   }, [initialResult, query]);
 
   useEffect(() => {
-    if (result && result.results.length) {
-      window.localStorage.setItem(resultStorageKey(result.id), JSON.stringify(result));
+    if (consensusResult && consensusResult.results.length) {
+      window.localStorage.setItem(resultStorageKey(consensusResult.id), JSON.stringify(consensusResult));
     }
-  }, [result]);
+  }, [consensusResult]);
 
   useEffect(() => {
     if (!query) {
@@ -131,12 +134,13 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
         if (!response.ok) {
           throw new Error(body.error ?? "Search failed.");
         }
-        return body as ConsensusResponse;
+        return body as SearchResponse;
       })
       .then((nextResult) => {
-        console.log("fetch completed", { query, cached: nextResult.cached, mode: nextResult.mode });
+        const mode = isFactualAnswerResponse(nextResult) ? "factual_answer" : isConsensusResponse(nextResult) ? nextResult.mode : "unknown";
+        console.log("fetch completed", { query, cached: nextResult.cached, mode });
         setResult(nextResult);
-        console.log("showing results", { query, mode: nextResult.mode });
+        console.log("showing results", { query, mode });
       })
       .catch((reason: Error) => {
         if (reason.name !== "AbortError") {
@@ -150,48 +154,48 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
   }, [initialResult, query]);
 
   useEffect(() => {
-    if (!result) {
+    if (!consensusResult) {
       setSavedState(emptySavedState);
       return;
     }
 
-    const resultIds = result.results.map((item) => item.id);
+    const resultIds = consensusResult.results.map((item) => item.id);
 
     if (!resultIds.length) {
       setSavedState(emptySavedState);
       return;
     }
 
-    loadSavedStateBatch(result.id, resultIds)
+    loadSavedStateBatch(consensusResult.id, resultIds)
       .then(setSavedState)
       .catch(() => setSavedState(emptySavedState));
-  }, [result]);
+  }, [consensusResult]);
 
-  const mode = result ? modeCopy[result.mode] : null;
+  const mode = consensusResult ? modeCopy[consensusResult.mode] : null;
   const hasWinner =
-    result?.mode === "clear_consensus" ||
-    result?.mode === "strong_consensus" ||
-    result?.mode === "moderate_consensus";
-  const winner = hasWinner ? result?.results[0] : null;
-  const alternatives = hasWinner ? result?.results.slice(1) ?? [] : result?.results ?? [];
+    consensusResult?.mode === "clear_consensus" ||
+    consensusResult?.mode === "strong_consensus" ||
+    consensusResult?.mode === "moderate_consensus";
+  const winner = hasWinner ? consensusResult?.results[0] : null;
+  const alternatives = hasWinner ? consensusResult?.results.slice(1) ?? [] : consensusResult?.results ?? [];
 
   const rankingExplanation = useMemo(() => {
-    return result ? buildRankingExplanation(result) : "";
-  }, [result]);
+    return consensusResult ? buildRankingExplanation(consensusResult) : "";
+  }, [consensusResult]);
 
   const sourceMixLine = useMemo(() => {
-    return result ? buildSourceMixLine(result) : "";
-  }, [result]);
-  const confidenceLine = result ? confidenceExplanationForMode(result.mode) : "";
-  const generatedLabel = result ? resultGeneratedLabel(result) : "";
+    return consensusResult ? buildSourceMixLine(consensusResult) : "";
+  }, [consensusResult]);
+  const confidenceLine = consensusResult ? confidenceExplanationForMode(consensusResult.mode) : "";
+  const generatedLabel = consensusResult ? resultGeneratedLabel(consensusResult) : "";
 
   const howVeraDecided = useMemo(() => {
-    return result ? buildDecisionBullets(result) : [];
-  }, [result]);
+    return consensusResult ? buildDecisionBullets(consensusResult) : [];
+  }, [consensusResult]);
 
   const evidenceSummary = useMemo(() => {
-    return result ? buildEvidenceSummary(result) : null;
-  }, [result]);
+    return consensusResult ? buildEvidenceSummary(consensusResult) : null;
+  }, [consensusResult]);
   const isThinking = Boolean(query && (requestLoading || minimumThinking));
 
   if (!query) {
@@ -230,7 +234,11 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
     );
   }
 
-  if (!result || !mode) {
+  if (factualResult) {
+    return <FactualAnswerView factualAnswer={factualResult} query={query} />;
+  }
+
+  if (!consensusResult || !mode) {
     return (
       <section className="mx-auto flex min-h-[72vh] w-full max-w-4xl items-center justify-center">
         <div className="w-full search-handoff-enter">
@@ -248,33 +256,33 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
         <section className="mt-14 animate-result-enter">
           <div className="border-b border-[#ECECF0] pb-12">
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Results for</p>
-            <p className="mt-3 max-w-3xl text-lg leading-8 text-[#62626A]">{result.query}</p>
+            <p className="mt-3 max-w-3xl text-lg leading-8 text-[#62626A]">{consensusResult.query}</p>
             <h1 className="mt-8 max-w-4xl text-5xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-6xl">
-              {buildEditorialVerdict(result, winner)}
+              {buildEditorialVerdict(consensusResult, winner)}
             </h1>
-            <p className="mt-7 max-w-3xl text-xl leading-9 text-[#3B3B42]">{buildEditorialExplanation(result, winner)}</p>
+            <p className="mt-7 max-w-3xl text-xl leading-9 text-[#3B3B42]">{buildEditorialExplanation(consensusResult, winner)}</p>
             <div className="mt-8 flex flex-wrap items-center gap-3 text-sm text-[#73737C]">
               <span className="rounded-full border border-[#E8E8EC] bg-white px-3.5 py-2 font-medium text-[#111114] shadow-[0_6px_20px_rgba(17,17,20,0.035)]">
                 {mode.label}
                 {winner?.consensusPercentage ? ` · ${winner.consensusPercentage}%` : ""}
               </span>
               <span>{sourceMixLine || "Based on public discussions, reviews, and expert sources."}</span>
-              {result.mode !== "no_reliable_consensus" ? <span>{confidenceLine}</span> : null}
+              {consensusResult.mode !== "no_reliable_consensus" ? <span>{confidenceLine}</span> : null}
               {generatedLabel ? <span>{generatedLabel}</span> : null}
             </div>
           </div>
 
-          {result.mode === "no_reliable_consensus" && result.results.length === 0 ? (
+          {consensusResult.mode === "no_reliable_consensus" && consensusResult.results.length === 0 ? (
             <NoConsensusPanel />
           ) : (
             <div className="mt-12 grid gap-14">
               {winner ? (
                 <section>
                   <ResultCard
-                    consensus={result}
+                    consensus={consensusResult}
                     initialSaved={Boolean(savedState.savedResults[winner.id])}
                     item={winner}
-                    searchId={result.id}
+                    searchId={consensusResult.id}
                     featured
                   />
                 </section>
@@ -283,15 +291,15 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
               {alternatives.length ? (
                 <section>
                   <p className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">
-                    {contenderSectionLabel(result, hasWinner)}
+                    {contenderSectionLabel(consensusResult, hasWinner)}
                   </p>
                   <div className={cn("grid gap-4", !hasWinner ? "sm:grid-cols-2" : "")}>
                     {alternatives.map((item) => (
                       <ResultCard
-                        consensus={result}
+                        consensus={consensusResult}
                         initialSaved={Boolean(savedState.savedResults[item.id])}
                         item={item}
-                        searchId={result.id}
+                        searchId={consensusResult.id}
                         key={item.id}
                       />
                     ))}
@@ -318,17 +326,17 @@ export function ResultsView({ query, initialResult, showThinking = false }: Resu
                     </ul>
                   ) : null}
                 </div>
-                <SaveSearchButton initialSaved={savedState.savedSearch} searchId={result.id} />
+                <SaveSearchButton initialSaved={savedState.savedSearch} searchId={consensusResult.id} />
               </section>
 
-              <SourcesSection sources={result.sources} />
+              <SourcesSection sources={consensusResult.sources} />
               <FeedbackWidget
-                cacheVersion={result.cacheVersion}
-                consensusClassification={result.mode}
-                displayedContenders={result.results.map((item) => item.name)}
-                evidenceType={result.structuredConsensus?.queryEvidenceType}
-                searchId={result.id}
-                searchQuery={result.query}
+                cacheVersion={consensusResult.cacheVersion}
+                consensusClassification={consensusResult.mode}
+                displayedContenders={consensusResult.results.map((item) => item.name)}
+                evidenceType={consensusResult.structuredConsensus?.queryEvidenceType}
+                searchId={consensusResult.id}
+                searchQuery={consensusResult.query}
               />
             </div>
           )}
@@ -348,6 +356,42 @@ function SearchResultsNav() {
         Profile
       </Link>
     </nav>
+  );
+}
+
+function FactualAnswerView({ factualAnswer, query }: { factualAnswer: FactualAnswerResponse; query: string }) {
+  return (
+    <>
+      <SearchResultsNav />
+      <section className="mx-auto mt-10 w-full max-w-4xl search-settle-enter">
+        <SearchExperience initialQuery={query} compact />
+        <section className="mt-14 animate-result-enter">
+          <div className="border-b border-[#ECECF0] pb-12">
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Direct Answer</p>
+            <p className="mt-3 max-w-3xl text-lg leading-8 text-[#62626A]">{factualAnswer.query}</p>
+            {factualAnswer.personalityLine ? (
+              <p className="mt-8 max-w-3xl text-2xl font-semibold tracking-[-0.015em] text-[#111114] sm:text-3xl">
+                {factualAnswer.personalityLine}
+              </p>
+            ) : null}
+            <p className="mt-5 max-w-3xl text-base leading-7 text-[#73737C]">{factualAnswer.boundaryMessage}</p>
+            <h1 className="mt-7 max-w-4xl text-4xl font-semibold tracking-[-0.025em] text-[#111114] sm:text-5xl">
+              {factualAnswer.answer}
+            </h1>
+          </div>
+
+          <div className="mt-12 grid gap-12">
+            <section className="border-t border-[#ECECF0] pt-10">
+              <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#9B9BA3]">Why This Is Not Consensus</p>
+              <p className="mt-5 max-w-2xl text-[15px] leading-7 text-[#4B4B52]">
+                Vera identified this as a direct factual question, so it did not run recommendation consensus, rankings, or contender scoring.
+              </p>
+            </section>
+            <SourcesSection sources={responseSources(factualAnswer)} />
+          </div>
+        </section>
+      </section>
+    </>
   );
 }
 
