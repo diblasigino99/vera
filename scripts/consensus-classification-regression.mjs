@@ -40,7 +40,7 @@ const { compareConsensusSourceSelectionForRegression } = jiti("./lib/server/sear
 const { scorePlacesResultForRegression } = jiti("./lib/server/places.ts");
 const { canonicalizeQuery, classifyConsensusEligibility, inferQueryEvidenceType, parseLocalIntent } = jiti("./lib/utils.ts");
 const { attachContenderActions, productAmazonDestinationAccepted, productOfficialDestinationAccepted } = jiti("./lib/action-links.ts");
-const { attachPostDecisionActionsWithBudget } = jiti("./lib/server/action-resolution.ts");
+const { attachPostDecisionActionsWithBudget, productActionLookupQueryForRegression, verifiedOfficialProductCandidateUrlsForRegression } = jiti("./lib/server/action-resolution.ts");
 const { buildFactualAnswerResponseForRegression, isSensitiveFactualQuestion } = jiti("./lib/server/factual-answer.ts");
 
 const minimumSourceCount = 3;
@@ -326,6 +326,28 @@ assert.deepEqual(
   fastBudgetedActions.results.map((item) => item.actions?.map((action) => action.label)),
   [["View Product"], ["View Product"]],
   "Fast post-decision action resolution should decorate the response"
+);
+
+const cachedProductWithoutStructuredConsensus = await attachPostDecisionActionsWithBudget(
+  { ...editorialOnlyCarryOn, structuredConsensus: undefined, cached: true },
+  async (result) =>
+    result.name === "Away Carry-On"
+      ? [source("The Carry-On suitcase", "https://www.awaytravel.com/suitcases/carry-on", "awaytravel.com", "Away The Carry-On suitcase.")]
+      : [
+          source(
+            "Platinum Elite Carry-On Expandable Spinner",
+            "https://travelpro.com/products/platinum-elite-21-expandable-carry-on-spinner",
+            "travelpro.com",
+            "Travelpro Platinum Elite carry-on spinner."
+          )
+        ],
+  50,
+  "product_recommendation"
+);
+assert.deepEqual(
+  cachedProductWithoutStructuredConsensus.results.map((item) => item.actions?.map((action) => action.label)),
+  [["View Product"], ["View Product"]],
+  "Cached product consensus without structuredConsensus should still decorate when route evidence type is product"
 );
 
 let slowResolverAbortCount = 0;
@@ -636,6 +658,217 @@ assert.deepEqual(
   }).results[0].actions?.map((action) => action.label),
   ["Amazon"],
   "A highly confident Amazon match may appear without an official match"
+);
+
+const infantOpticsLookupQuery = productActionLookupQueryForRegression("Infant Optics DXR Pro Video Baby Monitor");
+assert.ok(/Infant Optics DXR-8 PRO/.test(infantOpticsLookupQuery), "Action lookup should include verified Infant Optics DXR-8 PRO alias");
+assert.ok(/Infant Optics DXR Pro/.test(infantOpticsLookupQuery), "Action lookup should include the raw DXR Pro model wording");
+
+assert.equal(
+  productOfficialDestinationAccepted(
+    source(
+      "Infant Optics DXR-8 PRO Baby Monitor",
+      "https://infantoptics.com/products/dxr-8-pro",
+      "infantoptics.com",
+      "Official Infant Optics DXR-8 PRO video baby monitor product page."
+    ),
+    "Infant Optics DXR Pro Video Baby Monitor"
+  ).accepted,
+  true,
+  "Verified brand and model alias should resolve Infant Optics DXR Pro to DXR-8 PRO official page"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source(
+      "Infant Optics DXR-8 PRO Video Baby Monitor",
+      "https://www.amazon.com/Infant-Optics-DXR-8-PRO-Monitor/dp/B08FF4GV5C",
+      "amazon.com",
+      "Infant Optics DXR-8 PRO video baby monitor."
+    ),
+    "Infant Optics DXR Pro Video Baby Monitor"
+  ).accepted,
+  true,
+  "Verified brand and model alias should resolve Infant Optics DXR Pro to exact Amazon product"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source("Infant Optics DXR 8 PRO", "https://infantoptics.com/products/dxr-8-pro", "infantoptics.com", "Infant Optics DXR 8 PRO baby monitor."),
+    "Infant Optics DXR-8 PRO"
+  ).accepted,
+  true,
+  "Harmless hyphenation and spacing differences should not block exact model resolution"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source("Infant Optics DXR-8 PRO Replacement Battery", "https://www.amazon.com/Infant-Optics-DXR-8-Replacement-Battery/dp/B0BATTERY", "amazon.com", "Replacement battery for DXR-8 PRO."),
+    "Infant Optics DXR-8 PRO"
+  ).accepted,
+  false,
+  "DXR-8 PRO should not resolve to a replacement battery"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source("Infant Optics Add-On Camera Unit for DXR-8 PRO", "https://www.amazon.com/Infant-Optics-Additional-Camera-DXR-8/dp/B0CAMERA", "amazon.com", "Additional camera accessory for DXR-8 PRO."),
+    "Infant Optics DXR-8 PRO"
+  ).accepted,
+  false,
+  "DXR-8 PRO should not resolve to an accessory camera unit"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source("VTech VM819 Baby Monitor", "https://www.amazon.com/VTech-VM819-Baby-Monitor/dp/B0VM819", "amazon.com", "VTech VM819 baby monitor."),
+    "VTech V-Care Smart Baby Monitor VC2105"
+  ).accepted,
+  false,
+  "VTech VC2105 should reject different VTech baby-monitor model identifiers"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source("Infant Optics Baby Monitors", "https://infantoptics.com/collections/baby-monitors", "infantoptics.com", "Shop Infant Optics baby monitors."),
+    "Infant Optics DXR-8 PRO"
+  ).accepted,
+  false,
+  "Generic brand/category pages should not count as exact product pages for model-specific contenders"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source("Infant Optics search", "https://www.amazon.com/s?k=Infant+Optics+DXR-8+PRO", "amazon.com", "Infant Optics DXR-8 PRO"),
+    "Infant Optics DXR-8 PRO"
+  ).accepted,
+  false,
+  "Broad Amazon search pages should remain rejected"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source("Infant Optics DXR-8 Non-Pro Video Baby Monitor", "https://www.amazon.com/Infant-Optics-DXR-8-Monitor/dp/B00ECHYTBI", "amazon.com", "Infant Optics DXR-8 baby monitor."),
+    "Infant Optics DXR-8 PRO"
+  ).accepted,
+  false,
+  "Nearby non-equivalent variants should be rejected when exact model identity differs"
+);
+assert.deepEqual(
+  verifiedOfficialProductCandidateUrlsForRegression("Infant Optics DXR Pro Video Baby Monitor"),
+  ["https://infantoptics.com/product/dxr-8-pro-full-kit/"],
+  "Verified official candidate recovery should resolve Infant Optics DXR Pro to the official DXR-8 PRO product page"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source(
+      "VTech V-Care VC2105 1080p FHD Over-The Crib Mount Smart Baby Monitor",
+      "https://www.amazon.com/VC2105-Intelligence-Analysis-Detection-Recording/dp/B0CGJ4JCH3",
+      "amazon.com",
+      "Brand VTech. Model Name VC2105."
+    ),
+    "VTech V-Care Smart Baby Monitor VC2105"
+  ).accepted,
+  true,
+  "Exact VTech VC2105 Amazon product should not be rejected merely because the product includes a crib mount"
+);
+assert.deepEqual(
+  verifiedOfficialProductCandidateUrlsForRegression("VTech V-Care Smart Baby Monitor VC2105"),
+  ["https://www.vtechphones.com/support/find_faqs_by_model_no/VC2105?source="],
+  "Verified official candidate recovery should resolve VTech VC2105 to its exact official model page"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source(
+      "VC2105 Product support | VTech Official Store",
+      "https://www.vtechphones.com/support/find_faqs_by_model_no/VC2105?source=",
+      "vtechphones.com",
+      "Official VTech VC2105 V-Care 5 inch 720p HD display 1080p over-the-crib Wi-Fi smart video baby monitor product support page."
+    ),
+    "VTech V-Care Smart Baby Monitor VC2105"
+  ).accepted,
+  true,
+  "Exact VTech VC2105 official model support page should count as a trustworthy manufacturer destination"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source(
+      "VTech Baby Monitor No WiFi - 19Hr Video Battery, 1000ft",
+      "https://www.amazon.com/VTech-VM819-Monitor-Temperature-Lullabies/dp/B08V8RWP3W",
+      "amazon.com",
+      "Brand VTech. Model Name VM819. Includes parent unit, baby unit, AC adapters, and quick start guide."
+    ),
+    "VTech VM819 2.8 Inch Baby Monitor"
+  ).accepted,
+  true,
+  "Exact VTech VM819 Amazon product should not be rejected because standard included adapters are mentioned"
+);
+assert.deepEqual(
+  verifiedOfficialProductCandidateUrlsForRegression("VTech VM819 2.8 Inch Baby Monitor"),
+  ["https://www.vtechphones.com/support/technical-support/product/4523"],
+  "Verified official candidate recovery should resolve VTech VM819 to its exact official model page"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source(
+      "VM819 Product support | VTech Official Store",
+      "https://www.vtechphones.com/support/technical-support/product/4523",
+      "vtechphones.com",
+      "Official VTech VM819 2.8 inch digital video baby monitor product support page."
+    ),
+    "VTech VM819 2.8 Inch Baby Monitor"
+  ).accepted,
+  true,
+  "Exact VTech VM819 official model support page should count as a trustworthy manufacturer destination"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source(
+      "Bundle of VTech VM819 Baby Monitor, 2.8 Screen, Night Vision with Floor Stand",
+      "https://www.amazon.com/VTech-Monitor-Temperature-Lullabies-Transmission/dp/B0DPJ8L1BY",
+      "amazon.com",
+      "Model Name VM819+Floor Stand."
+    ),
+    "VTech VM819 2.8 Inch Baby Monitor"
+  ).accepted,
+  false,
+  "VTech VM819 should not resolve to a bundle or accessory package"
+);
+assert.deepEqual(
+  verifiedOfficialProductCandidateUrlsForRegression("Babysense HDS2 Video Baby Monitor"),
+  ["https://www.babysensemonitors.com/products/hd-split-screen-2-camera-baby-video-monitor"],
+  "Verified official candidate recovery should resolve Babysense HDS2 to the official HD S2 product page"
+);
+assert.equal(
+  productOfficialDestinationAccepted(
+    source(
+      "HD Split-Screen Video Baby Monitor - 2 Cameras | Babysense",
+      "https://www.babysensemonitors.com/products/hd-split-screen-2-camera-baby-video-monitor",
+      "babysensemonitors.com",
+      "Official Babysense HD S2 / HDS2 video baby monitor product page."
+    ),
+    "Babysense HDS2 Video Baby Monitor"
+  ).accepted,
+  true,
+  "Babysense HD S2 official page should match HDS2 model spelling"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source(
+      "Babysense 5 HD Non WiFi Split-Screen Baby Monitor, Video",
+      "https://www.amazon.com/HD-Split-Screen-Monitor-Babysense-Cameras/dp/B08SL6H83X",
+      "amazon.com",
+      "Brand Babysense. Model Name HD S2."
+    ),
+    "Babysense HDS2 Video Baby Monitor"
+  ).accepted,
+  true,
+  "Babysense HDS2 should accept exact HD S2 Amazon model spelling"
+);
+assert.equal(
+  productAmazonDestinationAccepted(
+    source(
+      "Babysense Parent Unit for HDS2 Video Baby Monitor, Replacement Unit",
+      "https://www.amazon.com/Parent-Unit-Video-Monitor-Babysense/dp/B09Q957G1H",
+      "amazon.com",
+      "Model Name PU-HDS2."
+    ),
+    "Babysense HDS2 Video Baby Monitor"
+  ).accepted,
+  false,
+  "Babysense HDS2 should not resolve to a replacement parent unit"
 );
 
 const softwareActionContender = contender("HubSpot", { positives: 3, sourceUrls: ["https://www.hubspot.com/products/crm"] });

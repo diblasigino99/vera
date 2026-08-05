@@ -19,6 +19,7 @@ import {
 } from "@/lib/server/consensus-engine";
 import { createExternalCallCounts } from "@/lib/server/external-call-counts";
 import { getLiveSearchSetup, liveSearchSetupMessage } from "@/lib/server/env";
+import { answerFactualQuestion } from "@/lib/server/factual-answer";
 import { createSearchDiagnostics, recoverLocalSparseSources, searchPublicWeb } from "@/lib/server/search";
 import { recordSearchEvent } from "@/lib/server/search-events";
 import { attachPostDecisionActions } from "@/lib/server/action-resolution";
@@ -52,13 +53,38 @@ export async function POST(request: Request) {
       query: searchData.query,
       reason: eligibility.reason
     });
-    return NextResponse.json(
-      {
-        error: "Vera is built to analyze recommendations, comparisons, and internet consensus. This looks like a factual question.",
-        unsupportedReason: eligibility.reason
-      },
-      { status: 400 }
-    );
+    const normalizedQuery = normalizeQuery(searchData.query);
+    const canonicalQuery = canonicalizeQuery(searchData.query);
+    const factualAnswer = await answerFactualQuestion(searchData.query, eligibility);
+
+    await recordSearchEvent({
+      searchId: factualAnswer.id,
+      originalQuery: searchData.query,
+      normalizedQuery,
+      canonicalQuery,
+      evidenceType: "objective_factual",
+      consensusMode: null,
+      cacheHit: false,
+      cacheHitType: "factual_bypass",
+      cacheVersion: null,
+      totalMs: Date.now() - requestStartedAt,
+      cacheMs: 0,
+      tavilyCalls: 1,
+      openAiCalls: factualAnswer.factualAnswerVerified ? 1 : 0,
+      placesApiCalls: 0,
+      placesCacheHits: 0,
+      placesValidationAttempts: 0
+    });
+    console.log("FACTUAL_ANSWER_RETURNED", {
+      query: searchData.query,
+      reason: eligibility.reason,
+      isSensitive: factualAnswer.isSensitive,
+      verified: factualAnswer.factualAnswerVerified,
+      sourceCount: factualAnswer.sources.length,
+      totalElapsedMs: Date.now() - requestStartedAt
+    });
+
+    return NextResponse.json(factualAnswer);
   }
 
   return runConsensusEngine(searchData.query, {
@@ -355,7 +381,7 @@ async function executeExistingSearchPipeline(trace?: ConsensusTrace) {
         totalMs: Date.now() - requestStartedAt,
         cacheMs: cacheElapsedMs
       });
-      return await consensusJson(response);
+      return await consensusJson(response, evidenceType);
     }
   } catch (error) {
     console.error("[vera:search] cache lookup aborted live search", {
@@ -1438,6 +1464,6 @@ function baseSearchEvent(
   };
 }
 
-async function consensusJson(consensus: ConsensusResponse) {
-  return NextResponse.json(await attachPostDecisionActions(consensus));
+async function consensusJson(consensus: ConsensusResponse, evidenceType?: ReturnType<typeof inferQueryEvidenceType>) {
+  return NextResponse.json(await attachPostDecisionActions(consensus, evidenceType));
 }
