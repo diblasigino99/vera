@@ -213,6 +213,29 @@ for (const factualQuery of ["What is the capital of Australia?", "Who wrote The 
   assert.doesNotThrow(() => responseSources(factualResponse).map((item) => item.url), `${factualQuery} factual sources should be safe to iterate`);
 }
 
+for (const factualQuery of [
+  "capital of Florida",
+  "What is the capital of Florida?",
+  "capital of New York",
+  "author of The Great Gatsby",
+  "population of Japan",
+  "chemical symbol for gold",
+  "height of the Eiffel Tower"
+]) {
+  const eligibility = classifyConsensusEligibility(factualQuery);
+  const factualResponse = buildFactualAnswerResponseForRegression({
+    query: factualQuery,
+    answer: "Regression factual answer."
+  });
+
+  assert.equal(eligibility.eligible, false, `${factualQuery} should bypass consensus as a factual lookup`);
+  assert.equal(eligibility.kind, "objective_factual", `${factualQuery} should be classified as objective_factual`);
+  assert.equal(factualResponse.type, "factual_answer", `${factualQuery} should use the factual_answer response shape`);
+  assert.equal("mode" in factualResponse, false, `${factualQuery} must not expose a consensus mode`);
+  assert.equal("results" in factualResponse, false, `${factualQuery} must not expose contender results`);
+  assert.equal(responseRenderBranchForRegression(factualResponse), "factual_answer", `${factualQuery} should render the factual branch`);
+}
+
 const legacyFactualShapeWithoutDiscriminator = {
   id: "legacy-factual-regression",
   query: "What is the capital of Australia?",
@@ -1480,7 +1503,22 @@ const factualEligibilityCases = [
   "who wrote the great gatsby",
   "why is the sky blue",
   "what are the signs of a stroke",
-  "can mixing alcohol and acetaminophen be dangerous"
+  "can mixing alcohol and acetaminophen be dangerous",
+  "capital of florida",
+  "capital of new york",
+  "author of the great gatsby",
+  "population of japan",
+  "height of the eiffel tower",
+  "chemical symbol for gold",
+  "boiling point of water",
+  "distance from earth to the moon",
+  "president of mexico",
+  "ceo of disney",
+  "founder of apple",
+  "apple founder",
+  "release date of the iphone",
+  "meaning of photosynthesis",
+  "definition of entropy"
 ];
 
 for (const query of factualEligibilityCases) {
@@ -1499,7 +1537,13 @@ const consensusEligibilityCases = [
   "is hydro flask worth it",
   "is rome overrated",
   "is salesforce still the best crm",
-  "best city to visit in italy"
+  "best city to visit in italy",
+  "best city in Florida",
+  "best book by F. Scott Fitzgerald",
+  "best country to visit",
+  "best camera",
+  "top restaurants in Miami",
+  "recommended CRM software"
 ];
 
 for (const query of consensusEligibilityCases) {

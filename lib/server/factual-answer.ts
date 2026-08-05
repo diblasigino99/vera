@@ -402,7 +402,7 @@ async function generateGroundedFactualAnswer(
 }
 
 function factualSearchQuery(query: string, eligibilityReason?: string) {
-  if (eligibilityReason === "capital_question") {
+  if (eligibilityReason === "capital_question" || eligibilityReason === "implicit_factual_phrase") {
     return `${query} official`;
   }
 

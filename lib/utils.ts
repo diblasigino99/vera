@@ -324,7 +324,8 @@ export type ConsensusEligibility =
         | "release_date_question"
         | "where_located"
         | "why_explanation"
-        | "medical_fact_question";
+        | "medical_fact_question"
+        | "implicit_factual_phrase";
     };
 
 export function classifyConsensusEligibility(query: string): ConsensusEligibility {
@@ -385,7 +386,30 @@ export function classifyConsensusEligibility(query: string): ConsensusEligibilit
     return { eligible: false, kind: "objective_factual", reason: "medical_fact_question" };
   }
 
+  if (isImplicitFactualNounPhrase(normalized)) {
+    return { eligible: false, kind: "objective_factual", reason: "implicit_factual_phrase" };
+  }
+
   return { eligible: true, kind: "consensus", reason: "no_objective_factual_pattern" };
+}
+
+function isImplicitFactualNounPhrase(normalized: string) {
+  const attributePhrase =
+    "(?:capital|author|writer|population|height|age|founder|ceo|c e o|president|prime minister|king|queen|mayor|governor|chemical symbol|boiling point|release date|meaning|definition)";
+
+  if (new RegExp(`^(?:the\\s+)?${attributePhrase}\\s+(?:of|for)\\s+\\S`).test(normalized)) {
+    return true;
+  }
+
+  if (/^distance\s+from\s+\S.+\s+to\s+\S/.test(normalized)) {
+    return true;
+  }
+
+  if (new RegExp(`^\\S(?:.*\\S)?\\s+${attributePhrase}$`).test(normalized)) {
+    return true;
+  }
+
+  return false;
 }
 
 function hasConsensusDecisionIntent(normalized: string) {
